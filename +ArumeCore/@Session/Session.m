@@ -5,11 +5,11 @@ classdef Session < handle
     properties
         project
         name
-        path
+        dataRawPath
+        dataAnalysisPath
         
-        
-        subjectCode     = '000';
-        sessionCode   = 'Z';
+        subjectCode = '000';
+        sessionCode = 'Z';
         
         ExperimentDesign
         
@@ -23,7 +23,6 @@ classdef Session < handle
         Config      = [];
         
         Filename    = '';
-        EyeTrackerFiles = {};
     end
     
     %% properties
@@ -33,7 +32,7 @@ classdef Session < handle
     end
     methods
         function result = get.isStarted(this)
-            if ( isempty( this.CurrentRun ) )
+            if ( isempty( this.CurrentRun ) || isempty(this.CurrentRun.pastConditions) )
                 result = 0;
             else
                 result = 1;
@@ -51,59 +50,100 @@ classdef Session < handle
     %% methods
     methods
         function init( this, project, subjectCode, sessionCode )
-            this.project = project;
-            this.name = [subjectCode sessionCode];
+            this.project        = project;
+            this.name           = [subjectCode sessionCode];
+            this.subjectCode    = subjectCode;
+            this.sessionCode    = sessionCode;
             
-            this.subjectCode = subjectCode;
-            this.sessionCode = sessionCode;
-            
-            this.path = [project.sessionsPath '\' this.name];
+            this.dataRawPath        = fullfile( this.project.dataRawPath, this.name);
+            this.dataAnalysisPath	= fullfile( this.project.dataAnalysisPath, this.name);
             
             if ( isempty( project.sessions ) )
                 project.sessions = this;
             else
                 project.sessions(end+1) = this;
             end
+            
         end
         
         function initNew( this, project, subjectCode, sessionCode )
-            % TODO improve how the filename is generated
-            % prepare folder structure
-            if ( exist( [project.sessionsPath '\' subjectCode sessionCode], 'dir' ) )
-                error( 'Arume: session already exists use a diferent name' );
+            
+            % check if session already exists with that subjectCode and
+            % sessionCode
+            for session = project.sessions
+                if ( isequal(subjectCode, session.subjectCode) && isequal( sessionCode, session.sessionCode) )
+                    error( 'Arume: session already exists use a diferent name' );
+                end
             end
             
             this.init( project, subjectCode, sessionCode );
             
+            % create the new folders
+            mkdir( project.dataRawPath, this.name );
+            mkdir( project.dataAnalysisPath, this.name );
             
-            mkdir( project.sessionsPath , this.name );
+            % load variables
+            this.setUpVariables();
+            
+            % load parameters
+            this.setUpParameters();
+            
+            
+            this.Config = this.psyCortex_DefaultConfig();
+            this.Config.Debug = 1;
+            
+            this.CurrentRun = this.setUpNewRun( );
+            
         end
         
-        function Run( this )
-            this.initForRunning( );
-            this.StartSession();
+        function initExisting( this, project, data )
+            
+            this.init( project, data.subjectCode, data.sessionCode  );
+            
+            this.ExperimentDesign = data.ExperimentDesign;
+            this.CurrentRun = data.CurrentRun;
+            this.PastRuns = data.PastRuns;
+            this.Filename = data.Filename;
+            this.Config = data.Config;
+            
         end
         
-        function Resume( this )
-            this.ResumeSession();
+        function start( this )
+            this.run();
         end
         
-        function Restart( this )
-            this.RestartSession();
+        function resume( this )
+            %-- save the status of the current run in  the past runs
+            if ( isempty( this.PastRuns) )
+                this.PastRuns = this.CurrentRun;
+            else
+                this.PastRuns( length(this.PastRuns) + 1 ) = this.CurrentRun;
+            end
+            this.run();
         end
         
+        function restart( this )
+            % save the status of the current run in  the past runs
+            if ( isempty( this.PastRuns) )
+                this.PastRuns    = this.CurrentRun;
+            else
+                this.PastRuns( length(this.PastRuns) + 1 ) = this.CurrentRun;
+            end
+            % generate new sequence of trials
+            this.CurrentRun = this.setUpNewRun( );
+            this.run();
+        end
         
-        
-        function save( this )
+        function data = save( this )
             data = [];
+            
+            data.subjectCode = this.subjectCode;
+            data.sessionCode = this.sessionCode;
             data.ExperimentDesign = this.ExperimentDesign;
             data.CurrentRun = this.CurrentRun;
             data.PastRuns = this.PastRuns;
             data.Filename = this.Filename;
-            data.EyeTrackerFiles = this.EyeTrackerFiles;
-            
-            filename = fullfile( this.path, 'session.mat');
-            save( filename, 'data' );
+            data.Config = this.Config;
             
         end
         
@@ -117,37 +157,12 @@ classdef Session < handle
             session.initNew( project, subjectCode, sessionCode );
         end
         
-        function session = LoadSession( project, name )    
+        function session = LoadSession( project, data )
             % TODO add factory for multiple types of experiments
+            
             session = Experiments.OptokineticTorsion();
-            subjectCode = name(1:end-1);
-            sessionCode = name(end);
-            session.init( project, subjectCode, sessionCode );
             
-            
-            filename = fullfile( session.path , 'session.mat');
-            data = load( filename, 'data' );
-            data = data.data;
-            
-            
-            session.ExperimentDesign = data.ExperimentDesign;
-            session.CurrentRun = data.CurrentRun;
-            session.PastRuns = data.PastRuns;
-            session.Filename = data.Filename;
-            session.EyeTrackerFiles = data.EyeTrackerFiles;
-            
-            %-- load variables
-            session.setUpVariables();
-            
-            %-- generate condition matrix
-            session.setUpConditionMatrix();
-            
-            %-- load parameters
-            session.setUpParameters();
-            
-            
-            session.Config = session.psyCortex_DefaultConfig();
-            session.Config.Debug = 1;
+            session.initExisting( project, data );
             
         end
         
@@ -165,7 +180,7 @@ classdef Session < handle
         parameters = getParameters( parameters, this );
         
         %% getVariables
-        [conditionVars randomVars] = getVariables( this );
+        [conditionVars, randomVars] = getVariables( this );
         
         %% runPreTrial
         runPreTrial(this, variables );
@@ -185,26 +200,6 @@ classdef Session < handle
     % to be called from gui or command line
     % --------------------------------------------------------------------
     methods
-        %% CONSTRUCTOR
-        function this = initForRunning( this )
-                        
-            %-- load variables
-            this.setUpVariables();
-            
-            %-- generate condition matrix
-            this.setUpConditionMatrix();
-            
-            %-- load parameters
-            this.setUpParameters();
-            
-            
-            this.Config = this.psyCortex_DefaultConfig();
-            this.Config.Debug = 1;
-            
-            this.CurrentRun = this.setUpNewRun( );
-            
-            
-        end
         
         
         function abortExperiment(this, trial)
@@ -224,7 +219,9 @@ classdef Session < handle
         %--------------------------------------------------------------------------
         function config = psyCortex_DefaultConfig(this)
             
-            config.UsingEyelink = 1;
+            config.UsingEyeTracking = 1;
+            config.UsingVideoGraphics = 1;
+            
             config.Debug = 0;
             config.HitKeyBeforeTrial = 1;
             config.Graphical.mmMonitorWidth    = 400;
@@ -234,79 +231,12 @@ classdef Session < handle
             config.Graphical.textColor = 'white';
         end
         
-        
-        %% setEyeTrackerFiles
-        function  setEyeTrackerFilesAndFileName(this, edfNames, matFileName, subjectCode)
-            %name is a cell of all edf filenames
-            for iname = 1:length(edfNames)
-                this.EyeTrackerFiles{iname} = edfNames{iname};
-            end
-            
-            if exist ('matFileName', 'var')
-                this.Filename = matFileName;
-            end
-            
-            if exist ('subjectCode', 'var')
-                this.subjectCode = subjectCode;
-            end
-        end
     end
     
     
     
     methods (Sealed)
         
-        %% StartSession ---------------------------------------------------
-        function StartSession(this)
-            date = datevec(now);
-            filename = sprintf( ['%s_%s_%s_%0.4d-%0.2d-%0.2d' ],...
-                this.project.name,...
-                this.subjectCode,...
-                this.sessionCode,...
-                date(1),...
-                date(2),...
-                date(3));
-            this.Filename = filename;
-            
-            %             this.Filename = [this.Name '_' this.subjectCode '_' this.sessionCode '_'  num2str(date(1)) num2str(date(2)) num2str(date(3))];
-            if ( exist( [this.ExperimentDesign.Parameters.dataPath '\' this.Filename ,'.mat'], 'file') )% file already exists
-                result = questdlg(['There is already a file named ' this.Filename ', continue?'], 'Question', 'Yes', 'No', 'Yes');
-                if ( isequal( result, 'No') )
-                    return;
-                end
-            end
-            
-            this.run_session();
-        end
-        
-        %% RestartSession -------------------------------------------------
-        function RestartSession(this)
-            % save the status of the current run in  the past runs
-            if ( isempty( this.PastRuns) )
-                this.PastRuns    = this.CurrentRun;
-            else
-                this.PastRuns( length(this.PastRuns) + 1 ) = this.CurrentRun;
-            end
-            % generate new sequence of trials
-            this.CurrentRun = this.setUpNewRun( );
-            this.run_session();
-        end
-        
-        %% ResumeSession --------------------------------------------------
-        function ResumeSession( this )
-            %-- save the status of the current run in  the past runs
-            if ( isempty( this.PastRuns) )
-                this.PastRuns    = this.CurrentRun;
-            else
-                this.PastRuns( length(this.PastRuns) + 1 )    = this.CurrentRun;
-            end
-            %             %TODO if resuming from an specific runthe past run is now the current run
-            %             if ( length(varargin) == 2 )
-            %                 runToResume     = varargin{2};
-            %                 this.CurrentRun = this.PastRuns(runToResume);
-            %             end
-            this.run_session();
-        end
         
         %% GetStats
         function stats = GetStats(this)
@@ -442,47 +372,6 @@ classdef Session < handle
             end
         end
         
-        %% SaveTempData
-        function SaveTempData(this)
-            try
-                filename = [this.Name '_' this.subjectCode '_' this.sessionCode  '_temp'];
-                eval( [filename ' = this;']);
-                save( [ this.ExperimentDesign.Parameters.dataPath '\' filename], filename);
-                
-                %now check if the file saved properly
-                currSavedFileDir = dir([ this.ExperimentDesign.Parameters.dataPath '\' ]);
-                
-                for ifile = 1:length(currSavedFileDir)
-                    if strcmp(currSavedFileDir(ifile).name, [filename '.mat'])
-                        idxCurrFile = ifile;
-                        break;
-                    end
-                end
-                
-                if exist('idxCurrFile', 'var') && currSavedFileDir(idxCurrFile).bytes > 1000
-                    %this means the prior save was successful so lets create a
-                    %backup just in case there is a future problem and we
-                    %somehow save a corrupt file.
-                    
-                    %check if backup directory exists
-                    d = dir('C:\secure\matfilebackup\');
-                    if  ~isempty(d)
-                        eval( [this.Filename ' = this;']);
-                        save( [ 'C:\secure\matfilebackup\' this.Filename], this.Filename);
-                    end
-                end
-                
-            catch
-                %-- error saving temporal data (not necessaryly critical)
-                d = dir('C:\secure\matfilebackup\');
-                if  ~isempty(d)
-                    eval( [this.Filename ' = this;']);
-                    save( [ 'C:\secure\matfilebackup\' this.Filename], this.Filename);
-                end
-                save_error = psychlasterror;
-                disp(['ERROR SAVING TEMP DATA: ' save_error.message]);
-            end
-        end
         
         %% ShowDebugInfo
         function ShowDebugInfo( this, variables )
@@ -550,8 +439,6 @@ classdef Session < handle
             parameters.fixRad = .125;
             parameters.fixColor     = [255 0 0];
             
-            myClass = metaclass(this);
-            parameters.dataPath = strrep(fileparts(mfilename('fullpath')), '+PsyCortexExperiments\@PsyCortexExperiment', myClass.Name);
             
             %-- get the parameters of this experiment
             parameters = this.getParameters( parameters );
@@ -566,20 +453,21 @@ classdef Session < handle
         function setUpVariables(this)
             [conditionVars randomVars] = this.getVariables();
             this.ExperimentDesign.ConditionVars   = conditionVars;
+            this.ExperimentDesign.ConditionMatrix = this.getConditionMatrix( conditionVars );
             this.ExperimentDesign.RandomVars      = randomVars;
         end
         
         %% setUpConditionMatrix
-        function setUpConditionMatrix(this)
+        function conditionMatrix = getConditionMatrix( this, conditionVars )
             
             %-- total number of conditions is the product of the number of
             % values of each condition variable
             nConditions = 1;
-            for iVar = 1:length(this.ExperimentDesign.ConditionVars)
-                nConditions = nConditions * length(this.ExperimentDesign.ConditionVars{iVar}.values);
+            for iVar = 1:length(conditionVars)
+                nConditions = nConditions * length(conditionVars{iVar}.values);
             end
             
-            this.ExperimentDesign.ConditionMatrix = [];
+            conditionMatrix = [];
             
             %-- recursion to create the condition matrix
             % for each variable, we repeat the previous matrix as many
@@ -595,15 +483,14 @@ classdef Session < handle
             %                    b f ;
             %                    a g ;
             %                    b g ];
-            for iVar = 1:length(this.ExperimentDesign.ConditionVars)
-                nValues(iVar) = length(this.ExperimentDesign.ConditionVars{iVar}.values);
-                this.ExperimentDesign.ConditionMatrix = [ repmat(this.ExperimentDesign.ConditionMatrix,nValues(iVar),1)  ceil((1:prod(nValues))/prod(nValues(1:end-1)))' ];
+            for iVar = 1:length(conditionVars)
+                nValues(iVar) = length(conditionVars{iVar}.values);
+                conditionMatrix = [ repmat(conditionMatrix,nValues(iVar),1)  ceil((1:prod(nValues))/prod(nValues(1:end-1)))' ];
             end
         end
         
         
         %% setUpNewRun
-        %--------------------------------------------------------------------------
         function currentRun = setUpNewRun( this )
             
             parameters = this.ExperimentDesign.Parameters;
@@ -672,39 +559,42 @@ classdef Session < handle
         end
         
         
-        %% run_session
-        function run_session(this)
+        function run(this)
             Enum = ArumeCore.Session.getEnum();
             
             % --------------------------------------------------------------------
             %% -- HARDWARE SET UP ------------------------------------------------
             % --------------------------------------------------------------------
             try
-                % -- KEYBOARD and MOUSE
-                
-                %-- hide the mouse cursor during the experiment
-                if ( ~this.Config.Debug )
-                    HideCursor;
-                    ListenChar(1);
-                else
-                    ListenChar(1);
-                end
-                
-                Screen('Preference', 'VisualDebugLevel', 3);
-                
-                % -- GRAPHICS
-                
-                this.Graph = ArumeCore.Display( this );
                 
                 this.SysInfo.PsychtoolboxVersion   = Screen('Version');
                 this.SysInfo.hostSO                = Screen('Computer');
                 
                 
+                % -- GRAPHICS KEYBOARD and MOUSE
+                if ( this.Config.UsingVideoGraphics )
+                    
+                    %-- hide the mouse cursor during the experiment
+                    if ( ~this.Config.Debug )
+                        HideCursor;
+                        ListenChar(1);
+                    else
+                        ListenChar(1);
+                    end
+                    
+                    Screen('Preference', 'VisualDebugLevel', 3);
+                    
+                    this.Graph = ArumeCore.Display( this );
+                else
+                    this.Graph = [];
+                end
+                
+                
+                
                 % -- EYELINK
-                if ( this.Config.UsingEyelink )
+                if ( this.Config.UsingEyeTracking )
                     try
                         this.EyeTracker = EyeTrackers.EyeTrackerAbstract.Initialize( 'EyeLink', this );
-                        this.EyeTrackerFiles{end+1} = this.EyeTracker.edfFileName;
                     catch
                         disp( 'PSYCORTEX: EyeTracker set up failed ');
                         this.EyeTracker = [];
@@ -716,12 +606,14 @@ classdef Session < handle
             catch
                 % If any error during the start up
                 
-                ShowCursor;
-                ListenChar(0);
-                Priority(0);
-                
-                Screen('CloseAll');
-                commandwindow;
+                if ( this.Config.UsingVideo )
+                    ShowCursor;
+                    ListenChar(0);
+                    Priority(0);
+                    
+                    Screen('CloseAll');
+                    commandwindow;
+                end
                 
                 err = psychlasterror;
                 
@@ -738,19 +630,11 @@ classdef Session < handle
                 
                 IDLE = 0;
                 RUNNING = 1;
-                CALIBRATION = 2;
-                DRIFTCORRECTION =3;
-                BREAK = 4;
                 SESSIONFINISHED = 5;
                 FINISHED = 6;
                 SAVEDATA = 7;
                 
-                
-                trialsSinceBreak            = 0;
-                trialsSinceCalibration      = 0;
-                trialsSinceDriftCorrection  = 0;
-                
-                status = CALIBRATION;
+                status = RUNNING;
                 
                 
                 while(1)
@@ -762,68 +646,18 @@ classdef Session < handle
                         %% ++ IDLE -------------------------------------------------------
                         case IDLE
                             result = this.Graph.DlgSelect( 'Choose an option:', ...
-                                { 'n' 'c' 'd' 'b' 'q'}, ...
-                                { 'Next trial' 'Calibration', 'Drift Correction', 'Break', 'Quit'} , [],[]);
+                                { 'n' 'q'}, ...
+                                { 'Next trial'  'Quit'} , [],[]);
                             switch( result )
                                 case 'n'
                                     status = RUNNING;
-                                case 'c'
-                                    status = CALIBRATION;
-                                case 'd'
-                                    status = DRIFTCORRECTION;
-                                case 'b'
-                                    status = BREAK;
                                 case {'q' 0}
                                     dlgResult = this.Graph.DlgYesNo( 'Are you sure you want to exit?',[],[],20,20);
                                     if( dlgResult )
                                         status = SAVEDATA;
                                     end
                             end
-                            
-                            %% ++ CALIBRATION -------------------------------------------------------
-                        case CALIBRATION
-                            
-                            if ( isempty( this.EyeTracker ) )
-                                status = RUNNING;
-                                continue;
-                            end
-                            
-                            calibrationResult = this.EyeTracker.Calibration( this.Graph );
-                            if ( ~calibrationResult )
-                                status = IDLE;
-                            else
-                                
-                                trialsSinceCalibration      = 0;
-                                trialsSinceDriftCorrection	= 0;
-                                status = RUNNING;
-                            end
-                            
-                            %% ++ DRIFTCORRECTION -------------------------------------------------------
-                        case DRIFTCORRECTION
-                            if ( isempty( this.EyeTracker ) )
-                                status = RUNNING;
-                                continue;
-                            end
-                            driftCorrectionResult = this.EyeTracker.DriftCorrection( this.Graph );
-                            if ( ~driftCorrectionResult )
-                                status = IDLE;
-                            else
-                                trialsSinceDriftCorrection	= 0;
-                                status = RUNNING;
-                            end
-                            
-                            %% ++ BREAK -------------------------------------------------------
-                        case BREAK
-                            dlgResult = this.Graph.DlgHitKey( 'Break: hit a key to continue',[],[] );
-                            %             this.Graph.DlgTimer( 'Break');
-                            %             dlgResult = this.Graph.DlgYesNo( 'Finish break and continue?');
-                            % problems with breaks i am going to skip the timer
-                            if ( ~dlgResult )
-                                status = IDLE;
-                            else
-                                trialsSinceBreak            = 0;
-                                status = CALIBRATION;
-                            end
+                       
                             
                             %% ++ RUNNING -------------------------------------------------------
                         case RUNNING
@@ -850,7 +684,7 @@ classdef Session < handle
                                 %------------------------------------------------------------
                                 this.Graph.fliptimes{end +1} = zeros(100000,1);
                                 this.Graph.NumFlips = 0;
-
+                                
                                 this.SaveEvent( Enum.Events.PRE_TRIAL_START);
                                 trialResult = this.runPreTrial( variables );
                                 this.SaveEvent( Enum.Events.PRE_TRIAL_STOP);
@@ -1019,20 +853,7 @@ classdef Session < handle
                             status = SAVEDATA;
                         case SAVEDATA
                             %% -- SAVE DATA --------------------------------------------------
-                            
-                            % -- Save eyelink data if necessary
-                            if ( ~isempty( this.EyeTracker ) )
-                                this.EyeTracker.GetFile( this.ExperimentDesign.Parameters.dataPath );
-                            end
-                            
-                            % -- save session data
-                            %eval( [this.Filename ' = this;']); %% TODO
-                            %Think why this line was here
-                            save( [ this.ExperimentDesign.Parameters.dataPath '\' this.Filename], this.Filename);
-                            
-                            % -- delete temporary data
-                            tempfile = [this.ExperimentDesign.Parameters.dataPath '\' this.Name '_' this.subjectCode '_' this.sessionCode  '_temp.mat'];
-                            delete(tempfile)
+
                             
                             break; % finish loop
                     end
@@ -1125,7 +946,7 @@ classdef Session < handle
             Enum.futureConditions.blockid   = 3;
             
         end
-
+        
     end
     
 end

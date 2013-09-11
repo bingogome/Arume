@@ -3,40 +3,38 @@ classdef ArumeGui < handle
     %   Detailed explanation goes here
     
     properties
+        
+        % main controller
+        arume
+        
+        % figure handle
+        figureHandle
+        
+        % control handles
         projectTextLabel
         experimentTextLabel
         pathTextLabel
-        
         sessionListBox
         
-        logTextBox
-        
-        figureHandle
-        
+        % panel handles
         topPanel
         leftPanel
         rightPanel
         bottomPanel
         
-        menuProject
-        menuProjectNewProject
-        menuProjectLoadProject
-        menuProjectSaveProject
-        menuProjectCloseProject
-        menuProjectExportProject
+        % Menu items
+        menuFile
+        menuFileNewProject
+        menuFileLoadProject
+        menuFileCloseProject
+        menuFileExportProject
+        menuFileNewSession
+        menuFileImportSession
         
-        menuSession
-        menuSessionNewSession
-        menuSessionRun
-        menuSessionResume
-        menuSessionRestart
-        
-        
-        menuEdit
-        menuTools
-        menuhelp
-        
-        arume
+        menuRun
+        menuRunStartSession
+        menuRunResumeSession
+        menuRunRestartSession
         
     end
     
@@ -61,36 +59,37 @@ classdef ArumeGui < handle
             
             %  Construct the figure
             this.figureHandle = figure( ...
-                'Tag'       , 'Arume', ...
-                'Visible'   , 'off', ...
-                'Color'     ,defaultBackground,...
-                'Name'      , 'Arume',...
-                'NumberTitle', 'off',... % Do not show figure number
-                'Position'  , [360,500,w,h], ...
-                'CloseRequestFcn', @this.figureCloseRequest );
+                'Tag'           , 'Arume', ...
+                'Visible'       , 'off', ...
+                'Color'         , defaultBackground,...
+                'Name'          , 'Arume',...
+                'NumberTitle'   , 'off',... % Do not show figure number
+                'Position'      , [360,500,w,h], ...
+                'CloseRequestFcn', @this.figureCloseRequest, ...
+                'ResizeFcn'     , @this.figureResizeFcn);
             
             %  Construct panels
             
             this.topPanel = uipanel ( ...
                 'Parent'    , this.figureHandle,...
-                'Title'     , '',...
-                'Position'  , [.02 .76 .96 .2]);
+                'Title'     , '', ...
+                'Units'     , 'Pixels' );
             
             this.leftPanel = uipanel ( ...
                 'Parent'    , this.figureHandle,...
                 'Title'     , 'Sessions',...
-                'Position'  , [.02 .24 .3 .5]);
+                'Units'     , 'Pixels' );
             
             this.rightPanel = uipanel ( ...
                 'Parent'    , this.figureHandle,...
                 'Title'     , '',...
-                'Position'  , [.34 .24 .64 .5]);
+                'Units'     , 'Pixels' );
             
             this.bottomPanel = uipanel ( ...
                 'Parent'    , this.figureHandle,... 
                 'Title'     , '',...
-                'Position'  , [.02 .02 .96 .2]);
-                
+                'Units'     , 'Pixels' );
+                            
             
             %  Construct the components
             this.projectTextLabel = uicontrol( ...
@@ -98,21 +97,21 @@ classdef ArumeGui < handle
                 'Style'     , 'text',...
                 'String'    , 'Project: ',...
                 'HorizontalAlignment', 'left',...
-                'Position'  , [10,75,500,15]);
+                'Position'  , [10,36,500,15]);
             
             this.experimentTextLabel = uicontrol( ...
                 'Parent'    , this.topPanel,...
                 'Style'     , 'text',...
                 'String'    , 'Experiment: ',...
                 'HorizontalAlignment', 'left',...
-                'Position'  , [10,55,500,15]);
+                'Position'  , [10,21,500,15]);
             
             this.pathTextLabel = uicontrol( ...
                 'Parent'    , this.topPanel,...
                 'Style'     , 'text',...
                 'String'    , 'Project: ',...
                 'HorizontalAlignment', 'left',...
-                'Position'  , [10,35,500,15]);
+                'Position'  , [10,3,500,15]);
             
             this.sessionListBox = uicontrol( ...
                 'Parent'    , this.leftPanel,...
@@ -125,49 +124,44 @@ classdef ArumeGui < handle
             
             set(this.figureHandle,'MenuBar','none'); 
             
-            this.menuProject = uimenu(this.figureHandle, ...
+            this.menuFile = uimenu(this.figureHandle, ...
                 'Label'     , 'File');
             
-            this.menuProjectNewProject = uimenu(this.menuProject, ...
+            this.menuFileNewProject = uimenu(this.menuFile, ...
                 'Label'     , 'New project ...', ...
                 'Callback'  , @this.newProject);
-            this.menuProjectLoadProject = uimenu(this.menuProject, ...
+            this.menuFileLoadProject = uimenu(this.menuFile, ...
                 'Label'     , 'Load project ...', ...
                 'Callback'  , @this.loadProject);
-            this.menuProjectSaveProject = uimenu(this.menuProject, ...
-                'Label'     , 'Save project', ...
-                'Callback'  , @this.saveProject);
-            this.menuProjectCloseProject = uimenu(this.menuProject, ...
+            this.menuFileCloseProject = uimenu(this.menuFile, ...
                 'Label'     , 'Close project', ...
                 'Callback'  , @this.closeProject);
-            this.menuProjectExportProject = uimenu(this.menuProject, ...
+            this.menuFileExportProject = uimenu(this.menuFile, ...
                 'Label'     , 'Export project ...', ...
                 'Callback'  , @(varargin)msgbox('Not implemented'));
             
-            this.menuSession = uimenu(this.figureHandle, ...
-                'Label'     , 'Session');
-            
-            this.menuSessionNewSession = uimenu(this.menuSession, ...
+            this.menuFileNewSession = uimenu(this.menuFile, ...
                 'Label'     , 'New session', ...
-                'Callback'  , @this.sessionNewSession);
-            this.menuSessionRun = uimenu(this.menuSession, ...
-                'Label'     , 'Run ...', ...
-                'Callback'  , @this.sessionRun);
-            this.menuSessionResume = uimenu(this.menuSession, ...
-                'Label'     , 'Resume', ...
-                'Callback'  , @this.sessionResume);
-            this.menuSessionRestart = uimenu(this.menuSession, ...
-                'Label'     , 'Restart', ...
-                'Callback'  , @this.sessionRestart);
+                'Separator' , 'on', ...
+                'Callback'  , @this.newSession);
+            this.menuFileImportSession = uimenu(this.menuFile, ...
+                'Label'     , 'Import session', ...
+                'Callback'  , @(varargin)msgbox('Not implemented'));
             
             
-            % Initialize the GUI.
-            % Change units to normalized so components resize
-            % automatically.
-            set([ ...
-                this.figureHandle, ...
-                ],...
-                'Units'     ,'normalized');
+            this.menuRun = uimenu(this.figureHandle, ...
+                'Label'     , 'Run');
+            
+            this.menuRunStartSession = uimenu(this.menuRun, ...
+                'Label'     , 'Start session...', ...
+                'Callback'  , @this.startSession);
+            this.menuRunResumeSession = uimenu(this.menuRun, ...
+                'Label'     , 'Resume session', ...
+                'Callback'  , @this.resumeSession);
+            this.menuRunRestartSession = uimenu(this.menuRun, ...
+                'Label'     , 'Restart session', ...
+                'Callback'  , @this.restartSession);
+            
 
             
             % Move the GUI to the center of the screen.
@@ -184,27 +178,29 @@ classdef ArumeGui < handle
     methods 
         
         function figureCloseRequest( this, source, eventdata )
-            if ( ~isempty ( this.arume.currentProject) )
-                % Construct a questdlg with three options
-                choice = questdlg('Are you sure?', ...
-                    'Closing', ...
-                    'Save project before closing','Close without saving project','Cancel','Cancel');
-                
-                % Handle response
-                switch choice
-                    case 'Save project before closing'
-                        this.arume.saveProject();
-                        delete(this.figureHandle)
-                    case 'Close without saving project'
-                        if ( ~this.closeProjectQuestdlg() )
-                            return
-                        end
-                    case 'Cancel'
-                        return
-                end
-                
+            if ( this.closeProjectQuestdlg( ) )
+                delete(this.figureHandle)
             end
-            delete(this.figureHandle)
+        end
+        
+        function figureResizeFcn( this, source, eventdata )
+            figurePosition = get(this.figureHandle,'position');
+            w = figurePosition(3);  % figure width
+            h = figurePosition(4);  % figure height
+            
+            m = 5;      % margin between panels
+            th = 60;    % top panel height
+            bh = 60;    % bottom panel height
+            lw = 200;   % left panel width            
+            
+            set(this.topPanel, ...
+                'Position'  , [m (h-th-m) (w-m*2) th]);
+            set(this.leftPanel, ...
+                'Position'  , [m (bh+m*2) lw (h-m*4-th-bh)]);
+            set(this.rightPanel, ...
+                'Position'  , [(m*2+lw) (bh+m*2) (w- lw-m*3) (h-m*4-th-bh)]);
+            set(this.bottomPanel, ...
+                'Position'  , [m m (w-m*2) bh]);
         end
         
         function newProject(this, source, eventdata )
@@ -220,20 +216,18 @@ classdef ArumeGui < handle
                 this.updateGui();
             end
         end
+        
         function loadProject(this, source, eventdata )
             if ( this.closeProjectQuestdlg() )
-                [filename, pathname, filterindex] = uigetfile([this.arume.defaultDataFolder '\*.mat'], 'Pick a project file');
+                [filename, pathname] = uigetfile([this.arume.defaultDataFolder '\*.mat'], 'Pick a project file');
                 if ( ~filename  )
                     return
                 end
-                this.arume.loadProject(pathname);
+                this.arume.loadProject(fullfile(pathname, filename));
                 this.updateGui();
             end
         end
-        function saveProject(this, source, eventdata )
-            this.arume.saveProject();
-            this.updateGui();
-        end
+                
         function closeProject(this, source, eventdata )
             if ( this.closeProjectQuestdlg )
                 this.arume.closeProject();
@@ -241,7 +235,7 @@ classdef ArumeGui < handle
             end
         end
         
-        function sessionNewSession( this, source, eventdata ) 
+        function newSession( this, source, eventdata ) 
             sDlg.Subject_Code = '000';
             sDlg.Session_Code = 'Z';
             P = StructDlg(sDlg);
@@ -251,15 +245,15 @@ classdef ArumeGui < handle
             this.arume.newSession( P.Subject_Code, P.Session_Code );
             this.updateGui();
         end
-        function sessionRun( this, source, eventdata ) 
+        function startSession( this, source, eventdata ) 
             this.arume.runSession();
             this.updateGui();
         end
-        function sessionResume( this, source, eventdata ) 
+        function resumeSession( this, source, eventdata ) 
             this.arume.resumeSession();
             this.updateGui();
         end
-        function sessionRestart( this, source, eventdata ) 
+        function restartSession( this, source, eventdata ) 
             this.arume.restartSession();
             this.updateGui();
         end
@@ -274,8 +268,9 @@ classdef ArumeGui < handle
             end
             
         end
-
-        
+    end
+    
+    methods
         function updateGui( this )
             % update top box info
             if ( ~isempty( this.arume.currentProject ) )
@@ -309,42 +304,40 @@ classdef ArumeGui < handle
                 
             % update menu 
             if ( ~isempty( this.arume.currentProject ) )
-                set(this.menuProjectSaveProject, 'Enable', 'on');
-                set(this.menuProjectCloseProject, 'Enable', 'on');
-                set(this.menuProjectExportProject, 'Enable', 'on');
+                set(this.menuFileCloseProject, 'Enable', 'on');
+                set(this.menuFileExportProject, 'Enable', 'on');
                 
-                set(this.menuSessionNewSession, 'Enable', 'on');
+                set(this.menuFileNewSession, 'Enable', 'on');
                 
             else
-                set(this.menuProjectSaveProject, 'Enable', 'off');
-                set(this.menuProjectCloseProject, 'Enable', 'off');
-                set(this.menuProjectExportProject, 'Enable', 'off');
+                set(this.menuFileCloseProject, 'Enable', 'off');
+                set(this.menuFileExportProject, 'Enable', 'off');
                 
-                set(this.menuSessionNewSession, 'Enable', 'off');
+                set(this.menuFileNewSession, 'Enable', 'off');
             end
             
             if ( ~isempty( this.arume.currentSession ) )
                 if ( ~this.arume.currentSession.isStarted )
-                    set(this.menuSessionRun, 'Enable', 'on');
+                    set(this.menuRunStartSession, 'Enable', 'on');
                 else
-                    set(this.menuSessionRun, 'Enable', 'off');
+                    set(this.menuRunStartSession, 'Enable', 'off');
                 end
                 if ( this.arume.currentSession.isStarted && ~this.arume.currentSession.isFinished )
-                    set(this.menuSessionResume, 'Enable', 'on');
-                    set(this.menuSessionRestart, 'Enable', 'on');
+                    set(this.menuRunResumeSession, 'Enable', 'on');
+                    set(this.menuRunRestartSession, 'Enable', 'on');
                 else
-                    set(this.menuSessionResume, 'Enable', 'off');
-                    set(this.menuSessionRestart, 'Enable', 'off');
+                    set(this.menuRunResumeSession, 'Enable', 'off');
+                    set(this.menuRunRestartSession, 'Enable', 'off');
                 end
                 if ( this.arume.currentSession.isStarted  )
-                    set(this.menuSessionRestart, 'Enable', 'on');
+                    set(this.menuRunRestartSession, 'Enable', 'on');
                 else
-                    set(this.menuSessionRestart, 'Enable', 'off');
+                    set(this.menuRunRestartSession, 'Enable', 'off');
                 end
             else
-                set(this.menuSessionRun, 'Enable', 'off');
-                set(this.menuSessionResume, 'Enable', 'off');
-                set(this.menuSessionRestart, 'Enable', 'off');
+                set(this.menuRunStartSession, 'Enable', 'off');
+                set(this.menuRunResumeSession, 'Enable', 'off');
+                set(this.menuRunRestartSession, 'Enable', 'off');
             end
             
             
@@ -359,7 +352,7 @@ classdef ArumeGui < handle
                 result = 1;
                 return
             end
-            choice = questdlg('Do you want to close the current project? all data will be lost', ...
+            choice = questdlg('Do you want to close the current project?', ...
                 'Closing', ...
                 'Yes','No','No');
             switch choice

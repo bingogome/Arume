@@ -6,32 +6,37 @@ classdef Project < handle
         name
         experiment
         path
-        options
+                
+        sessions
         
-        sessions = [];
-        analysis = [];
-        figures = [];
-        reports = [];
+        analysis
+        figures
+        reports
         
-        sessionsPath = '';
+        dataRawPath = '';
+        dataAnalysisPath = '';
+        
         figuresPath = '';
+        stimuliPath = '';
     end
     
     methods
-        function init ( this, experiment, path, name, options )
+        function init ( this, experiment, path, name )
             this.name = name;
             this.experiment = experiment;
             this.path = path;
-            this.sessionsPath = [ this.path '\sessions'];
+            
+            this.dataRawPath = [ this.path '\dataRaw'];
+            this.dataAnalysisPath = [ this.path '\dataAnalysis'];
             this.figuresPath = [ this.path '\figures'];
-            this.options = options;
+            this.stimuliPath = [ this.path '\stimuli'];
             
             this.sessions = [];
         end
         
-        function initNew( this, experiment, parentFolder, name, options )
+        function initNew( this, experiment, parentFolder, name )
             
-            this.init( experiment, [parentFolder '\' name], name, options );
+            this.init( experiment, [parentFolder '\' name], name );
             
             if ( exist( this.path, 'dir' ) )
                 error( 'Arume: project folder already exists, select empty folder' );
@@ -40,8 +45,9 @@ classdef Project < handle
             
             % prepare folder structure
             mkdir( parentFolder, name );
-            mkdir( this.path, 'data' );
-            mkdir( this.path, 'sessions' );
+            mkdir( this.path, 'dataRaw' );
+            mkdir( this.path, 'dataAnalysis' );
+            mkdir( this.path, 'stimuli' );
             mkdir( this.path, 'figures' );
             mkdir( this.path, 'analysis' );
             mkdir( this.path, 'reports' );
@@ -49,51 +55,41 @@ classdef Project < handle
             this.save();
         end
         
-        function initFromPath( this, path )
-            filename = fullfile( path, 'project.mat');
-            data = load( filename, 'data' );
+        function initFromPath( this, file )
+            filePath = fileparts(file);
+            data = load( file, 'data' );
             data = data.data;
             
-            this.init( data.experiment, path, data.name, data.options );
+            this.init( data.experiment, filePath, data.name );
             
-            this.loadSessions();
+            for session = data.sessions
+                ArumeCore.Session.LoadSession( this, session );
+            end
         end
             
         function save( this )
             data = [];
             data.name = this.name;
             data.experiment = this.experiment;
-            data.options = this.options;
+            data.sessions = [];
+            for session = this.sessions
+                if isempty( data.sessions ) 
+                    data.sessions = session.save();
+                else
+                    data.sessions(end+1) = session.save();
+                end
+            end
             
             filename = fullfile( this.path, 'project.mat');
             save( filename, 'data' );
             
-            for session = this.sessions
-                session.save();
-            end
         end
         
     end
     
-    % session management
-    methods 
-        function loadSessions( this )
-            
-            d = dir(this.sessionsPath);
-            isub = [d(:).isdir];
-            sessionNames = {d(isub).name}';
-            sessionNames(ismember(sessionNames,{'.','..'})) = [];
-            
-            for i=1:length(sessionNames)
-                ArumeCore.Session.LoadSession( this, sessionNames{i} );
-            end
-            
-        end
-        
-    end
     
     methods ( Static = true )
-        function project = New( experiment, parentFolder, name, options)
+        function project = New( experiment, parentFolder, name)
             import ArumeCore.Project;
             % check if parentFolder exists
             if ( ~exist( parentFolder, 'dir' ) )
@@ -108,15 +104,15 @@ classdef Project < handle
             
             % create project object
             project = ArumeCore.Project();
-            project.initNew( experiment, parentFolder, name, options );
+            project.initNew( experiment, parentFolder, name );
                 
         end
         
-        function this = Load( path )
+        function this = Load( file )
             % read project info
             this = ArumeCore.Project();
             
-            this.initFromPath( path );
+            this.initFromPath( file );
             
         end
         

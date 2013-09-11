@@ -14,7 +14,7 @@ classdef OptokineticTorsion < ArumeCore.Session
             
             parameters.trialDuration = 40; %seconds
             
-            parameters.fixRad   = .05;
+            parameters.fixRad   = 10;
             parameters.fixColor = [255 0 0];
             
         end
@@ -27,6 +27,10 @@ classdef OptokineticTorsion < ArumeCore.Session
             conditionVars{i}.name   = 'Speed';
             conditionVars{i}.values = [2];
             
+            i = i+1;
+            conditionVars{i}.name   = 'Direction';
+            conditionVars{i}.values = {'ClockWise' 'CounterClockWise' };
+            
             randomVars = {};
         end
         
@@ -34,12 +38,22 @@ classdef OptokineticTorsion < ArumeCore.Session
         function trialResult = runPreTrial(this, variables ) 
             Enum = ArumeCore.Session.getEnum();
             
+            imgFile = fullfile( this.project.stimuliPath, 'radialCheckerBoardImage.mat');
+            if ( exist( imgFile, 'file' ) )
+                dat = load(imgFile);
+                this.checkerBoardImg = dat.radialCheckerBoardImage;
+            else
+                width = 1080;  % Height of the screen
+                fringe = 12;  % Width of the ramped fringe
+                width = width - fringe;
+                
+                radialCheckerBoardImage = double(RadialCheckerBoard([width/2 0], [-180 180], [7 5]));
+                save( imgFile, 'radialCheckerBoardImage');
+                this.checkerBoardImg = radialCheckerBoardImage;
+            end
             
-            width = 1080;  % Height of the screen
-            fringe = 12;  % Width of the ramped fringe
-            width = width - fringe;
             
-            this.checkerBoardImg = double(RadialCheckerBoard([width/2 0], [-180 180], [7 5]));
+            
             this.checkerBoardTexture = Screen('MakeTexture', this.Graph.window, this.checkerBoardImg, 1);
             
             
