@@ -13,8 +13,8 @@ classdef Arume < handle
     
     
     methods
-        function project = newProject( this, experiment, path, name )
-            project = ArumeCore.Project.New( experiment, path, name);
+        function project = newProject( this, path, name )
+            project = ArumeCore.Project.New( path, name);
             this.currentProject = project;
             this.currentSession = [];
         end
@@ -31,8 +31,8 @@ classdef Arume < handle
             this.currentSession = [];
         end
         
-        function session = newSession( this, subject_Code, session_Code )
-            session = ArumeCore.Session.NewSession( this.currentProject, subject_Code, session_Code );
+        function session = newSession( this, experiment, subject_Code, session_Code )
+            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code );
             this.currentSession = session;
             this.currentProject.save();
         end
@@ -51,6 +51,15 @@ classdef Arume < handle
             this.currentSession.restart();
             this.currentProject.save();
         end
+         
+        function prepareAnalysis( this )
+            this.currentSession.prepareForAnalysis();
+        end
+        
+        function runAnalysis( this )
+            this.currentSession.Analyze();
+        end
+            
         
         function setCurrentSession( this, currentSession )
             if isscalar( currentSession ) && ~isempty( currentSession )

@@ -56,7 +56,7 @@ classdef Display < handle
             if ( max(graph.screens)== 0)
                 graph.selectedScreen = 0;%; %% IMPROVE
             else
-                graph.selectedScreen = 1;%; %% IMPROVE
+                graph.selectedScreen = 2;%; %% IMPROVE
             end
             %             graph.selectedScreen = 2;
             %             Screen('Preference', 'SkipSyncTests', 1);
