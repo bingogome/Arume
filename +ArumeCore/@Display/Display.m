@@ -45,10 +45,9 @@ classdef Display < handle
         %% Display
         function graph = Display( exper )
             
-            
             Screen('Preference', 'SkipSyncTests', 1);
             
-            experParameters = exper.ExperimentDesign.Parameters;
+            experParameters = exper.ExperimentParams;
             %-- screens
             
             graph.screens = Screen('Screens');
@@ -56,7 +55,7 @@ classdef Display < handle
             if ( max(graph.screens)== 0)
                 graph.selectedScreen = 0;%; %% IMPROVE
             else
-                graph.selectedScreen = 2;%; %% IMPROVE
+                graph.selectedScreen = 1;%; %% IMPROVE
             end
             %             graph.selectedScreen = 2;
             %             Screen('Preference', 'SkipSyncTests', 1);
@@ -127,7 +126,7 @@ classdef Display < handle
         %--------------------------------------------------------------------------
         function fliptime = Flip( this, exper, trial )
             
-            Enum = ArumeCore.Session.getEnum();
+            Enum = ArumeCore.ExperimentDesign.getEnum();
             
             fliptime = Screen('Flip', this.window);
             

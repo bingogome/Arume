@@ -343,7 +343,7 @@ classdef ArumeGui < handle
             end
             
             if ( ~isempty( this.arume.currentSession ) )
-                set(this.experimentTextLabel, 'String', ['Experiment: ' this.arume.currentSession.experiment] );
+                set(this.experimentTextLabel, 'String', ['Experiment: ' this.arume.currentSession.experimentName] );
                 
                 if ( ~this.arume.currentSession.isStarted )
                     set(this.menuRunStartSession, 'Enable', 'on');

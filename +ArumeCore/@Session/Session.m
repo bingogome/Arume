@@ -49,10 +49,7 @@ classdef Session < handle
         function init( this, project, experimentName, subjectCode, sessionCode )
             this.project        = project;
             this.experimentName = experimentName;
-            switch(this.experimentName)
-                case 'torsion'
-                    this.experiment     = ExperimentDesigns.OptokineticTorsionExperimentDesign();
-            end
+            this.experiment = ArumeCore.ExperimentDesign.New( this, this.experimentName );
 
             this.name           = [subjectCode sessionCode];
             this.subjectCode    = subjectCode;
@@ -85,17 +82,15 @@ classdef Session < handle
             mkdir( project.dataRawPath, this.name );
             mkdir( project.dataAnalysisPath, this.name );
             
-            this.experiment.init();
+            this.experiment.init(this);
         end
         
         function initExisting( this, project, data )
             
             this.init( project, data.experimentName, data.subjectCode, data.sessionCode  );
             
-            this.experiment.CurrentRun = data.CurrentRun;
-            this.experiment.PastRuns = data.PastRuns;
+            this.experiment = ArumeCore.ExperimentDesign.Load( this, data.experimentName, data.experiment);
             this.Filename = data.Filename;
-            this.experiment.Config = data.Config;
             
         end
         
@@ -107,6 +102,7 @@ classdef Session < handle
             data.sessionCode = this.sessionCode;
             data.experiment.CurrentRun = this.experiment.CurrentRun;
             data.experiment.PastRuns = this.experiment.PastRuns;
+            % TODO: maybe save more stuff.
             data.Filename = this.Filename;
             data.experiment.Config = this.experiment.Config;
             
@@ -124,7 +120,7 @@ classdef Session < handle
             else
                 this.experiment.PastRuns( length(this.experiment.PastRuns) + 1 ) = this.experiment.CurrentRun;
             end
-            this.run();
+            this.experiment.run();
         end
         
         function restart( this )
@@ -136,7 +132,7 @@ classdef Session < handle
             end
             % generate new sequence of trials
             this.experiment.CurrentRun = this.experiment.setUpNewRun( );
-            this.Experiment.run();
+            this.experiment.run();
         end
         
         

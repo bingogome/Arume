@@ -21,6 +21,7 @@ classdef Project < handle
     end
     
     methods
+        
         function init ( this, path, name )
             this.name = name;
             this.path = path;
@@ -40,7 +41,6 @@ classdef Project < handle
             if ( exist( this.path, 'dir' ) )
                 error( 'Arume: project folder already exists, select empty folder' );
             end
-            
             
             % prepare folder structure
             mkdir( parentFolder, name );
@@ -87,6 +87,7 @@ classdef Project < handle
     
     
     methods ( Static = true )
+        
         function project = New( parentFolder, name)
             import ArumeCore.Project;
             % check if parentFolder exists
