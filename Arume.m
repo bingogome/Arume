@@ -13,8 +13,39 @@ classdef Arume < handle
     
     
     methods
-        function project = newProject( this, path, name )
-            project = ArumeCore.Project.New( path, name);
+        
+        function arume = Arume(command)
+            % persistent variable to keep the singleton
+            persistent arumeSingleton;
+            
+            % option to clear the singleton
+            if ( exist('command','var') )
+                switch (command )
+                    case 'clear'
+                        % clear the persistent variable
+                        clear arumeSingleton;
+                        return;
+                        
+                    case 'createSingleton'
+                        % do nothing, just let the constructor finish so 
+                        % the object is created the object
+                        return;
+                end
+                return
+            else
+                % When called with no parameters work like an static factory
+                % to create the singleton object or load it
+                if isempty(arumeSingleton)
+                    arumeSingleton = Arume( 'createSingleton' );
+                end
+                
+                % load the gui
+                this.arumeGui = ArumeGui( arumeSingleton );
+            end
+        end
+        
+        function project = newProject( this, path, name, defaultExperiment )
+            project = ArumeCore.Project.New( path, name, defaultExperiment);
             this.currentProject = project;
             this.currentSession = [];
         end
@@ -34,6 +65,14 @@ classdef Arume < handle
         function session = newSession( this, experiment, subject_Code, session_Code )
             session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code );
             this.currentSession = session;
+            this.currentProject.save();
+        end
+        
+        function deleteSession( this )
+            %this.currentSession = session;
+            sessidx = find( this.currentProject.sessions == this.currentSession );
+            this.currentProject.sessions(sessidx) = [];
+            this.currentSession = [];
             this.currentProject.save();
         end
         
@@ -59,7 +98,6 @@ classdef Arume < handle
         function runAnalysis( this )
             this.currentSession.Analyze();
         end
-            
         
         function setCurrentSession( this, currentSession )
             if isscalar( currentSession ) && ~isempty( currentSession )
@@ -71,11 +109,6 @@ classdef Arume < handle
     end
     
     methods ( Static = true )
-        function Run()
-            
-            arume = Arume( );
-            this.arumeGui = ArumeGui( arume );
-        end
     end
     
 end

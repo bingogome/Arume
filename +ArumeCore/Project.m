@@ -6,6 +6,8 @@ classdef Project < handle
         % Name of the project
         name
         path
+        
+        defaultExperiment
                 
         sessions
         
@@ -22,9 +24,11 @@ classdef Project < handle
     
     methods
         
-        function init ( this, path, name )
+        function init ( this, path, name, defaultExperiment )
             this.name = name;
             this.path = path;
+            
+            this.defaultExperiment = defaultExperiment;
             
             this.dataRawPath = [ this.path '\dataRaw'];
             this.dataAnalysisPath = [ this.path '\dataAnalysis'];
@@ -34,9 +38,9 @@ classdef Project < handle
             this.sessions = [];
         end
         
-        function initNew( this, parentFolder, name )
+        function initNew( this, parentFolder, name, defaultExperiment )
             
-            this.init( [parentFolder '\' name], name );
+            this.init( [parentFolder '\' name], name, defaultExperiment );
             
             if ( exist( this.path, 'dir' ) )
                 error( 'Arume: project folder already exists, select empty folder' );
@@ -59,7 +63,7 @@ classdef Project < handle
             data = load( file, 'data' );
             data = data.data;
             
-            this.init( filePath, data.name );
+            this.init( filePath, data.name, data.defaultExperiment );
             
             for session = data.sessions
                 ArumeCore.Session.LoadSession( this, session );
@@ -69,6 +73,8 @@ classdef Project < handle
         function save( this )
             data = [];
             data.name = this.name;
+            data.defaultExperiment = this.defaultExperiment;
+            
             data.sessions = [];
             for session = this.sessions
                 if isempty( data.sessions ) 
@@ -88,7 +94,7 @@ classdef Project < handle
     
     methods ( Static = true )
         
-        function project = New( parentFolder, name)
+        function project = New( parentFolder, name, defaultExperiment)
             import ArumeCore.Project;
             % check if parentFolder exists
             if ( ~exist( parentFolder, 'dir' ) )
@@ -103,7 +109,7 @@ classdef Project < handle
             
             % create project object
             project = ArumeCore.Project();
-            project.initNew( parentFolder, name );
+            project.initNew( parentFolder, name, defaultExperiment );
                 
         end
         

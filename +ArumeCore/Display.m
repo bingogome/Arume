@@ -33,7 +33,6 @@ classdef Display < handle
         
         fliptimes = {};
         NumFlips = 0;
-        
     end
     
     properties(Access=private)
@@ -47,7 +46,6 @@ classdef Display < handle
             
             Screen('Preference', 'SkipSyncTests', 1);
             
-            experParameters = exper.ExperimentParams;
             %-- screens
             
             graph.screens = Screen('Screens');
@@ -68,17 +66,8 @@ classdef Display < handle
             graph.black = BlackIndex( graph.window );
             graph.white = WhiteIndex( graph.window );
             
-            
-            if isfield(experParameters, 'dlgTextColor')
-                graph.dlgTextColor = experParameters.dlgTextColor;
-            else
-                graph.dlgTextColor =  graph.black;
-            end
-            if isfield(experParameters, 'dlgBackgroundScreenColor')
-                graph.dlgBackgroundScreenColor = experParameters.dlgBackgroundScreenColor;
-            else
-                graph.dlgBackgroundScreenColor =  graph.white;
-            end
+            graph.dlgTextColor = exper.ForegroundColor;
+            graph.dlgBackgroundScreenColor = exper.BackgroundColor;
             
             
             %-- font
@@ -158,6 +147,7 @@ classdef Display < handle
             
             
         end
+        
         %% dva2pix
         %--------------------------------------------------------------------------
         function pix = dva2pix( this, dva )
@@ -176,6 +166,7 @@ classdef Display < handle
             % horPixPerDva = graph.pxWidth / atan(graph.mmWidth/2/graph.distanceToMonitor)*180/pi;
             % verPixPerDva = graph.pxHeight / atan(graph.mmHeight/2/graph.distanceToMonitor)*180/pi;
         end
+        
         %% pix2dva
         function dva = pix2dva( this, pix )
             

@@ -17,7 +17,8 @@ classdef Session < handle
         subjectCode = '000';
         sessionCode = 'Z';
         
-        Filename    = '';
+        CurrentRun  = [];
+        PastRuns    = [];
     end
     
     %% properties
@@ -28,7 +29,7 @@ classdef Session < handle
     
     methods
         function result = get.isStarted(this)
-            if ( isempty( this.experiment.CurrentRun ) || isempty(this.experiment.CurrentRun.pastConditions) )
+            if ( isempty( this.CurrentRun ) || isempty(this.CurrentRun.pastConditions) )
                 result = 0;
             else
                 result = 1;
@@ -36,7 +37,7 @@ classdef Session < handle
         end
         
         function result = get.isFinished(this)
-            if ( ~isempty( this.experiment.CurrentRun ) && isempty(this.experiment.CurrentRun.futureConditions) )
+            if ( ~isempty( this.CurrentRun ) && isempty(this.CurrentRun.futureConditions) )
                 result = 1;
             else
                 result = 0;
@@ -49,7 +50,7 @@ classdef Session < handle
         function init( this, project, experimentName, subjectCode, sessionCode )
             this.project        = project;
             this.experimentName = experimentName;
-            this.experiment = ArumeCore.ExperimentDesign.New( this, this.experimentName );
+            this.experiment     = ArumeCore.ExperimentDesign.Create( this, this.experimentName );
 
             this.name           = [subjectCode sessionCode];
             this.subjectCode    = subjectCode;
@@ -63,7 +64,6 @@ classdef Session < handle
             else
                 project.sessions(end+1) = this;
             end
-            
         end
         
         function initNew( this, project, experimentName, subjectCode, sessionCode )
@@ -82,16 +82,15 @@ classdef Session < handle
             mkdir( project.dataRawPath, this.name );
             mkdir( project.dataAnalysisPath, this.name );
             
-            this.experiment.init(this);
+            this.CurrentRun = ArumeCore.ExperimentRun.SetUpNewRun( this.experiment );
         end
         
         function initExisting( this, project, data )
             
             this.init( project, data.experimentName, data.subjectCode, data.sessionCode  );
             
-            this.experiment = ArumeCore.ExperimentDesign.Load( this, data.experimentName, data.experiment);
-            this.Filename = data.Filename;
-            
+            this.CurrentRun  = ArumeCore.ExperimentRun.LoadRunData( data.CurrentRun, this.experiment );
+            this.PastRuns  = ArumeCore.ExperimentRun.LoadRunDataArray( data.PastRuns, this.experiment );
         end
         
         function data = save( this )
@@ -100,12 +99,9 @@ classdef Session < handle
             data.experimentName = this.experimentName;
             data.subjectCode = this.subjectCode;
             data.sessionCode = this.sessionCode;
-            data.experiment.CurrentRun = this.experiment.CurrentRun;
-            data.experiment.PastRuns = this.experiment.PastRuns;
-            % TODO: maybe save more stuff.
-            data.Filename = this.Filename;
-            data.experiment.Config = this.experiment.Config;
             
+            data.CurrentRun = ArumeCore.ExperimentRun.SaveRunData(this.CurrentRun);
+            data.PastRuns = ArumeCore.ExperimentRun.SaveRunDataArray(this.PastRuns);
         end
         
         %% RUNING METHODS
@@ -115,10 +111,10 @@ classdef Session < handle
         
         function resume( this )
             %-- save the status of the current run in  the past runs
-            if ( isempty( this.experiment.PastRuns) )
-                this.experiment.PastRuns = this.experiment.CurrentRun;
+            if ( isempty( this.PastRuns) )
+                this.PastRuns = this.CurrentRun;
             else
-                this.experiment.PastRuns( length(this.experiment.PastRuns) + 1 ) = this.experiment.CurrentRun;
+                this.PastRuns( length(this.PastRuns) + 1 ) = this.CurrentRun;
             end
             this.experiment.run();
         end
@@ -126,20 +122,20 @@ classdef Session < handle
         function restart( this )
             % save the status of the current run in  the past runs
             if ( isempty( this.PastRuns) )
-                this.experiment.PastRuns    = this.experiment.CurrentRun;
+                this.PastRuns    = this.CurrentRun;
             else
-                this.experiment.PastRuns( length(this.experiment.PastRuns) + 1 ) = this.experiment.CurrentRun;
+                this.PastRuns( length(this.PastRuns) + 1 ) = this.CurrentRun;
             end
             % generate new sequence of trials
-            this.experiment.CurrentRun = this.experiment.setUpNewRun( );
+            this.CurrentRun = this.setUpNewRun( );
             this.experiment.run();
         end
         
-        
         %% ANALYSIS METHODS
         function prepareForAnalysis( this )
-            
+            this.experiment.Analysis_getSigmoid();
         end
+        
     end
     
     methods (Static = true )
@@ -156,7 +152,6 @@ classdef Session < handle
             session = ArumeCore.Session();
             
             session.initExisting( project, data );
-            
         end
         
     end

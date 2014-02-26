@@ -16,6 +16,8 @@ classdef ArumeGui < handle
         pathTextLabel
         sessionListBox
         
+        infoBox
+        
         % panel handles
         topPanel
         leftPanel
@@ -39,6 +41,10 @@ classdef ArumeGui < handle
         menuAnalyze
         menuAnalyzePrepare
         menuAnalyzeRunAnalysis
+        
+        % Session Contextual menu
+        sessionContextMenu
+        sessionContextMenuDelete
     end
     
     %% Constructor
@@ -125,6 +131,20 @@ classdef ArumeGui < handle
                 'BackgroundColor'     , 'w', ...
                 'Callback'  , @this.sessionListBoxCallBack);
             
+            this.infoBox = uicontrol( ...
+                'Parent'    , this.rightPanel,...
+                'Style'     , 'edit',...
+                'Max'       , 10, ...
+                'Enable'    , 'inactive', ...
+                'HorizontalAlignment'   , 'Left',...
+                'FontName'      , 'consolas',...
+                'String'    , 'INFO:',...
+                'Units'     ,'normalized',...
+                'Position'  , [0.02 0.62 0.96 0.36], ...
+                'BackgroundColor'     , 'w', ...
+                'Callback'  , @this.sessionListBoxCallBack);
+            
+            % menu
             set(this.figureHandle,'MenuBar','none'); 
             
             this.menuFile = uimenu(this.figureHandle, ...
@@ -149,7 +169,7 @@ classdef ArumeGui < handle
                 'Callback'  , @this.newSession);
             this.menuFileImportSession = uimenu(this.menuFile, ...
                 'Label'     , 'Import session', ...
-                'Callback'  , @(varargin)msgbox('Not implemented'));
+                'Callback'  , @this.importSession);
             
             
             this.menuRun = uimenu(this.figureHandle, ...
@@ -174,8 +194,17 @@ classdef ArumeGui < handle
                 'Callback'  , @this.PrepareAnalysis);
             
             this.menuAnalyzeRunAnalysis = uimenu(this.menuAnalyze, ...
-                'Label'     , 'Resume session', ...
+                'Label'     , 'Run analysis', ...
                 'Callback'  , @this.RunAnalysis);
+            
+            % session contextual menu
+            % Define a context menu; it is not attached to anything
+            this.sessionContextMenu = uicontextmenu;
+            this.sessionContextMenuDelete = uimenu(this.sessionContextMenu, ...
+                'Label'     , 'Delete session ...', ...
+                'Callback'  , @this.DeleteSession);
+            set(this.sessionListBox, 'uicontextmenu', this.sessionContextMenu)
+            
             
             % Move the GUI to the center of the screen.
             movegui(this.figureHandle,'center')
@@ -193,6 +222,7 @@ classdef ArumeGui < handle
         function figureCloseRequest( this, source, eventdata )
             if ( this.closeProjectQuestdlg( ) )
                 delete(this.figureHandle)
+                Arume('clear');
             end
         end
         
@@ -220,11 +250,12 @@ classdef ArumeGui < handle
             if ( this.closeProjectQuestdlg() )
                 sDlg.Path = { {['uigetdir(''' this.arume.defaultDataFolder ''')']} };
                 sDlg.Name = 'ProjectName';
+                sDlg.Default_Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
                 P = StructDlg(sDlg);
                 if ( isempty( P ) )
                     return
                 end
-                this.arume.newProject( P.Path, P.Name);
+                this.arume.newProject( P.Path, P.Name, P.Default_Experiment);
                 this.updateGui();
             end
         end
@@ -248,7 +279,15 @@ classdef ArumeGui < handle
         end
         
         function newSession( this, source, eventdata ) 
-            sDlg.Experiment = { {'{torsion}' 'test'} };
+            
+            sDlg.Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
+            % Set the default experiment
+            for i=1:length(sDlg.Experiment{1})
+                if ( strcmp(sDlg.Experiment{1}{i}, this.arume.currentProject.defaultExperiment) )
+                    sDlg.Experiment{1}{i} = ['{'  sDlg.Experiment{1}{i} '}'];
+                end
+            end
+            
             sDlg.Subject_Code = '000';
             sDlg.Session_Code = 'Z';
             P = StructDlg(sDlg);
@@ -257,6 +296,38 @@ classdef ArumeGui < handle
             end
             this.arume.newSession( P.Experiment, P.Subject_Code, P.Session_Code );
             this.updateGui();
+        end
+        
+        
+        function importSession( this, source, eventdata ) 
+            
+            sDlg.Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
+            % Set the default experiment
+            for i=1:length(sDlg.Experiment{1})
+                if ( strcmp(sDlg.Experiment{1}{i}, this.defaultExperiment) )
+                    sDlg.Experiment{1}{i} = ['{'  sDlg.Experiment{1}{i} '}'];
+                end
+            end
+            
+            sDlg.Subject_Code = '000';
+            sDlg.Session_Code = 'Z';
+            P = StructDlg(sDlg);
+            if ( isempty( P ) )
+                return
+            end
+            this.arume.newSession( P.Experiment, P.Subject_Code, P.Session_Code );
+            this.updateGui();
+        end 
+        
+        function DeleteSession( this, source, eventdata )
+            choice = questdlg('Are you sure you want to delete the session?', ...
+                'Closing', ...
+                'Yes','No','No');
+            switch choice
+                case 'Yes'
+                this.arume.deleteSession();
+                this.updateGui();
+            end
         end
         
         function startSession( this, source, eventdata ) 
@@ -274,7 +345,6 @@ classdef ArumeGui < handle
             this.updateGui();
         end
         
-        
         function PrepareAnalysis( this, source, eventdata ) 
             this.arume.prepareAnalysis();
             this.updateGui();
@@ -284,7 +354,6 @@ classdef ArumeGui < handle
             this.arume.runAnalysis();
             this.updateGui();
         end
-        
         
         function sessionListBoxCallBack( this, source, eventdata )
             
@@ -311,21 +380,36 @@ classdef ArumeGui < handle
             
             % update session listbox
             if ( ~isempty( this.arume.currentProject ) )
-                sessionListBoxCurrentValue = get(this.sessionListBox,'value');
-                
+                % populate sessionlist
                 sessionNames = cell(length(this.arume.currentProject.sessions),1);
                 for i=1:length( this.arume.currentProject.sessions )
                     sessionNames{i} = this.arume.currentProject.sessions(i).name;
                 end
                 set(this.sessionListBox, 'String', sessionNames);
-                if ( sessionListBoxCurrentValue > 0 )
-                    set(this.sessionListBox, 'Value', sessionListBoxCurrentValue )
+                if ( ~isempty( this.arume.currentSession ) )
+                    set(this.sessionListBox, 'Value', find(this.arume.currentProject.sessions == this.arume.currentSession) )
                 else
-                    set(this.sessionListBox, 'Value', 1 )
+                    set(this.sessionListBox, 'Value', min(1,length(this.arume.currentProject.sessions)) )
                 end
             else
                 set(this.sessionListBox, 'String', {});
                 set(this.sessionListBox, 'Value', 0 )
+            end
+            
+            % update info box
+            if ( ~isempty( this.arume.currentSession ) )
+                s = '';
+                s = [s sprintf('%25s: %s\n', 'Experiment', this.arume.currentSession.experimentName)];
+                s = [s sprintf('%25s: %s\n', 'DataRawPath', this.arume.currentSession.dataRawPath)];
+                s = [s sprintf('%25s: %s\n', 'DataAnalysisPath', this.arume.currentSession.dataAnalysisPath)];
+                
+                NoYes = {'No' 'Yes'};
+                s = [s sprintf('%25s: %s\n', 'Started', NoYes{this.arume.currentSession.isStarted+1})];
+                s = [s sprintf('%25s: %s\n', 'Finished', NoYes{this.arume.currentSession.isFinished+1})];
+                stats = this.arume.currentSession.CurrentRun.GetStats();
+                s = [s sprintf('%25s: %s\n', 'Trials Good/Aborts/Left', sprintf('%d/%d/%d', stats.trialsCorrect, stats.trialsAbort, stats.totalTrials-stats.trialsCorrect))];
+                
+                set(this.infoBox,'string', s);
             end
                 
             % update menu 
@@ -362,12 +446,16 @@ classdef ArumeGui < handle
                 else
                     set(this.menuRunRestartSession, 'Enable', 'off');
                 end
+                
+                set(this.sessionContextMenuDelete, 'Enable', 'on');
             else
                 set(this.experimentTextLabel, 'String', ['Experiment: ' '-'] );
                 
                 set(this.menuRunStartSession, 'Enable', 'off');
                 set(this.menuRunResumeSession, 'Enable', 'off');
                 set(this.menuRunRestartSession, 'Enable', 'off');
+                
+                set(this.sessionContextMenuDelete, 'Enable', 'off');
             end
             
             
