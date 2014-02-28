@@ -15,6 +15,8 @@ classdef ArumeGui < handle
         experimentTextLabel
         pathTextLabel
         sessionListBox
+        analysisListBox
+        plotsListBox
         
         infoBox
         
@@ -40,7 +42,11 @@ classdef ArumeGui < handle
         
         menuAnalyze
         menuAnalyzePrepare
-        menuAnalyzeRunAnalysis
+        menuAnalyzeRunAnalyses
+        menuAnalyzeExportAnalysisData
+        
+        menuPlot
+        menuPlotGeneratePlots
         
         % Session Contextual menu
         sessionContextMenu
@@ -125,10 +131,12 @@ classdef ArumeGui < handle
             this.sessionListBox = uicontrol( ...
                 'Parent'    , this.leftPanel,...
                 'Style'     , 'listbox',...
+                'FontName'	, 'consolas',...
                 'String'    , '',...
                 'Units'     ,'normalized',...
                 'Position'  , [0.02 0.02 0.96 0.96], ...
                 'BackgroundColor'     , 'w', ...
+                'Max'       , 20, ...
                 'Callback'  , @this.sessionListBoxCallBack);
             
             this.infoBox = uicontrol( ...
@@ -137,12 +145,34 @@ classdef ArumeGui < handle
                 'Max'       , 10, ...
                 'Enable'    , 'inactive', ...
                 'HorizontalAlignment'   , 'Left',...
-                'FontName'      , 'consolas',...
+                'FontName'	, 'consolas',...
                 'String'    , 'INFO:',...
                 'Units'     ,'normalized',...
                 'Position'  , [0.02 0.62 0.96 0.36], ...
                 'BackgroundColor'     , 'w', ...
                 'Callback'  , @this.sessionListBoxCallBack);
+            
+            this.analysisListBox = uicontrol( ...
+                'Parent'    , this.rightPanel,...
+                'Style'     , 'listbox',...
+                'FontName'	, 'consolas',...
+                'Max'       , 20, ...
+                'String'    , '',...
+                'Units'     ,'normalized',...
+                'Position'  , [0.02 0.02 0.47 0.58], ...
+                'BackgroundColor'     , 'w', ...
+                'Callback'  , @this.analysisListBoxCallBack);
+            
+            this.plotsListBox = uicontrol( ...
+                'Parent'    , this.rightPanel,...
+                'Style'     , 'listbox',...
+                'FontName'	, 'consolas',...
+                'Max'       , 20, ...
+                'String'    , '',...
+                'Units'     ,'normalized',...
+                'Position'  , [0.51 0.02 0.47 0.58], ...
+                'BackgroundColor'     , 'w', ...
+                'Callback'  , @this.plotsListBoxCallBack);
             
             % menu
             set(this.figureHandle,'MenuBar','none'); 
@@ -190,12 +220,24 @@ classdef ArumeGui < handle
                 'Label'     , 'Analyze');
             
             this.menuAnalyzePrepare = uimenu(this.menuAnalyze, ...
-                'Label'     , 'Prepare...', ...
+                'Label'     , 'Prepare ...', ...
                 'Callback'  , @this.PrepareAnalysis);
             
-            this.menuAnalyzeRunAnalysis = uimenu(this.menuAnalyze, ...
-                'Label'     , 'Run analysis', ...
-                'Callback'  , @this.RunAnalysis);
+            this.menuAnalyzeRunAnalyses = uimenu(this.menuAnalyze, ...
+                'Label'     , 'Run analyses ...', ...
+                'Callback'  , @this.RunAnalyses);
+            
+            this.menuAnalyzeExportAnalysisData = uimenu(this.menuAnalyze, ...
+                'Label'     , 'Export analyses data to workspace ...', ...
+                'Callback'  , @this.ExportAnalysesData);
+            
+            
+            this.menuPlot = uimenu(this.figureHandle, ...
+                'Label'     , 'Plot');
+            
+            this.menuPlotGeneratePlots = uimenu(this.menuPlot, ...
+                'Label'     , 'Generate plots ...', ...
+                'Callback'  , @this.GeneratePlots);
             
             % session contextual menu
             % Define a context menu; it is not attached to anything
@@ -298,13 +340,12 @@ classdef ArumeGui < handle
             this.updateGui();
         end
         
-        
-        function importSession( this, source, eventdata ) 
-            
+        function importSession( this, source, eventdata )     
+               
             sDlg.Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
             % Set the default experiment
             for i=1:length(sDlg.Experiment{1})
-                if ( strcmp(sDlg.Experiment{1}{i}, this.defaultExperiment) )
+                if ( strcmp(sDlg.Experiment{1}{i}, this.arume.currentProject.defaultExperiment) )
                     sDlg.Experiment{1}{i} = ['{'  sDlg.Experiment{1}{i} '}'];
                 end
             end
@@ -315,7 +356,8 @@ classdef ArumeGui < handle
             if ( isempty( P ) )
                 return
             end
-            this.arume.newSession( P.Experiment, P.Subject_Code, P.Session_Code );
+            this.arume.importSession( P.Experiment, P.Subject_Code, P.Session_Code );
+            
             this.updateGui();
         end 
         
@@ -350,8 +392,18 @@ classdef ArumeGui < handle
             this.updateGui();
         end
         
-        function RunAnalysis( this, source, eventdata ) 
-            this.arume.runAnalysis();
+        function RunAnalyses( this, source, eventdata ) 
+            this.arume.runAnalyses();
+            this.updateGui();
+        end
+        
+        function ExportAnalysesData( this, source, eventdata ) 
+            this.arume.exportAnalysesData();
+            this.updateGui();
+        end
+        
+        function GeneratePlots( this, source, eventdata ) 
+            this.arume.generatePlots();
             this.updateGui();
         end
         
@@ -363,6 +415,14 @@ classdef ArumeGui < handle
                 this.arume.setCurrentSession( sessionListBoxCurrentValue );
                 this.updateGui();
             end
+        end
+        
+        
+        function analysisListBoxCallBack( this, source, eventdata )
+            
+        end
+        
+        function plotsListBoxCallBack( this, source, eventdata )
             
         end
     end
@@ -383,11 +443,15 @@ classdef ArumeGui < handle
                 % populate sessionlist
                 sessionNames = cell(length(this.arume.currentProject.sessions),1);
                 for i=1:length( this.arume.currentProject.sessions )
-                    sessionNames{i} = this.arume.currentProject.sessions(i).name;
+                    sessionNames{i} = [this.arume.currentProject.sessions(i).experimentName ' - ' this.arume.currentProject.sessions(i).name];
                 end
                 set(this.sessionListBox, 'String', sessionNames);
                 if ( ~isempty( this.arume.currentSession ) )
-                    set(this.sessionListBox, 'Value', find(this.arume.currentProject.sessions == this.arume.currentSession) )
+                    s = [];
+                    for i=1:length(this.arume.selectedSessions)
+                        s = [s; find(this.arume.currentProject.sessions == this.arume.selectedSessions(i))];
+                    end
+                    set(this.sessionListBox, 'Value', s );
                 else
                     set(this.sessionListBox, 'Value', min(1,length(this.arume.currentProject.sessions)) )
                 end
@@ -406,13 +470,64 @@ classdef ArumeGui < handle
                 NoYes = {'No' 'Yes'};
                 s = [s sprintf('%25s: %s\n', 'Started', NoYes{this.arume.currentSession.isStarted+1})];
                 s = [s sprintf('%25s: %s\n', 'Finished', NoYes{this.arume.currentSession.isFinished+1})];
-                stats = this.arume.currentSession.CurrentRun.GetStats();
-                s = [s sprintf('%25s: %s\n', 'Trials Good/Aborts/Left', sprintf('%d/%d/%d', stats.trialsCorrect, stats.trialsAbort, stats.totalTrials-stats.trialsCorrect))];
+                if ( ~isempty(this.arume.currentSession.CurrentRun) )
+                    stats = this.arume.currentSession.CurrentRun.GetStats();
+                    s = [s sprintf('%25s: %s\n', 'Trials Good/Aborts/Left', sprintf('%d/%d/%d', stats.trialsCorrect, stats.trialsAbort, stats.totalTrials-stats.trialsCorrect))];
+                end
                 
                 set(this.infoBox,'string', s);
             end
+            
+            % update analysis listbox
+            if ( ~isempty( this.arume.currentSession ) && this.arume.currentSession.isReadyForAnalysis)
+                anlysisList =  this.arume.GetAnalysisList();
+                set(this.analysisListBox, 'String', anlysisList);
+                set(this.analysisListBox, 'Value', min(1,length(anlysisList)) )
+            else
+                set(this.analysisListBox, 'String', {});
+                set(this.analysisListBox, 'Value', 0 )
+                set(this.analysisListBox, 'Enable', 'on');
+            end
+            
+            % update plots listbox
+            if ( ~isempty( this.arume.currentSession ) && this.arume.currentSession.isReadyForAnalysis)
+                plotsList = {};
+                for session = this.arume.selectedSessions
+                    if ( isempty (plotsList) )
+                        plotsList = this.arume.GetPlotList();
+                    else
+                        plotsList =  intersect(plotsList, this.arume.GetPlotList());
+                    end
+                end
+                set(this.plotsListBox, 'String', plotsList);
+                set(this.plotsListBox, 'Value', min(1,length(plotsList)) )
+            else
+                set(this.plotsListBox, 'String', {});
+                set(this.plotsListBox, 'Value', 0 )
+                set(this.plotsListBox, 'Enable', 'on');
+            end
                 
             % update menu 
+            
+            % top level menus
+            if ( ~isempty( this.arume.currentSession ) )
+                set(this.menuRun, 'Enable', 'on');
+                set(this.menuAnalyze, 'Enable', 'on');
+                set(this.menuPlot, 'Enable', 'on');
+            else
+                set(this.menuRun, 'Enable', 'off');
+                set(this.menuAnalyze, 'Enable', 'off');
+                set(this.menuPlot, 'Enable', 'off');
+            end
+            if ( isscalar( this.arume.selectedSessions ) )
+                set(this.menuRun, 'Enable', 'on');
+            else
+                set(this.menuRun, 'Enable', 'off');
+            end
+            
+            
+            % sub menus
+            
             if ( ~isempty( this.arume.currentProject ) )
                 set(this.menuFileCloseProject, 'Enable', 'on');
                 set(this.menuFileExportProject, 'Enable', 'on');
@@ -427,6 +542,7 @@ classdef ArumeGui < handle
             end
             
             if ( ~isempty( this.arume.currentSession ) )
+                
                 set(this.experimentTextLabel, 'String', ['Experiment: ' this.arume.currentSession.experimentName] );
                 
                 if ( ~this.arume.currentSession.isStarted )
@@ -441,7 +557,7 @@ classdef ArumeGui < handle
                     set(this.menuRunResumeSession, 'Enable', 'off');
                     set(this.menuRunRestartSession, 'Enable', 'off');
                 end
-                if ( this.arume.currentSession.isStarted  )
+                if ( this.arume.currentSession.isStarted && ~this.arume.currentSession.isFinished  )
                     set(this.menuRunRestartSession, 'Enable', 'on');
                 else
                     set(this.menuRunRestartSession, 'Enable', 'off');

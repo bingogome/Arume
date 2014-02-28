@@ -59,7 +59,7 @@ classdef Display < handle
             %             Screen('Preference', 'SkipSyncTests', 1);
             
             %-- window
-            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen);
+            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
             
             %-- color
             

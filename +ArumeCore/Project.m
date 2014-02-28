@@ -86,7 +86,6 @@ classdef Project < handle
             
             filename = fullfile( this.path, 'project.mat');
             save( filename, 'data' );
-            
         end
         
     end

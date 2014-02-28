@@ -1,4 +1,4 @@
-classdef ExperimentRun
+classdef ExperimentRun < matlab.mixin.Copyable
     %EXPERIMENTRUN Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -72,6 +72,9 @@ classdef ExperimentRun
             end
         end
         
+        function run = Copy(this)
+            run = copy(this); 
+        end
     end
     
     
@@ -125,9 +128,9 @@ classdef ExperimentRun
             newRun.futureConditions = [];
             for iblock=1:length(blockSequence)
                 i = blockSequence(iblock);
-                possibleConditions = experiment.blocks{i}.fromCondition : experiment.blocks{i}.toCondition; % the possible conditions to select from in this block
+                possibleConditions = experiment.blocks(i).fromCondition : experiment.blocks(i).toCondition; % the possible conditions to select from in this block
                 nConditions = length(possibleConditions);
-                nTrials = experiment.blocks{i}.trialsToRun;
+                nTrials = experiment.blocks(i).trialsToRun;
                 
                 switch( experiment.trialSequence )
                     case 'Sequential'
@@ -171,9 +174,13 @@ classdef ExperimentRun
         end
         
         function runArray = LoadRunDataArray( runsData, experiment )
-            
+            runArray = [];
             for i=1:length(runsData)
-                runArray(i)  = ArumeCore.ExperimentRun.LoadRunData( runsData(i), experiment );
+                if ( isempty(runArray) )
+                    runArray  = ArumeCore.ExperimentRun.LoadRunData( runsData(i), experiment );
+                else
+                    runArray(i)  = ArumeCore.ExperimentRun.LoadRunData( runsData(i), experiment );
+                end
             end
         end
         
@@ -193,9 +200,13 @@ classdef ExperimentRun
         end
         
         function runDataArray = SaveRunDataArray( runs )
-            
+            runDataArray = [];
             for i=1:length(runs)
-                runDataArray(i) = ArumeCore.ExperimentRun.SaveRunData(runs(i));
+                if ( isempty(runDataArray) )
+                    runDataArray = ArumeCore.ExperimentRun.SaveRunData(runs(i));
+                else
+                    runDataArray(i) = ArumeCore.ExperimentRun.SaveRunData(runs(i));
+                end
             end
         end
     end

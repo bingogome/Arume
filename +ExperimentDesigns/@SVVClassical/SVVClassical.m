@@ -1,10 +1,10 @@
-classdef SVVdots < ArumeCore.ExperimentDesign
+classdef SVVClassical < ArumeCore.ExperimentDesign
     %OPTOKINETICTORSION Summary of this class goes here
     %   Detailed explanation goes here
     
     properties
         
-        lastResponse = '';
+        currentAngle = 0;
         
         eyeTracker = [];
         
@@ -12,8 +12,8 @@ classdef SVVdots < ArumeCore.ExperimentDesign
         fixRad = 20;
         fixColor = [255 0 0];
         
-        targetDistance = 100;
-        targetColor = [0 255 0];
+        lineLength = 100;
+        lineColor = [255 0 0];
         
     end
     
@@ -21,22 +21,21 @@ classdef SVVdots < ArumeCore.ExperimentDesign
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods ( Access = protected )
-        
         function initExperimentDesign( this  )
-            this.trialDuration = 3; %seconds
+            
+            this.trialDuration = 10; %seconds
             
             % default parameters of any experiment
-            this.trialSequence = 'Random';      % Sequential, Random, Random with repetition, ...
-            this.trialAbortAction = 'Delay';    % Repeat, Delay, Drop
-            this.trialsPerSession = 136;
-            
+            this.trialSequence = 'Random';	% Sequential, Random, Random with repetition, ...
+            this.trialAbortAction = 'Delay';     % Repeat, Delay, Drop
+            this.trialsPerSession = 13;
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 4;
+            this.numberOfTimesRepeatBlockSequence = 1;
             this.blocksToRun              = 1;
             this.blocks(1).fromCondition  = 1;
-            this.blocks(1).toCondition    = 34;
-            this.blocks(1).trialsToRun    = 34;
+            this.blocks(1).toCondition    = 13;
+            this.blocks(1).trialsToRun    = 13;
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -44,12 +43,9 @@ classdef SVVdots < ArumeCore.ExperimentDesign
             i= 0;
             
             i = i+1;
-            conditionVars(i).name   = 'Angle';
-            conditionVars(i).values = [-16:2:16];
+            conditionVars(i).name   = 'InitialAngle';
+            conditionVars(i).values = [-30:5:30];
             
-            i = i+1;
-            conditionVars(i).name   = 'Position';
-            conditionVars(i).values = {'Up' 'Down'};
         end
         
         function [ randomVars] = getRandomVariables( this )
@@ -67,7 +63,6 @@ classdef SVVdots < ArumeCore.ExperimentDesign
         function trialResult = runTrial( this, variables )
             
             try
-                this.lastResponse = 0;
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
                 
@@ -84,6 +79,9 @@ classdef SVVdots < ArumeCore.ExperimentDesign
                 
                 startLoopTime = lastFlipTime;
                 
+                this.currentAngle = variables.InitialAngle;
+                delta = 0;
+                
                 while secondsRemaining > 0
                     
                     secondsElapsed      = GetSecs - startLoopTime;
@@ -97,23 +95,14 @@ classdef SVVdots < ArumeCore.ExperimentDesign
                     [mx, my] = RectCenter(graph.wRect);
                     
                     %-- Draw fixation spot
-                    fixRect = [0 0 10 10];
-                    %                 fixRect = CenterRectOnPointd( fixRect, mx-graph.wRect(3)/4, my );
-                    fixRect = CenterRectOnPointd( fixRect, mx, my );
-                    Screen('FillOval', graph.window, this.fixColor, fixRect);
                     
-                    if ( secondsElapsed > 1 && secondsElapsed < 1.1 )
-                        %-- Draw target
-                        fixRect = [0 0 7 7];
-%                         mx = mx-graph.wRect(3)/4;
-                        switch(variables.Position)
-                            case 'Up'
-                                fixRect = CenterRectOnPointd( fixRect, mx + this.targetDistance*sin(variables.Angle/180*pi), my + this.targetDistance*cos(variables.Angle/180*pi) );
-                            case 'Down'
-                                fixRect = CenterRectOnPointd( fixRect, mx + this.targetDistance*sin(variables.Angle/180*pi), my - this.targetDistance*cos(variables.Angle/180*pi) );
-                        end
-                        Screen('FillOval', graph.window, this.targetColor, fixRect);
-                    end
+                    this.currentAngle = this.currentAngle+delta;
+                    
+                    fromH = mx - this.lineLength*sin(this.currentAngle/180*pi);
+                    fromV = my + this.lineLength*cos(this.currentAngle/180*pi);
+                    toH = mx + this.lineLength*sin(this.currentAngle/180*pi);
+                    toV = my - this.lineLength*cos(this.currentAngle/180*pi);
+                    Screen('DrawLine', graph.window, this.lineColor, fromH, fromV, toH, toV, 2);
                     
                     % -----------------------------------------------------------------
                     % --- END Drawing of stimulus -------------------------------------
@@ -132,22 +121,27 @@ classdef SVVdots < ArumeCore.ExperimentDesign
                     % --- Collecting responses  ---------------------------------------
                     % -----------------------------------------------------------------
                     
-                    if ( secondsElapsed > 1.2 )
-                        [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
-                        if ( keyIsDown )
-                            keys = find(keyCode);
-                            for i=1:length(keys)
-                                KbName(keys(i))
-                                switch(KbName(keys(i)))
-                                    case 'LeftArrow'
-                                        this.lastResponse = 1;
-                                    case 'RightArrow'
-                                        this.lastResponse = 2;
-                                end
+                    exit = 0;
+                    [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
+                    if ( keyIsDown )
+                        keys = find(keyCode);
+                        for i=1:length(keys)
+                            KbName(keys(i))
+                            switch(KbName(keys(i)))
+                                case 'LeftArrow'
+                                    delta = -0.2;
+                                case 'RightArrow'
+                                    delta = 0.2;
+                                case 'space'
+                                    exit = 1;
+                                otherwise
+                                    delta = 0;
                             end
                         end
+                    else
+                        delta = 0;
                     end
-                    if ( this.lastResponse > 0 )
+                    if ( exit )
                         break;
                     end
                     
@@ -161,19 +155,14 @@ classdef SVVdots < ArumeCore.ExperimentDesign
                 %  this.eyeTracker.StopRecording();
                 rethrow(ex)
             end
-            
-            
-            if ( this.lastResponse == 0)
-                trialResult =  Enum.trialResult.ABORT;
-            end
-            
+                        
             % this.eyeTracker.StopRecording();
             
         end
         
         function trialOutput = runPostTrial(this)
             trialOutput = [];
-            trialOutput.Response = this.lastResponse;
+            trialOutput.Response = this.currentAngle;
         end
     end
     

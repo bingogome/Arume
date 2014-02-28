@@ -14,8 +14,9 @@ classdef ExperimentDesign < handle
         Config      = [];
         
         % Experimental variables
-        ConditionVars = {};
-        RandomVars = {};
+        ConditionVars = [];
+        RandomVars = [];
+        StaircaseVars = [];
         
         ConditionMatrix
         
@@ -27,10 +28,10 @@ classdef ExperimentDesign < handle
         %%-- Blocking
         blockSequence       = 'Sequential';	% Sequential, Random, Random with repetition, ...numberOfTimesRepeatBlockSequence = 1;
         blocksToRun         = 1;
-        blocks              = { struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 1) };
+        blocks              =  struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 1) ;
         numberOfTimesRepeatBlockSequence = 1;
         
-        trialsBeforeBreak	= 10;
+        trialsBeforeBreak	= 1000;
         trialDuration       = 5; %seconds
         
         % Other settings
@@ -41,14 +42,29 @@ classdef ExperimentDesign < handle
     % --------------------------------------------------------------------
     %% Protected abstract methods, to be implemented by the Experiments ---
     % --------------------------------------------------------------------
+    methods (Access=protected)
+        
+        %% getVariables must be overriden by new experiments
+        function conditionVars = getConditionVariables( this )
+            conditionVars = [];
+        end
+        
+        function  randomVars = getRandomVariables( this )
+            randomVars = [];
+        end
+        
+        function staircaseVars = getStaircaseVariables( this )
+            staircaseVars = [];
+        end
+        
+    end
+    % --------------------------------------------------------------------
+    %% Protected abstract methods, to be implemented by the Experiments ---
+    % --------------------------------------------------------------------
     methods (Access=protected, Abstract)
         
         %% getParameters must be overriden by new experiments
         initExperimentDesign( this );
-        
-        %% getVariables must be overriden by new experiments
-        conditionVars = getConditionVariables( this );
-        randomVars = getRandomVariables( this );
         
         %% runPreTrial
         runPreTrial(this, variables );
@@ -58,6 +74,12 @@ classdef ExperimentDesign < handle
         
         %% runPostTrial
         [trialOutput] = runPostTrial(this);
+        
+    end
+    
+    methods( Access = public, Abstract)
+        %% ImportSession
+        [trialDataSet, sampleDataSet] = ImportSession( this )
         
     end
     
@@ -336,7 +358,7 @@ classdef ExperimentDesign < handle
                             end
                             
                             % -- Experiment or session finished ?
-                            stats = this.session.CurrentRun.GetStats();
+                            stats = this.Session.CurrentRun.GetStats();
                             if ( stats.trialsToFinishExperiment == 0 )
                                 status = FINISHED;
                             elseif ( stats.trialsToFinishSession == 0 )
@@ -455,8 +477,8 @@ classdef ExperimentDesign < handle
             
             variables = [];
             for iVar=1:length(conditionVars)
-                varName = conditionVars{iVar}.name;
-                varValues = conditionVars{iVar}.values;
+                varName = conditionVars(iVar).name;
+                varValues = conditionVars(iVar).values;
                 if iscell( varValues )
                     variables.(varName) = varValues{conditionMatrix(currentCondition,iVar)};
                 else
@@ -465,13 +487,13 @@ classdef ExperimentDesign < handle
             end
             
             for iVar=1:length(this.RandomVars)
-                varName = this.RandomVars{iVar}.name;
-                varType = this.RandomVars{iVar}.type;
-                if ( isfield( this.RandomVars{iVar}, 'values' ) )
-                    varValues = this.RandomVars{iVar}.values;
+                varName = this.RandomVars(iVar).name;
+                varType = this.RandomVars(iVar).type;
+                if ( isfield( this.RandomVars(iVar), 'values' ) )
+                    varValues = this.RandomVars(iVar).values;
                 end
-                if ( isfield( this.RandomVars{iVar}, 'params' ) )
-                    varParams = this.RandomVars{iVar}.params;
+                if ( isfield( this.RandomVars(iVar), 'params' ) )
+                    varParams = this.RandomVars(iVar).params;
                 end
                 
                 switch(varType)
@@ -502,7 +524,7 @@ classdef ExperimentDesign < handle
                 currentline = 50 + 25;
                 vNames = fieldnames(variables);
                 for iVar = 1:length(vNames)
-                    if ( ischar(variables.(vNames{iVar})) )
+                    if ( ischar(variables.(vNames(iVar))) )
                         s = sprintf( '%s = %s',vNames{iVar},variables.(vNames{iVar}) );
                     else
                         s = sprintf( '%s = %s',vNames{iVar},num2str(variables.(vNames{iVar})) );
@@ -545,8 +567,8 @@ classdef ExperimentDesign < handle
             this.trialsPerSession = numberOfConditions;
             
             %%-- Blocking
-            this.blocks{1}.toCondition    = numberOfConditions;
-            this.blocks{1}.trialsToRun    = numberOfConditions;
+            this.blocks(1).toCondition    = numberOfConditions;
+            this.blocks(1).trialsToRun    = numberOfConditions;
             
             this.trialsBeforeBreak = numberOfConditions;
             
@@ -562,7 +584,7 @@ classdef ExperimentDesign < handle
             % values of each condition variable
             nConditions = 1;
             for iVar = 1:length(conditionVars)
-                nConditions = nConditions * length(conditionVars{iVar}.values);
+                nConditions = nConditions * length(conditionVars(iVar).values);
             end
             
             conditionMatrix = [];
@@ -582,7 +604,7 @@ classdef ExperimentDesign < handle
             %                    a g ;
             %                    b g ];
             for iVar = 1:length(conditionVars)
-                nValues(iVar) = length(conditionVars{iVar}.values);
+                nValues(iVar) = length(conditionVars(iVar).values);
                 conditionMatrix = [ repmat(conditionMatrix,nValues(iVar),1)  ceil((1:prod(nValues))/prod(nValues(1:end-1)))' ];
             end
         end
@@ -605,13 +627,8 @@ classdef ExperimentDesign < handle
         end
         
         function experiment = Create(session, experimentName)
-            experiment = [];
-            switch(experimentName)
-                case 'torsion'
-                    experiment     = ExperimentDesigns.OptokineticTorsionExperimentDesign();
-                case 'SVVdots'
-                    experiment     = ExperimentDesigns.SVVdots();
-            end
+            experiment = ExperimentDesigns.(experimentName)();
+            
             experiment.init(session);
         end
         

@@ -25,15 +25,15 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             this.blockSequence = 'Random';	% Sequential, Random, Random with repetition, ...
             this.numberOfTimesRepeatBlockSequence = 1;
             this.blocksToRun              = 1;
-            this.blocks{1}.fromCondition  = 1;
-            this.blocks{1}.toCondition    = 1;
-            this.blocks{1}.trialsToRun    = 3;
+            this.blocks(1).fromCondition  = 1;
+            this.blocks(1).toCondition    = 1;
+            this.blocks(1).trialsToRun    = 3;
             
-            this.blocks{2}.fromCondition  = 2;
-            this.blocks{2}.toCondition    = 2;
-            this.blocks{2}.trialsToRun    = 3;
+            this.blocks(2).fromCondition  = 2;
+            this.blocks(2).toCondition    = 2;
+            this.blocks(2).trialsToRun    = 3;
             
-            this.bitebar = Hardware.BiteBarMotor()
+            %             this.bitebar = Hardware.BiteBarMotor()
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -41,16 +41,16 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             i= 0;
             
             i = i+1;
-            conditionVars{i}.name   = 'TiltDirection';
-            conditionVars{i}.values = {'Left' 'Right'};
+            conditionVars(i).name   = 'TiltDirection';
+            conditionVars(i).values = {'Left' 'Right'};
             
             i = i+1;
-            conditionVars{i}.name   = 'TiltAngle';
-            conditionVars{i}.values = 30;
+            conditionVars(i).name   = 'TiltAngle';
+            conditionVars(i).values = 30;
         end
         
         function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
+            randomVars = [];
         end
         
         function trialResult = runPreTrial(this, variables )
@@ -177,50 +177,317 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
     % Data Analysis methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
-        function analysisResults = Analysis_getSigmoid(this)
-            analysisResults = 0;
+    end
+    
+    % ---------------------------------------------------------------------
+    % Plot  methods
+    % ---------------------------------------------------------------------
+    methods ( Access = public )
+        function plotHandles = Plot_TracesRawTorsionHeadVel(this)
+            dsTrials =  this.Session.trialDataSet;
+            dsSamples =  this.Session.samplesDataSet;
             
-            data = zeros(length(this.CurrentRun.Data),3);
-            for i=1:length(this.CurrentRun.Data)
-                data(i,1) =  this.CurrentRun.Data{i}.variables.Angle;
-                switch(this.CurrentRun.Data{i}.variables.Position)
-                    case 'Up'
-                        data(i,2) =  0;
-                    case 'Down'
-                        data(i,2) =  1;
-                end
-                data(i,3) =  this.CurrentRun.Data{i}.trialOutput.Response;
+            n = length(dsTrials);
+            plotHandles.figure = figure('name',this.Session.name, 'color','w','position',[100 100 1000 800]);
+            ax = zeros(n,2);
+            for i=1:n
+                idxOn = (dsTrials.TiltStartIdx(i)-1000):(dsTrials.TiltStartIdx(i)+5000);
+                idxOff = (dsTrials.TiltEndIdx(i)-1000):(dsTrials.TiltEndIdx(i)+5000);
+                t = (-1000:5000)/100;
+                ax(i,1) = subplot(n,2,i*2-1);
+                plot(t,[dsSamples.LeftTorsion(idxOn), dsSamples.RightTorsion(idxOn), boxcar(sgolayfilt(100*[diff(dsSamples.HeadRollTilt(idxOn));0],1,51),30)]);
+                ax(i,2) = subplot(n,2,i*2);
+                plot(t,[dsSamples.LeftTorsion(idxOff), dsSamples.RightTorsion(idxOff), boxcar(sgolayfilt(100*[diff(dsSamples.HeadRollTilt(idxOff));0],1,51),30)]);
             end
             
-            data1 = data(data(:,3) > 0,:);
+            set(ax,'ylim',[-10 10])
+            linkaxes(ax,'xy');
             
-            ds = dataset
+            xlabel('Time (s)');
+            ylabel('Torsion (deg) / Head vel. (deg/s)')
             
-            ds.angle = data1(:,1);
-            ds.response = data1(:,3)-1;
+            legend( {'Left Torsion', 'Right Torsion', 'HeadVelocity'});
+        end
+        
+    end
+    
+    % ---------------------------------------------------------------------
+    % Plot Aggregate methods
+    % ---------------------------------------------------------------------
+    methods ( Static = true, Access = public )
+        function plotHandles = PlotAggregate_TorsionNormalizedTraces( sessions)
             
-            modelspec = 'response ~ angle';
-            mdl = fitglm(ds,modelspec,'Distribution','binomial');
+            onsetData = zeros( length(sessions),6,25);
+            offsetData = zeros( length(sessions),6,25);
             
-            angles = [];
-            responses = [];
-            for i=1:length(this.ConditionVars{1}.values)
-                angles(i) = this.ConditionVars{1}.values(i);
-                responses(i) = mean(ds.response(ds.angle==angles(i)))
-            end
-            a = min(angles):0.1:max(angles);
+            onsetDataNorm = zeros( length(sessions),6,25);
+            offsetDataNorm = zeros( length(sessions),6,25);
             
-            figure
-            plot(angles,responses*100,'o')
-            hold
-            p = predict(mdl,a')*100;
-            plot(a,p)
-            xlabel('Angle (deg)');
-            ylabel('Percent answered right');
+            onsetDataNormLeft = nan( length(sessions),6,25);
+            onsetDataNormRight = nan( length(sessions),6,25);
             
-            [svvr svvidx] = min(abs( p-50));
-            line([a(svvidx),a(svvidx)], [0 100])
+            offsetDataNormLeft = nan( length(sessions),6,25);
+            offsetDataNormRight = nan( length(sessions),6,25);
+            
+            headonsetData = zeros( length(sessions),6,25);
+            headoffsetData = zeros( length(sessions),6,25);
             %%
+            for i=1: length(sessions)
+                
+                session = sessions(i);
+                
+                dsTrials =  session.trialDataSet;
+                dsSamples =  session.samplesDataSet;
+                
+                torsion = nanmean([dsSamples.LeftTorsion, dsSamples.RightTorsion]');
+                head = dsSamples.HeadRollTilt;
+                
+                for j=1:6
+                    imax = dsTrials.TiltStartIdx(j);
+                    imin = dsTrials.TiltEndIdx(j);
+                    headtilt = dsTrials.TiltAngle(j);
+                    
+                    for t=1:25
+                        idx = imax+(((t-6)*300):((t-5)*300));
+                        onsetData(i,j,t) = nanmedian(torsion(idx));
+                        onsetDataNorm(i,j,t) = nanmedian(torsion(idx))/headtilt*100;
+                        if ( headtilt > 0 )
+                            onsetDataNormLeft(i,j,t) = nanmedian(torsion(idx))/headtilt*100;
+                        else
+                            onsetDataNormRight(i,j,t) = -nanmedian(torsion(idx))/headtilt*100;
+                        end
+                        headonsetData(i,j,t) = nanmedian(head(idx));
+                        
+                        idx = imin+(((t-7)*300):((t-6)*300));
+                        if ( max(idx) < length(torsion) )
+                            offsetData(i,j,t) = nanmedian(torsion(idx));
+                            offsetDataNorm(i,j,t) = nanmedian(torsion(idx))/headtilt*100;
+                            headoffsetData(i,j,t) = nanmedian(head(idx));
+                            
+                            if ( headtilt > 0 )
+                                offsetDataNormLeft(i,j,t) = nanmedian(torsion(idx))/headtilt*100;
+                            else
+                                offsetDataNormRight(i,j,t) = -nanmedian(torsion(idx))/headtilt*100;
+                            end
+                        end
+                    end
+                    
+                end
+            end
+            
+            
+            %% Raw traces with head
+            figure('color','w','position',[100 100 1000 500])
+            [c colors] = CorrGui.get_nice_colors
+            subplot(1,2,1,'nextplot','add','fontsize',14)
+            for i=1:length(sessions)
+                plot((i*0.2-5+(1:25))*3,squeeze( onsetData(i,:,:))','color',colors(i,:), 'linewidth',2);
+                plot((i*0.2-5+(1:25))*3,squeeze( headonsetData(i,:,:))', 'color',colors(i,:));
+            end
+            
+            set(gca,'xlim',[-5 55]);
+            xlabel('Time (s)');
+            ylabel('Torsion (percentage of head tilt')
+            
+            subplot(1,2,2,'nextplot','add','fontsize',14)
+            hleg = [];
+            for i=1:length(sessions)
+                h = plot((i*0.2-6+(1:25))*3,squeeze( offsetData(i,:,:))','color',colors(i,:), 'linewidth',2);
+                hleg(i) = h(1);
+                plot((i*0.2-6+(1:25))*3,squeeze( headoffsetData(i,:,:))','color',colors(i,:));
+            end
+            
+            set(gca,'xlim',[-5 55]);
+            legend(hleg,{'AK', 'SS', 'JOM'})
+            xlabel('Time (s)');
+            ylabel('Torsion (percentage of head tilt')
+            
+            %% Normalized traces
+            figure('color','w','position',[100 100 1000 500])
+            [c colors] = CorrGui.get_nice_colors
+            subplot(1,2,1,'nextplot','add','fontsize',14)
+            for i=1:length(sessions)
+                errorbar((i*0.2-6+(1:25))*3,nanmean(squeeze( onsetDataNorm(i,:,:))),nanstd(squeeze( onsetDataNorm(i,:,:)))/sqrt(6),'color',colors(i,:), 'linewidth',2);
+            end
+            set(gca,'xlim',[-5 55]);
+            xlabel('Time (s)');
+            ylabel('Torsion (percentage of head tilt')
+            
+            subplot(1,2,2,'nextplot','add','fontsize',14)
+            for i=1:length(sessions)
+                errorbar((i*0.2-7+(1:25))*3,nanmean(squeeze( offsetDataNorm(i,:,:))),nanstd(squeeze( onsetDataNorm(i,:,:)))/sqrt(6),'color',colors(i,:), 'linewidth',2);
+            end
+            
+            set(gca,'xlim',[-5 55]);
+            legend({'AK', 'SS', 'JOM'})
+            xlabel('Time (s)');
+            ylabel('Torsion (percentage of head tilt')
+            
+            
+            %% Normalized traces
+            figure('color','w','position',[100 100 1000 500])
+            [c colors] = CorrGui.get_nice_colors
+            subplot(2,2,1,'nextplot','add','fontsize',14)
+            for i=1:length(sessions)
+                errorbar((i*0.2-6+(1:25))*3,nanmean(squeeze( onsetDataNormLeft(i,:,:))),nanstd(squeeze( onsetDataNormLeft(i,:,:)))/sqrt(6),'color',colors(i,:), 'linewidth',2);
+            end
+            set(gca,'xlim',[-5 55]);
+            xlabel('Time (s)');
+            ylabel('Torsion (percentage of head tilt')
+            
+            subplot(2,2,2,'nextplot','add','fontsize',14)
+            for i=1:length(sessions)
+                errorbar((i*0.2-7+(1:25))*3,nanmean(squeeze( offsetDataNormLeft(i,:,:))),nanstd(squeeze( onsetDataNormLeft(i,:,:)))/sqrt(6),'color',colors(i,:), 'linewidth',2);
+            end
+            
+            set(gca,'xlim',[-5 55]);
+            legend({'AK', 'SS', 'JOM'})
+            xlabel('Time (s)');
+            ylabel('Torsion (percentage of head tilt')
+            
+            subplot(2,2,3,'nextplot','add','fontsize',14)
+            for i=1:length(sessions)
+                errorbar((i*0.2-6+(1:25))*3,nanmean(squeeze( onsetDataNormRight(i,:,:))),nanstd(squeeze( onsetDataNormRight(i,:,:)))/sqrt(6),'color',colors(i,:), 'linewidth',2);
+            end
+            set(gca,'xlim',[-5 55]);
+            xlabel('Time (s)');
+            ylabel('Torsion (percentage of head tilt')
+            
+            subplot(2,2,4,'nextplot','add','fontsize',14)
+            for i=1:length(sessions)
+                errorbar((i*0.2-7+(1:25))*3,nanmean(squeeze( offsetDataNormRight(i,:,:))),nanstd(squeeze( onsetDataNormRight(i,:,:)))/sqrt(6),'color',colors(i,:), 'linewidth',2);
+            end
+            
+            set(gca,'xlim',[-5 55]);
+            legend({'AK', 'SS', 'JOM'})
+            xlabel('Time (s)');
+            ylabel('Torsion (percentage of head tilt')
+        end
+    end
+    
+    % ---------------------------------------------------------------------
+    % Other methods
+    % ---------------------------------------------------------------------
+    methods( Access = public )
+        function [dsTrials, dsSamples] = ImportSession( this )
+            %%
+            path = 'D:\vemps\postproc';
+            pathHead = 'D:\vemps';
+            
+            isubj = 1;
+            filesEyeMovements = {'vempsAmir-2014Feb12-153216-.txt' 'vempsAmir-2014Feb12-153644-.txt' 'vempsAmir-2014Feb12-154205-.txt' 'vempsAmir-2014Feb12-154605-.txt' 'vempsAmir-2014Feb12-155114-.txt' 'vempsAmir-2014Feb12-155601-.txt'};
+            filesHead = {'Amir-2014Feb12-153216.txt' 'Amir-2014Feb12-153644.txt' 'Amir-2014Feb12-154205.txt' 'Amir-2014Feb12-154605.txt' 'Amir-2014Feb12-155114.txt' 'Amir-2014Feb12-155601.txt'};
+            %
+            
+            %             isubj = 2;
+            %             filesEyeMovements = { 'vempsSave-2014Feb12-161224-.txt' 'vempsSave-2014Feb12-161702-.txt' 'vempsSave-2014Feb12-162146-.txt' 'vempsSave-2014Feb12-162537-.txt' 'vempsSave-2014Feb12-162939-.txt' 'vempsSave-2014Feb12-163324-.txt' };
+            %             filesHead = { 'Save-2014Feb12-161224.txt' 'Save-2014Feb12-161702.txt' 'Save-2014Feb12-162146.txt' 'Save-2014Feb12-162537.txt' 'Save-2014Feb12-162939.txt' 'Save-2014Feb12-163324.txt' };
+            
+            %             isubj = 3;
+            %             filesEyeMovements = {'vempsjorge-2014Feb12-164203-.txt' 'vempsjorge-2014Feb12-164642-.txt' 'vempsjorge-2014Feb12-165039-.txt' 'vempsjorge-2014Feb12-165602-.txt' 'vempsjorge-2014Feb12-170002-.txt' 'vempsjorge-2014Feb12-170336-.txt' };
+            %             filesHead = {'jorge-2014Feb12-164203.txt' 'jorge-2014Feb12-164642.txt' 'jorge-2014Feb12-165039.txt' 'jorge-2014Feb12-165602.txt' 'jorge-2014Feb12-170002.txt' 'jorge-2014Feb12-170336.txt' };
+            
+            
+            % go through head data to create the trial dataset
+            dsTrials = dataset;
+            dsTrials.TiltAngle = zeros(6,1);
+            dsTrials.Direction = cell(6,1);
+            dsTrials.TrialRecordingStartIdx = zeros(6,1);
+            dsTrials.TrialRecordingEndIdx = zeros(6,1);
+            dsTrials.TrialStartIdx = zeros(6,1);
+            dsTrials.TrialEndIdx = zeros(6,1);
+            dsTrials.TiltStartIdx = zeros(6,1);
+            dsTrials.TiltEndIdx = zeros(6,1);
+            
+            nsamples  = 0;
+            for j=1:length(filesHead)
+                % load head da  ta
+                file = filesHead{j};
+                rawdatahead = load([pathHead '\' file]);
+                head = asin(min(159, max(-159, rawdatahead(:,16) - 9230.0)) / 160.0) / pi * 180;
+                
+                [m titlStart] = max(boxcar(diff(head(1:18000)),100));
+                [m tiltEnd] = min(boxcar(diff(head(1:18000)),100));
+                
+                if ( titlStart > tiltEnd )
+                    temp = titlStart;
+                    titlStart = tiltEnd;
+                    tiltEnd = temp;
+                end
+                
+                dsTrials.TiltAngle(j) = mean(head(titlStart+1000:tiltEnd-1000));
+                dirs = {'LeftEarDown' 'RightEarDown' };
+                dsTrials.Direction{j} = dirs{(sign(-dsTrials.TiltAngle(j))/2)+1.5};
+                
+                dsTrials.TrialRecordingStartIdx(j) = nsamples + 1;
+                dsTrials.TrialRecordingEndIdx(j) = nsamples + length(head);
+                dsTrials.TrialStartIdx(j) = nsamples + max(1, titlStart - 6000);
+                dsTrials.TrialEndIdx(j) = nsamples +  min(length(head), tiltEnd + 6000);
+                dsTrials.TiltStartIdx(j) = nsamples + titlStart;
+                dsTrials.TiltEndIdx(j) = nsamples + tiltEnd;
+                
+                nsamples = nsamples + length(head);
+            end
+            
+            % go through head data to create the samples dataset
+            dsSamples = dataset;
+            
+            dsSamples.TimeStamp = zeros(nsamples,1);
+            dsSamples.LeftHorizontal = zeros(nsamples,1);
+            dsSamples.LeftVertical = zeros(nsamples,1);
+            dsSamples.LeftTorsion = zeros(nsamples,1);
+            dsSamples.RightHorizontal = zeros(nsamples,1);
+            dsSamples.RightVertical = zeros(nsamples,1);
+            dsSamples.RightTorsion = zeros(nsamples,1);
+            dsSamples.HeadRollTilt = zeros(nsamples,1);
+            
+            for j=1:length(filesEyeMovements)
+                
+                file = filesHead{j};
+                rawdatahead = load([pathHead '\' file]);
+                head = asin(min(159, max(-159, rawdatahead(:,16) - 9230.0)) / 160.0) / pi * 180;
+                
+                file = filesEyeMovements{j};
+                rawdata = load([path '\' file]);
+                [dat b] = plotData.FixData(rawdata);
+                
+                qs = [70 68 65];
+                
+                badright = dat(:,18) <qs(isubj) | b(:,2);
+                badleft = dat(:,19) <qs(isubj) | b(:,1);
+                
+                dat(boxcar(badleft>0,5)>0,3) = nan;
+                dat(boxcar(badleft>0,5)>0,4) = nan;
+                dat(boxcar(badleft>0,5)>0,6) = nan;
+                dat(boxcar(badright>0,5)>0,7) = nan;
+                dat(boxcar(badright>0,5)>0,8) = nan;
+                dat(boxcar(badright>0,5)>0,10) = nan;
+                
+                
+                if ( isubj == 1 && j == 2 )
+                    dat(1:150,:) = [];
+                end
+                
+                sampleIdx = (dsTrials.TrialRecordingStartIdx(j):dsTrials.TrialRecordingEndIdx(j));
+                datIdx = 1:length(dat(:,1));
+                if (length(sampleIdx) > length(datIdx) )
+                    sampleIdx = sampleIdx(1:length(datIdx));
+                end
+                if (length(datIdx) > length(sampleIdx) )
+                    datIdx = datIdx(1:length(sampleIdx));
+                end
+                
+                dsSamples.TimeStamp(sampleIdx) = dat(datIdx,1);
+                dsSamples.LeftHorizontal(sampleIdx) = dat(datIdx,3);
+                dsSamples.LeftVertical(sampleIdx) = dat(datIdx,4);
+                dsSamples.LeftTorsion(sampleIdx) = dat(datIdx,6);
+                dsSamples.RightHorizontal(sampleIdx) = dat(datIdx,7);
+                dsSamples.RightVertical(sampleIdx) = dat(datIdx,8);
+                dsSamples.RightTorsion(sampleIdx) = dat(datIdx,10);
+                dsSamples.HeadRollTilt(sampleIdx) = head(datIdx);
+                
+            end
+            
         end
     end
 end

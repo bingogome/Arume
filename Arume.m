@@ -9,6 +9,13 @@ classdef Arume < handle
         
         currentProject
         currentSession
+
+        selectedSessions
+        
+        
+        AnalysisMethodPrefix = 'Analysis_';
+        PlotsMethodPrefix = 'Plot_';
+        PlotsAggregateMethodPrefix = 'PlotAggregate_';
     end
     
     
@@ -40,7 +47,7 @@ classdef Arume < handle
                 end
                 
                 % load the gui
-                this.arumeGui = ArumeGui( arumeSingleton );
+                arumeSingleton.arumeGui = ArumeGui( arumeSingleton );
             end
         end
         
@@ -48,6 +55,7 @@ classdef Arume < handle
             project = ArumeCore.Project.New( path, name, defaultExperiment);
             this.currentProject = project;
             this.currentSession = [];
+            this.selectedSessions = [];
         end
         
         function project = loadProject( this, path )
@@ -60,19 +68,31 @@ classdef Arume < handle
             this.currentProject.save();
             this.currentProject = [];
             this.currentSession = [];
+            this.selectedSessions = [];
         end
         
         function session = newSession( this, experiment, subject_Code, session_Code )
             session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code );
             this.currentSession = session;
+            this.selectedSessions = session;
+            this.currentProject.save();
+        end
+        
+        function session = importSession( this, experiment, subject_Code, session_Code )
+            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code );
+            
+            [dsTrials, dsSamples] = session.experiment.ImportSession();
+            session.importData(dsTrials, dsSamples);
+            this.currentSession = session;
+            this.selectedSessions = session;
             this.currentProject.save();
         end
         
         function deleteSession( this )
-            %this.currentSession = session;
             sessidx = find( this.currentProject.sessions == this.currentSession );
             this.currentProject.sessions(sessidx) = [];
             this.currentSession = [];
+            this.selectedSessions = [];
             this.currentProject.save();
         end
         
@@ -83,7 +103,7 @@ classdef Arume < handle
         
         function resumeSession( this )
             this.currentSession.resume();
-            this.currentProject.save();
+            this.currentProject.save(); 
         end
         
         function restartSession( this )
@@ -92,18 +112,75 @@ classdef Arume < handle
         end
          
         function prepareAnalysis( this )
-            this.currentSession.prepareForAnalysis();
+            for session = this.selectedSessions
+                session.prepareForAnalysis();
+            end
         end
         
-        function runAnalysis( this )
-            this.currentSession.Analyze();
+        function runAnalyses( this )        
+            for session = this.selectedSessions
+                session.RunAnalyses();
+            end
         end
         
-        function setCurrentSession( this, currentSession )
-            if isscalar( currentSession ) && ~isempty( currentSession )
-                this.currentSession = this.currentProject.sessions(currentSession);
+        function analysisList = GetAnalysisList( this )
+            analysisList = {};
+            methodList = meta.class.fromName(class(this.currentSession.experiment)).MethodList;
+            for i=1:length(methodList)
+                if ( strfind( methodList(i).Name, this.AnalysisMethodPrefix) )
+                    analysisList{end+1} = strrep( methodList(i).Name, this.AnalysisMethodPrefix ,'');
+                end
+            end
+        end
+        
+        function RunAnalyses( this, analysisList )
+            for i=1:length(analysisList)
+                this.experiment.([this.AnalysisMethodPrefix analysisList{i}])();
+            end
+        end
+        
+        function plotList = GetPlotList( this )
+            plotList = {};
+            methodList = meta.class.fromName(class(this.currentSession.experiment)).MethodList;
+            for i=1:length(methodList)
+                if ( strfind( methodList(i).Name, this.PlotsMethodPrefix) )
+                    plotList{end+1} = strrep(methodList(i).Name, this.PlotsMethodPrefix ,'');
+                end
+                if ( strfind( methodList(i).Name, this.PlotsAggregateMethodPrefix) )
+                    plotList{end+1} = strrep(methodList(i).Name, this.PlotsAggregateMethodPrefix ,'');
+                end
+            end
+        end
+        
+        function generatePlots( this )
+            plots = get(this.arumeGui.plotsListBox,'string');
+            selection = get(this.arumeGui.plotsListBox,'value');
+            if ( ~isempty( selection ) )
+                
+                for i=1:length(selection)
+                    if ( ismethod( this.currentSession.experiment, [this.PlotsMethodPrefix plots{selection(i)}] ) )
+                        for session = this.selectedSessions
+                            this.currentSession.experiment.([this.PlotsMethodPrefix plots{selection(i)}])();
+                        end
+                    elseif ( ismethod( this.currentSession.experiment, [this.PlotsAggregateMethodPrefix plots{selection(i)}] ) )
+                        this.currentSession.experiment.([this.PlotsAggregateMethodPrefix plots{selection(i)}])( this.selectedSessions );
+                    end
+                end
+            
+            end
+        end
+        
+        function setCurrentSession( this, currentSelection )
+            if isscalar( currentSelection ) && ~isempty( currentSelection )
+                this.currentSession = this.currentProject.sessions(currentSelection);
             else
-                this.currentSession = currentSession;
+                this.currentSession = this.currentProject.sessions(currentSelection(1));
+            end
+            if  ~isempty( currentSelection )
+                this.selectedSessions = this.currentProject.sessions(currentSelection);
+            else
+                this.currentSession = [];
+                this.selectedSessions = [];
             end
         end
     end
