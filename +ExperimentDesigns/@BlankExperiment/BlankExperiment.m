@@ -32,10 +32,9 @@ classdef BlankExperiment < ArumeCore.ExperimentDesign
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
             this.numberOfTimesRepeatBlockSequence = 1;
             this.blocksToRun = 1;
-            if ( this.ExperimentOptions.FirstLeftEarDown )
-                this.blocks =  [ ...
+            
+            this.blocks =  [ ...
                     struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 1) ];
-            end
         end
         
         function initBeforeRunning( this )
