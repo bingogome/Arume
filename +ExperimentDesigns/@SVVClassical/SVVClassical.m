@@ -38,6 +38,11 @@ classdef SVVClassical < ArumeCore.ExperimentDesign
             this.blocks(1).trialsToRun    = 13;
         end
         
+        %% run initialization before the first trial is run
+        function initBeforeRunning( this )
+        end
+        
+        
         function [conditionVars] = getConditionVariables( this )
             %-- condition variables ---------------------------------------
             i= 0;

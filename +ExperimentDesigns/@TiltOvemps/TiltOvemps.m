@@ -3,10 +3,24 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
     %   Detailed explanation goes here
     
     properties
+        bitebar
+        eyeTracker
+        
         fixRad = 20;
         fixColor = [255 0 0];
         
-        bitebar
+        tiltTime = 60;
+        tiltDuration = 60;
+        tiltAngle = 30;
+    end
+    
+    % ---------------------------------------------------------------------
+    % Options to set at runtime
+    % ---------------------------------------------------------------------
+    methods ( Access = public)
+        function dlg = getOptionsStructDlg( this )
+            dlg = [];
+        end
     end
     
     % ---------------------------------------------------------------------
@@ -14,6 +28,10 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         function initExperimentDesign( this  )
+            
+            this.HitKeyBeforeTrial = 1;
+            this.DisplayToUse = 'cmdline';
+            
             this.trialDuration = 180; %seconds
             
             % default parameters of any experiment
@@ -22,18 +40,25 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             this.trialsPerSession = 6;
             
             %%-- Blocking
-            this.blockSequence = 'Random';	% Sequential, Random, Random with repetition, ...
+            this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
             this.numberOfTimesRepeatBlockSequence = 1;
-            this.blocksToRun              = 1;
-            this.blocks(1).fromCondition  = 1;
-            this.blocks(1).toCondition    = 1;
-            this.blocks(1).trialsToRun    = 3;
-            
-            this.blocks(2).fromCondition  = 2;
-            this.blocks(2).toCondition    = 2;
-            this.blocks(2).trialsToRun    = 3;
-            
-            %             this.bitebar = Hardware.BiteBarMotor()
+            this.blocksToRun = 2;
+            if ( this.ExperimentOptions.FirstLeftEarDown )
+                this.blocks =  [ ...
+                    struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 3) ...
+                    struct( 'fromCondition', 2, 'toCondition', 2, 'trialsToRun', 3) ];
+            else
+                this.blocks =  [ ...
+                    struct( 'fromCondition', 2, 'toCondition', 2, 'trialsToRun', 3) ...
+                    struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 3) ];
+            end
+        end
+        
+        function initBeforeRunning( this )
+            asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\VOGLib.dll');
+            this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('localhost',9000);
+            this.bitebar = Hardware.BiteBarMotor();
+            this.eyeTracker.SetDataFileName(this.Session.name);
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -59,13 +84,17 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             % Add stuff here
             
             trialResult =  Enum.trialResult.CORRECT;
+            
+            this.bitebar.GoUpright();
         end
         
         function trialResult = runTrial( this, variables )
             
-            try
-                this.lastResponse = 0;
-                
+            if ( ~isempty(this.eyeTracker) )
+                this.eyeTracker.StartRecording();
+            end
+           
+            try                
                 Enum = ArumeCore.ExperimentDesign.getEnum();
                 
                 
@@ -75,11 +104,13 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
                 
                 
                 %-- add here the trial code
-                Screen('FillRect', graph.window, 0);
-                lastFlipTime        = Screen('Flip', graph.window);
+                
+                lastFlipTime        = GetSecs;
                 secondsRemaining    = this.trialDuration;
                 
                 startLoopTime = lastFlipTime;
+                
+                isTilted = 0;
                 
                 while secondsRemaining > 0
                     
@@ -90,31 +121,49 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
                     % --- Drawing of stimulus -----------------------------------------
                     % -----------------------------------------------------------------
                     
-                    %-- Find the center of the screen
-                    [mx, my] = RectCenter(graph.wRect);
-                    
-                    %-- Draw fixation spot
-                    fixRect = [0 0 5 5];
-                    fixRect = CenterRectOnPointd( fixRect, mx-graph.wRect(3)/4, my );
-                    Screen('FillOval', graph.window, this.fixColor, fixRect);
-                    
-                    if ( secondsElapsed > 1 && secondsElapsed < 1.1 )
-                        %-- Draw target
-                        fixRect = [0 0 7 7];
-                        mx = mx-graph.wRect(3)/4;
-                        switch(variables.Position)
-                            case 'Up'
-                                fixRect = CenterRectOnPointd( fixRect, mx + this.targetDistance*sin(variables.Angle/180*pi), my + this.targetDistance*cos(variables.Angle/180*pi) );
-                            case 'Down'
-                                fixRect = CenterRectOnPointd( fixRect, mx + this.targetDistance*sin(variables.Angle/180*pi), my - this.targetDistance*cos(variables.Angle/180*pi) );
-                        end
-                        Screen('FillOval', graph.window, this.targetColor, fixRect);
-                    end
+%                     %-- Find the center of the screen
+%                     [mx, my] = RectCenter(graph.wRect);
+%                     
+%                     %-- Draw fixation spot
+%                     fixRect = [0 0 5 5];
+%                     fixRect = CenterRectOnPointd( fixRect, mx-graph.wRect(3)/4, my );
+%                     Screen('FillOval', graph.window, this.fixColor, fixRect);
+%                     
+%                     if ( secondsElapsed > 1 && secondsElapsed < 1.1 )
+%                         %-- Draw target
+%                         fixRect = [0 0 7 7];
+%                         mx = mx-graph.wRect(3)/4;
+%                         switch(variables.Position)
+%                             case 'Up'
+%                                 fixRect = CenterRectOnPointd( fixRect, mx + this.targetDistance*sin(variables.Angle/180*pi), my + this.targetDistance*cos(variables.Angle/180*pi) );
+%                             case 'Down'
+%                                 fixRect = CenterRectOnPointd( fixRect, mx + this.targetDistance*sin(variables.Angle/180*pi), my - this.targetDistance*cos(variables.Angle/180*pi) );
+%                         end
+%                         Screen('FillOval', graph.window, this.targetColor, fixRect);
+%                     end
                     
                     % -----------------------------------------------------------------
                     % --- END Drawing of stimulus -------------------------------------
                     % -----------------------------------------------------------------
                     
+                    if ( secondsElapsed > this.tiltTime && secondsElapsed < this.tiltTime + this.tiltDuration )
+                        if ( ~isTilted ) 
+                            switch(variables.TiltDirection)
+                                case 'Left'
+                                        this.bitebar.TiltLeft(this.tiltAngle);
+                                case 'Right'
+                                        this.bitebar.TiltRight(this.tiltAngle);
+                            end
+                            isTilted = 1;
+                        end
+                    end
+                    
+                    if ( secondsElapsed > this.tiltTime + this.tiltDuration)
+                        if ( isTilted ) 
+                            this.bitebar.GoUpright();
+                            isTilted = 0;
+                        end
+                    end
                     
                     
                     % -----------------------------------------------------------------
@@ -128,48 +177,26 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
                     % --- Collecting responses  ---------------------------------------
                     % -----------------------------------------------------------------
                     
-                    if ( secondsElapsed > 1.2 )
-                        [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
-                        if ( keyIsDown )
-                            keys = find(keyCode);
-                            for i=1:length(keys)
-                                KbName(keys(i))
-                                switch(KbName(keys(i)))
-                                    case 'LeftArrow'
-                                        this.lastResponse = 1;
-                                    case 'RightArrow'
-                                        this.lastResponse = 2;
-                                end
-                            end
-                        end
-                    end
-                    if ( this.lastResponse > 0 )
-                        break;
-                    end
-                    
-                    
                     % -----------------------------------------------------------------
                     % --- END Collecting responses  -----------------------------------
                     % -----------------------------------------------------------------
                     
                 end
             catch ex
-                %  this.eyeTracker.StopRecording();
+                if ( ~isempty(this.eyeTracker) )
+                    this.eyeTracker.StopRecording();
+                end
                 rethrow(ex)
             end
             
-            
-            if ( this.lastResponse == 0)
-                trialResult =  Enum.trialResult.ABORT;
+            if ( ~isempty(this.eyeTracker) )
+                this.eyeTracker.StopRecording();
             end
-            
-            % this.eyeTracker.StopRecording();
             
         end
         
         function trialOutput = runPostTrial(this)
-            trialOutput = [];
-            trialOutput.Response = this.lastResponse;
+            trialOutput = [];   
         end
     end
     
@@ -187,17 +214,19 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             dsTrials =  this.Session.trialDataSet;
             dsSamples =  this.Session.samplesDataSet;
             
+            tiltDuration = this.tiltDuration;
+            tiltduration = 60;
+            
             n = length(dsTrials);
             plotHandles.figure = figure('name',this.Session.name, 'color','w','position',[100 100 1000 800]);
-            ax = zeros(n,2);
+            ax = zeros(n,1);
             for i=1:n
-                idxOn = (dsTrials.TiltStartIdx(i)-1000):(dsTrials.TiltStartIdx(i)+5000);
-                idxOff = (dsTrials.TiltEndIdx(i)-1000):(dsTrials.TiltEndIdx(i)+5000);
-                t = (-1000:5000)/100;
-                ax(i,1) = subplot(n,2,i*2-1);
-                plot(t,[dsSamples.LeftTorsion(idxOn), dsSamples.RightTorsion(idxOn), boxcar(sgolayfilt(100*[diff(dsSamples.HeadRollTilt(idxOn));0],1,51),30)]);
-                ax(i,2) = subplot(n,2,i*2);
-                plot(t,[dsSamples.LeftTorsion(idxOff), dsSamples.RightTorsion(idxOff), boxcar(sgolayfilt(100*[diff(dsSamples.HeadRollTilt(idxOff));0],1,51),30)]);
+                idx = dsTrials.TrialStartIdx(i):dsTrials.TrialEndIdx(i);
+                t = (idx-idx(i))/100;
+                ax(i) = subplot(n,1,i);
+                plot(t,[dsSamples.LeftTorsion(idx), dsSamples.RightTorsion(idx), boxcar(sgolayfilt(100*[diff(dsSamples.HeadRollTilt(idx));0],1,51),30)]);
+                
+                title(dsTrials.TiltDirection(i));
             end
             
             set(ax,'ylim',[-10 10])
@@ -207,6 +236,7 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             ylabel('Torsion (deg) / Head vel. (deg/s)')
             
             legend( {'Left Torsion', 'Right Torsion', 'HeadVelocity'});
+            
         end
         
     end
@@ -215,6 +245,91 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
     % Plot Aggregate methods
     % ---------------------------------------------------------------------
     methods ( Static = true, Access = public )
+        
+        function plotHandles = PlotAggregate_TorsionAverageTraces( sessions)
+            
+            dataLeft = zeros( length(sessions),3,25);
+            dataRight = zeros( length(sessions),3,25);
+            
+            legendNames = {};
+            %%
+            for i=1: length(sessions)
+                legendNames{end+1} = sessions(i).name;
+                
+                session = sessions(i);
+                
+                dsTrials =  session.trialDataSet;
+                dsSamples =  session.samplesDataSet;
+                
+                torsion = nanmean([dsSamples.LeftTorsion, dsSamples.RightTorsion]');
+                
+                leftEarDownTrials = find(strcmp(dsTrials.TiltDirection,'Left'));
+                rightEarDownTrials = find(strcmp(dsTrials.TiltDirection,'Right'));
+                
+%                 if ( dsTrials.
+                
+                for j=1:length(leftEarDownTrials)
+                    imax = dsTrials.TrialStartIdx(leftEarDownTrials(j));
+                    imin = dsTrials.TrialEndIdx(leftEarDownTrials(j));
+                    
+                    binsize = 300;
+                    
+                    for t=1:binsize:18000
+                        idx = imax + t + (1:binsize);
+                        if ( max(idx) < length(torsion) )
+                            dataLeft(i,j,ceil(t/binsize)) = nanmedian(torsion(idx));
+                        end
+                    end
+                    dataLeft(i,j,:) = dataLeft(i,j,:) - nanmedian(dataLeft(i,j,5:15));
+                end
+                
+                for j=1:length(rightEarDownTrials)
+                    imax = dsTrials.TrialStartIdx(rightEarDownTrials(j));
+                    imin = dsTrials.TrialEndIdx(rightEarDownTrials(j));
+                    
+                    for t=1:binsize:18000
+                        idx = imax + t + (1:binsize);
+                        if ( max(idx) < length(torsion) )
+                            dataRight(i,j,ceil(t/binsize)) = nanmedian(torsion(idx));
+                        end
+                    end
+                    dataRight(i,j,:) = dataRight(i,j,:) - nanmedian(dataRight(i,j,5:15));
+                end
+            end
+            
+            %% Traces
+            [c colors] = CorrGui.get_nice_colors;
+            
+            figure('color','w','position',[100 100 1000 500])
+            
+            subplot(2,1,1,'nextplot','add','fontsize',14)
+            
+            for i=1:length(sessions)
+                pretty_errorbar((1:length(dataLeft))*3,nanmean(squeeze( dataLeft(i,:,:))),nanstd(squeeze( dataLeft(i,:,:)))/sqrt(6),'color',colors(i,:), 'linewidth',2);
+            end
+            line([0 180], [0 0],'color',[0.5 0.5 0.5], 'linewidth',2,'LineStyle','-.')
+            line([60 60], [-10 10],'color',[0.5 0.5 0.5], 'linewidth',2,'LineStyle','-.')
+            line([120 120], [-10 10],'color',[0.5 0.5 0.5], 'linewidth',2,'LineStyle','-.')
+            set(gca,'xlim',[0 180], 'ylim', [-10 10]);
+            xlabel('Time (s)');
+            ylabel('Torsion (deg)')
+            
+            subplot(2,1,2,'nextplot','add','fontsize',14)
+            for i=1:length(sessions)
+                pretty_errorbar((1:length(dataLeft))*3,nanmean(squeeze( dataRight(i,:,:))),nanstd(squeeze( dataRight(i,:,:)))/sqrt(6),'color',colors(i,:), 'linewidth',2);
+            end
+            line([0 180], [0 0],'color',[0.5 0.5 0.5], 'linewidth',2,'LineStyle','-.')
+            line([60 60], [-10 10],'color',[0.5 0.5 0.5], 'linewidth',2,'LineStyle','-.')
+            line([120 120], [-10 10],'color',[0.5 0.5 0.5], 'linewidth',2,'LineStyle','-.')
+            set(gca,'xlim',[0 180], 'ylim', [-10 10]);
+            xlabel('Time (s)');
+            ylabel('Torsion (deg)')
+            
+            assignin('base', 'dataLeft', squeeze(nanmean( dataLeft(:,:,:),2))');
+            assignin('base', 'dataRight', squeeze(nanmean( dataRight(:,:,:),2))');
+            legend(legendNames)
+        end
+        
         function plotHandles = PlotAggregate_TorsionNormalizedTraces( sessions)
             
             onsetData = zeros( length(sessions),6,25);
@@ -369,6 +484,139 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
     % Other methods
     % ---------------------------------------------------------------------
     methods( Access = public )
+        
+        function trialDataSet = PrepareTrialDataSet( this, ds)
+            if ( exist([this.Session.dataRawPath '\postproc']) )
+                path = [this.Session.dataRawPath '\postproc'];
+            else
+                path = this.Session.dataRawPath;
+            end
+            pathHead = this.Session.dataRawPath;
+            name = this.Session.name;
+            
+            samplerate = 100;
+            
+            d = dir([pathHead '\' name '*.txt']);
+            filesHead  = {d.name};
+            
+            % remove aborts
+            ds = ds(ds.TrialResult==0,:);
+            
+            ntrials = length(ds);
+            
+            ds.TiltAngle = zeros(ntrials,1);
+            ds.Direction = cell(ntrials,1);
+            ds.TrialRecordingStartIdx = zeros(ntrials,1);
+            ds.TrialRecordingEndIdx = zeros(ntrials,1);
+            ds.TrialStartIdx = zeros(ntrials,1);
+            ds.TrialEndIdx = zeros(ntrials,1);
+            ds.TiltStartIdx = zeros(ntrials,1);
+            ds.TiltEndIdx = zeros(ntrials,1);
+            
+            nsamples  = 0;
+            for j=1:length(filesHead)
+                % load head da  ta
+                file = filesHead{j};
+                rawdatahead = load([pathHead '\' file]);
+                head = asin(min(159, max(-159, rawdatahead(:,16) - 9230.0)) / 160.0) / pi * 180;
+
+                titlStart = this.tiltTime*samplerate;
+                tiltEnd = (this.tiltTime+this.tiltDuration)*samplerate;
+                
+                ds.TrialRecordingStartIdx(j) = nsamples + 1;
+                ds.TrialRecordingEndIdx(j) = nsamples + length(head);
+                ds.TrialStartIdx(j) = nsamples + max(1, titlStart - 6000);
+                ds.TrialEndIdx(j) = nsamples +  min(length(head), tiltEnd + 6000);
+                ds.TiltStartIdx(j) = nsamples + titlStart;
+                ds.TiltEndIdx(j) = nsamples + tiltEnd;
+                
+                nsamples = nsamples + length(head);
+            end
+            
+            trialDataSet = ds;
+        end
+            
+        function samplesDataSet = PrepareSamplesDataSet(this, dsTrials)
+            if ( exist([this.Session.dataRawPath '\postproc']) )
+                path = [this.Session.dataRawPath '\postproc'];
+            else
+                path = this.Session.dataRawPath;
+            end
+            pathHead = this.Session.dataRawPath;
+            name = this.Session.name;
+            
+            d = dir([path '\' name '*.txt']);
+            
+            filesEyeMovements  = {d.name};
+            d = dir([pathHead '\' name '*.txt']);
+            filesHead  = {d.name};
+            
+            nsamples  = 0;
+            for j=1:length(filesHead)
+                % load head da  ta
+                file = filesHead{j};
+                rawdatahead = load([pathHead '\' file]);
+                head = asin(min(159, max(-159, rawdatahead(:,16) - 9230.0)) / 160.0) / pi * 180;
+                
+                nsamples = nsamples + length(head);
+            end
+            
+            % go through head data to create the samples dataset
+            dsSamples = dataset;
+            
+            dsSamples.TimeStamp = zeros(nsamples,1);
+            dsSamples.LeftHorizontal = zeros(nsamples,1);
+            dsSamples.LeftVertical = zeros(nsamples,1);
+            dsSamples.LeftTorsion = zeros(nsamples,1);
+            dsSamples.RightHorizontal = zeros(nsamples,1);
+            dsSamples.RightVertical = zeros(nsamples,1);
+            dsSamples.RightTorsion = zeros(nsamples,1);
+            dsSamples.HeadRollTilt = zeros(nsamples,1);
+            
+            for j=1:length(filesEyeMovements)
+                file = filesHead{j};
+                rawdatahead = load([pathHead '\' file]);
+                head = asin(min(159, max(-159, rawdatahead(:,16) - 9230.0)) / 160.0) / pi * 180;
+                
+                file = filesEyeMovements{j};
+                rawdata = load([path '\' file]);
+                [dat b] = plotData.FixData(rawdata);
+                
+                qs = [70];
+                
+                badright = dat(:,18) <qs | b(:,2);
+                badleft = dat(:,19) <qs | b(:,1);
+                
+                dat(boxcar(badleft>0,2)>0,3) = nan;
+                dat(boxcar(badleft>0,2)>0,4) = nan;
+                dat(boxcar(badleft>0,2)>0,6) = nan;
+                dat(boxcar(badright>0,2)>0,7) = nan;
+                dat(boxcar(badright>0,2)>0,8) = nan;
+                dat(boxcar(badright>0,2)>0,10) = nan;
+                                
+                sampleIdx = (dsTrials.TrialRecordingStartIdx(j):dsTrials.TrialRecordingEndIdx(j));
+                datIdx = 1:length(dat(:,1));
+                if (length(sampleIdx) > length(datIdx) )
+                    sampleIdx = sampleIdx(1:length(datIdx));
+                end
+                if (length(datIdx) > length(sampleIdx) )
+                    datIdx = datIdx(1:length(sampleIdx));
+                end
+                
+                dsSamples.TimeStamp(sampleIdx) = dat(datIdx,1);
+                dsSamples.LeftHorizontal(sampleIdx) = dat(datIdx,3);
+                dsSamples.LeftVertical(sampleIdx) = dat(datIdx,4);
+                dsSamples.LeftTorsion(sampleIdx) = dat(datIdx,6);
+                dsSamples.RightHorizontal(sampleIdx) = dat(datIdx,7);
+                dsSamples.RightVertical(sampleIdx) = dat(datIdx,8);
+                dsSamples.RightTorsion(sampleIdx) = dat(datIdx,10);
+                dsSamples.HeadRollTilt(sampleIdx) = head(datIdx);
+                
+            end
+            
+            samplesDataSet = dsSamples;
+        end
+        
         function [dsTrials, dsSamples] = ImportSession( this )
             %%
             path = 'D:\vemps\postproc';
@@ -492,4 +740,18 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
     end
 end
 
+function hh = pretty_errorbar(varargin)
 
+herr = errorbar(varargin{:});
+
+hh = get(herr,'children');
+x = get(hh(2),'xdata');
+w = 0;
+x(4:9:end) = x(1:9:end)-w/2;	% Change xdata with respect to ratio
+x(7:9:end) = x(1:9:end)-w/2;
+x(5:9:end) = x(1:9:end)+w/2;
+x(8:9:end) = x(1:9:end)+w/2;
+set(hh(2),'xdata',x);
+
+
+end

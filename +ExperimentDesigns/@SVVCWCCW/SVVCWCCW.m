@@ -42,6 +42,11 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
             
         end
         
+        %% run initialization before the first trial is run
+        function initBeforeRunning( this )
+        end
+        
+        
         function [conditionVars] = getConditionVariables( this )
             %-- condition variables ---------------------------------------
             i= 0;

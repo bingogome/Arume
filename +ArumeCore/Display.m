@@ -42,22 +42,20 @@ classdef Display < handle
     methods
         
         %% Display
-        function graph = Display( exper )
+        function graph = Display( )
+        end
+        
+        function Init( graph, exper)
             
             Screen('Preference', 'SkipSyncTests', 1);
             
             %-- screens
             
             graph.screens = Screen('Screens');
-            
-            if ( max(graph.screens)== 0)
-                graph.selectedScreen = 0;%; %% IMPROVE
-            else
-                graph.selectedScreen = 1;%; %% IMPROVE
-            end
-            %             graph.selectedScreen = 2;
-            %             Screen('Preference', 'SkipSyncTests', 1);
-            
+            screens=Screen('Screens');
+        	graph.selectedScreen=max(screens);
+        	graph.selectedScreen=1;
+    
             %-- window
             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
             
@@ -109,6 +107,10 @@ classdef Display < handle
                     end
                 end
             end
+        end
+        
+        function ResetBackground( this )
+            Screen('FillRect', this.window, this.dlgBackgroundScreenColor);
         end
         
         %% Flip

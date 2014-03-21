@@ -50,6 +50,7 @@ classdef ArumeGui < handle
         
         % Session Contextual menu
         sessionContextMenu
+        sessionContextMenuRename
         sessionContextMenuDelete
     end
     
@@ -65,10 +66,8 @@ classdef ArumeGui < handle
             end
             defaultBackground = get(0,'defaultUicontrolBackgroundColor');
             
-            
-            w = 800;
+            w = 1000;
             h = 600;
-            
             
             this.arume = parent;
             
@@ -245,6 +244,9 @@ classdef ArumeGui < handle
             this.sessionContextMenuDelete = uimenu(this.sessionContextMenu, ...
                 'Label'     , 'Delete session ...', ...
                 'Callback'  , @this.DeleteSession);
+            this.sessionContextMenuRename = uimenu(this.sessionContextMenu, ...
+                'Label'     , 'Rename session ...', ...
+                'Callback'  , @this.RenameSession);
             set(this.sessionListBox, 'uicontextmenu', this.sessionContextMenu)
             
             
@@ -336,7 +338,7 @@ classdef ArumeGui < handle
             if ( isempty( P ) )
                 return
             end
-            this.arume.newSession( P.Experiment, P.Subject_Code, P.Session_Code );
+            this.arume.newSession( P.Experiment, P.Subject_Code, P.Session_Code,[] );
             this.updateGui();
         end
         
@@ -367,9 +369,27 @@ classdef ArumeGui < handle
                 'Yes','No','No');
             switch choice
                 case 'Yes'
-                this.arume.deleteSession();
+                this.arume.deleteCurrentSession();
                 this.updateGui();
             end
+        end
+        function RenameSession( this, source, eventdata )
+            
+            sDlg.Subject_Code = this.arume.currentSession.subjectCode;
+            sDlg.Session_Code = this.arume.currentSession.sessionCode;
+            P = StructDlg(sDlg);
+            if ( isempty( P ) )
+                return
+            end
+            
+            if ( ~isempty( intersect({this.arume.currentProject.sessions.name}, {'NI'})) )
+                msgbox('Name already in use');
+                return
+            end
+            
+            this.arume.renameCurrentSession(P.Subject_Code, P.Session_Code);
+            this.updateGui();
+            
         end
         
         function startSession( this, source, eventdata ) 
@@ -403,7 +423,11 @@ classdef ArumeGui < handle
         end
         
         function GeneratePlots( this, source, eventdata ) 
-            this.arume.generatePlots();
+            
+            plots = get(this.plotsListBox,'string');
+            selection = get(this.plotsListBox,'value');
+            
+            this.arume.generatePlots(plots, selection);
             this.updateGui();
         end
         
@@ -564,6 +588,7 @@ classdef ArumeGui < handle
                 end
                 
                 set(this.sessionContextMenuDelete, 'Enable', 'on');
+                set(this.sessionContextMenuRename, 'Enable', 'on');
             else
                 set(this.experimentTextLabel, 'String', ['Experiment: ' '-'] );
                 
@@ -572,6 +597,7 @@ classdef ArumeGui < handle
                 set(this.menuRunRestartSession, 'Enable', 'off');
                 
                 set(this.sessionContextMenuDelete, 'Enable', 'off');
+                set(this.sessionContextMenuRename, 'Enable', 'off');
             end
             
             

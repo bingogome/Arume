@@ -1,4 +1,4 @@
-classdef OptokineticTorsionExperimentDesign < ArumeCore.ExperimentDesign
+classdef OptokineticTorsion < ArumeCore.ExperimentDesign
     %OPTOKINETICTORSION Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -7,57 +7,59 @@ classdef OptokineticTorsionExperimentDesign < ArumeCore.ExperimentDesign
         checkerBoardTexture = [];
         
         eyeTracker = [];
+        
+        
+        fixRad
+        fixColor
     end
     
     methods ( Access = protected )
         
         
-        function parameters = getParameters( this, parameters  )
+        function initExperimentDesign( this  )
             
-              % default parameters of any experiment
-%             
-%             parameters.trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-%             parameters.trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
-%             parameters.trialsPerSession = numberOfConditions;
-%             
-%             %%-- Blocking
-%             parameters.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-%             parameters.numberOfTimesRepeatBlockSequence = 1;
-%             parameters.blocksToRun              = 1;
-%             parameters.blocks{1}.fromCondition  = 1;
-%             parameters.blocks{1}.toCondition    = numberOfConditions;
-%             parameters.blocks{1}.trialsToRun    = numberOfConditions;
-%             
-%             
-%             parameters.trialsBeforeCalibration      = 10;
-%             parameters.trialsBeforeDriftCorrection  = 10;
-%             parameters.trialsBeforeBreak            = 10;
-%             
-%             parameters.trialDuration = 5; %seconds
+            this.trialDuration = 20; %seconds
+            
+            % default parameters of any experiment
+            this.trialSequence = 'Random';      % Sequential, Random, Random with repetition, ...
+            this.trialAbortAction = 'Delay';    % Repeat, Delay, Drop
+            this.trialsPerSession = 8;
+            
+            %%-- Blocking
+            this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
+            this.numberOfTimesRepeatBlockSequence = 1;
+            this.blocksToRun              = 1;
+            this.blocks(1).fromCondition  = 1;
+            this.blocks(1).toCondition    = 8;
+            this.blocks(1).trialsToRun    = 8;
             
             
-            parameters.trialDuration = 20; %seconds
             
-            parameters.fixRad   = 20;
-            parameters.fixColor = [255 0 0];
+            this.fixRad   = 20;
+            this.fixColor = [255 0 0];
             
         end
         
-        function [conditionVars, randomVars] = getVariables( this )
+        %% run initialization before the first trial is run
+        function initBeforeRunning( this )
+        end
+        
+        function [conditionVars] = getConditionVariables( this )
             %-- condition variables ---------------------------------------
             i= 0;
             
             i = i+1;
-            conditionVars{i}.name   = 'Speed';
-            conditionVars{i}.values = [0 10 20 30];
+            conditionVars(i).name   = 'Speed';
+            conditionVars(i).values = [0 10 20 30];
             
             i = i+1;
-            conditionVars{i}.name   = 'Direction';
-            conditionVars{i}.values = {'ClockWise'  'CounterClockWise'};
-            
-            randomVars = {};
+            conditionVars(i).name   = 'Direction';
+            conditionVars(i).values = {'ClockWise'  'CounterClockWise'};
         end
         
+        function [ randomVars] = getRandomVariables( this )
+            randomVars = {};
+        end
         
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
@@ -100,7 +102,6 @@ classdef OptokineticTorsionExperimentDesign < ArumeCore.ExperimentDesign
             
             
             graph = this.Graph;
-            parameters = this.ExperimentParams.Parameters
             
             trialResult = Enum.trialResult.CORRECT;
             
@@ -108,7 +109,7 @@ classdef OptokineticTorsionExperimentDesign < ArumeCore.ExperimentDesign
             %-- add here the trial code
             Screen('FillRect', graph.window, 128);
             lastFlipTime        = Screen('Flip', graph.window);
-            secondsRemaining    = parameters.trialDuration;
+            secondsRemaining    = this.trialDuration;
             
             
             
@@ -117,7 +118,7 @@ classdef OptokineticTorsionExperimentDesign < ArumeCore.ExperimentDesign
             while secondsRemaining > 0
                 
                 secondsElapsed      = GetSecs - startLoopTime;
-                secondsRemaining    = parameters.trialDuration - secondsElapsed;
+                secondsRemaining    = this.trialDuration - secondsElapsed;
                 
                 % -----------------------------------------------------------------
                 % --- Drawing of stimulus -----------------------------------------
@@ -143,7 +144,7 @@ classdef OptokineticTorsionExperimentDesign < ArumeCore.ExperimentDesign
                 imageRect1 = CenterRectOnPointd( imageRect1, mx-graph.wRect(3)/4, my )
                 imageRect2 = [0 0 graph.wRect(3)/2 graph.wRect(3)/2];
                 imageRect2 = CenterRectOnPointd( imageRect2, mx+graph.wRect(3)/4, my )
-                Screen('DrawTexture', graph.window, this.checkerBoardTexture, [], imageRect1, turnangle);
+                Screen('DrawTexture', graph.window, this.checkerBoardTexture, [], imageRect, turnangle);
 %                 Screen('DrawTexture', graph.window, this.checkerBoardTexture, [], imageRect2, turnangle);
                 
                 %-- Draw center black disk
@@ -154,7 +155,7 @@ classdef OptokineticTorsionExperimentDesign < ArumeCore.ExperimentDesign
                 %-- Draw fixation spot
                 fixRect = [0 0 5 5];
                 fixRect = CenterRectOnPointd( fixRect, mx-graph.wRect(3)/4, my );
-                Screen('FillOval', graph.window, parameters.fixColor, fixRect);
+                Screen('FillOval', graph.window, this.fixColor, fixRect);
                 
                 
                 % -----------------------------------------------------------------

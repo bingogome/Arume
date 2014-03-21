@@ -44,6 +44,11 @@ classdef DataDB < handle
             end
         end
         
+        function RenameDB( this, newname )
+            movefile([this.folder '\' this.session], [this.folder '\' newname]);
+            this.session = newname;
+        end
+        
         function result = IsVariableInDB( this, variableName )
             d = dir( fullfile( [this.folder '\' this.session], [variableName '.mat'] ) );
             if isempty(d)
@@ -105,8 +110,8 @@ classdef DataDB < handle
                     
                     save(fullfile([this.folder '\' this.session],fullname), variableName);
                     
-                    if ( isfield( this.cache, ['Session_' this.session]) && isfield( this.cache.(['Session_' this.session]), variable ) )
-                        this.cache.(['Session_' this.session]).(variable) = variable;
+                    if ( isfield( this.cache, ['Session_' this.session]) && isfield( this.cache.(['Session_' this.session]), variableName ) )
+                        this.cache.(['Session_' this.session]).(variableName) = variable;
                     end
                 catch me
                     rethrow(me);
