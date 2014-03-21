@@ -50,9 +50,14 @@ classdef ExperimentDesign < handle
     % 
     % Options to set at runtime
     % 
-    methods ( Access = public)
-        function dlg = getExperimentOptionsStructDlg( this )
-            dlg = [];
+    methods ( Static=true)
+        function dlg = GetExperimentDesignOptions( experimentName )
+            % TODO: maybe add iteratio trough parent classes?
+            if ( ismethod( ArumeExperimentDesigns.(experimentName), 'GetOptionsStructDlg') )
+                dlg = ArumeExperimentDesigns.(experimentName).GetOptionsStructDlg();
+            else
+                dlg = [];
+            end
         end
     end
     
@@ -780,17 +785,17 @@ classdef ExperimentDesign < handle
         function experimentList = GetExperimentList()
             experimentList = {};
             
-            expPackage = meta.package.fromName('ExperimentDesigns');
+            expPackage = meta.package.fromName('ArumeExperimentDesigns');
             
             for i=1:length(expPackage.ClassList)
-                experimentList{i} = strrep( expPackage.ClassList(i).Name, 'ExperimentDesigns.','');
+                experimentList{i} = strrep( expPackage.ClassList(i).Name, 'ArumeExperimentDesigns.','');
             end
         end
         
         function experiment = Create(session, experimentName, experimentOptions)
             
             % Create the experiment design object
-            experiment = ExperimentDesigns.(experimentName)();
+            experiment = ArumeExperimentDesigns.(experimentName)();
             
             % Initialize the experiment design
             experiment.init(session, experimentOptions);

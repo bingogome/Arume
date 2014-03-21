@@ -2,14 +2,8 @@ classdef Session < ArumeCore.DataDB
     %SESSION Summary of this class goes here
     %   Detailed explanation goes here
     
-    properties(Constant)
-    end
-    
-    %% properties
     properties( SetAccess = private)
         project
-        
-        
         experiment
         
         subjectCode = '000';
@@ -41,9 +35,12 @@ classdef Session < ArumeCore.DataDB
         samplesDataSet
     end
     
+    %
+    % Methods for dependent variables
+    %
     methods
         function name = get.experimentName(this)
-            name = strrep(class(this.experiment), 'ExperimentDesigns.','');
+            name = strrep(class(this.experiment), 'ArumeExperimentDesigns.','');
         end
         
         function name = get.name(this)
@@ -91,26 +88,19 @@ classdef Session < ArumeCore.DataDB
         end
     end
     
-    
-    
     %% methods
     methods
-        %% INIT METHODS
+        %
+        % INIT METHODS
+        %
         function init( this, project, experimentName, subjectCode, sessionCode, experimentOptions )
             this.project        = project;
             this.experiment     = ArumeCore.ExperimentDesign.Create( this, experimentName, experimentOptions );
-
             this.subjectCode    = subjectCode;
             this.sessionCode    = sessionCode;
             
-            
             this.InitDB( this.project.dataAnalysisPath, this.name );
-            
-            if ( isempty( project.sessions ) )
-                project.sessions = this;
-            else
-                project.sessions(end+1) = this;
-            end
+            this.project.addSession(this);
         end
         
         function initNew( this, project, experimentName, subjectCode, sessionCode, experimentOptions )
@@ -334,6 +324,9 @@ classdef Session < ArumeCore.DataDB
     
     methods (Static = true )
         
+        %
+        % Factory methods
+        %
         function session = NewSession( project, experimentName, subjectCode, sessionCode, experimentOptions )
             % TODO add factory for multiple types of experimentNames
             session = ArumeCore.Session();

@@ -17,9 +17,9 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     % Options to set at runtime
     % ---------------------------------------------------------------------
-    methods ( Access = public)
-        function dlg = getOptionsStructDlg( this )
-            dlg = [];
+    methods ( Static = true )
+        function dlg = GetOptionsStructDlg( this )
+            dlg.FirstLeftEarDown = { {'0','{1}'} };
         end
     end
     

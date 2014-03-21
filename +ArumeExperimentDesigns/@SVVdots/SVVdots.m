@@ -1,5 +1,5 @@
 classdef SVVdots < ArumeCore.ExperimentDesign
-    %OPTOKINETICTORSION Summary of this class goes here
+    %SVVdots Summary of this class goes here
     %   Detailed explanation goes here
     
     properties
@@ -15,6 +15,15 @@ classdef SVVdots < ArumeCore.ExperimentDesign
         targetDistance = 100;
         targetColor = [0 255 0];
         
+    end
+    
+    % ---------------------------------------------------------------------
+    % Options to set at runtime
+    % ---------------------------------------------------------------------
+    methods ( Static = true )
+        function dlg = GetOptionsStructDlg( this )
+            dlg.UseGamePad = { {'0','{1}'} };
+        end
     end
     
     % ---------------------------------------------------------------------
@@ -41,7 +50,9 @@ classdef SVVdots < ArumeCore.ExperimentDesign
         
         %% run initialization before the first trial is run
         function initBeforeRunning( this )
-            Hardware.GamePad.Open
+            if ( this.ExperimentOptions.UseGamePad )
+                ArumeHardware.GamePad.Open
+            end
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -100,20 +111,10 @@ classdef SVVdots < ArumeCore.ExperimentDesign
                     
                     %-- Find the center of the screen
                     [mx, my] = RectCenter(graph.wRect);
-%                     mx = mx-graph.wRect(3)/4+50;
 
                     %-- Draw fixation spot
                     fixRect = [0 0 3 3];
-                    %                 fixRect = CenterRectOnPointd( fixRect, mx-graph.wRect(3)/4, my );
                     fixRect = CenterRectOnPointd( fixRect, mx, my );
-                    
-                    circFrameRect = [0 0 300 300];
-                    circFrameRect = CenterRectOnPointd( circFrameRect,  mx, my );
-                    circFrameRect2 = [0 0 305 305];
-                    circFrameRect2 = CenterRectOnPointd( circFrameRect2,  mx, my );
-                    
-%                     Screen('FillOval', graph.window, 255, circFrameRect2 );
-%                     Screen('FillOval', graph.window, 0, circFrameRect );
                     Screen('FillRect', graph.window, this.fixColor, fixRect);
                     
                     if ( secondsElapsed > 1 && secondsElapsed < 1.1 )
@@ -122,52 +123,13 @@ classdef SVVdots < ArumeCore.ExperimentDesign
                          
                         switch(variables.Position)
                             case 'Up'
-                                fixRect = CenterRectOnPointd( fixRect, mx + this.targetDistance*sin(variables.Angle/180*pi), my + this.targetDistance*cos(variables.Angle/180*pi) );
+                                fixRect = CenterRectOnPointd( fixRect, mx - this.targetDistance*sin(variables.Angle/180*pi), my + this.targetDistance*cos(variables.Angle/180*pi) );
                             case 'Down'
                                 fixRect = CenterRectOnPointd( fixRect, mx + this.targetDistance*sin(variables.Angle/180*pi), my - this.targetDistance*cos(variables.Angle/180*pi) );
                         end
                         Screen('FillOval', graph.window, this.targetColor, fixRect);
                     end
                     
-%                     Screen('DrawLine', graph.window, this.targetColor, mx-200, my, mx+200, my, 2);
-%                     Screen('DrawLine', graph.window, this.targetColor, mx, my-200, mx, my+200, 2);
-
-                    
-                    
-%                     %-- Find the center of the screen
-%                     [mx, my] = RectCenter(graph.wRect);
-%                     mx = mx+graph.wRect(3)/4-50;
-%                     
-%                     %-- Draw fixation spot
-%                     fixRect = [0 0 3 3];
-%                     %                 fixRect = CenterRectOnPointd( fixRect, mx-graph.wRect(3)/4, my );
-%                     fixRect = CenterRectOnPointd( fixRect, mx, my );
-%                     
-%                     circFrameRect = [0 0 300 300];
-%                     circFrameRect = CenterRectOnPointd( circFrameRect,  mx, my );
-%                     circFrameRect2 = [0 0 305 305];
-%                     circFrameRect2 = CenterRectOnPointd( circFrameRect2,  mx, my );
-%                     
-%                     Screen('FillOval', graph.window, 255, circFrameRect2 );
-%                     Screen('FillOval', graph.window, 0, circFrameRect );
-% %                     Screen('FillRect', graph.window, this.fixColor, fixRect);
-% %                     
-% %                     if ( secondsElapsed > 1 && secondsElapsed < 1.1 )
-% %                         %-- Draw target
-% %                         fixRect = [0 0 7 7];
-% %                          
-% %                         switch(variables.Position)
-% %                             case 'Up'
-% %                                 fixRect = CenterRectOnPointd( fixRect, mx + this.targetDistance*sin(variables.Angle/180*pi), my + this.targetDistance*cos(variables.Angle/180*pi) );
-% %                             case 'Down'
-% %                                 fixRect = CenterRectOnPointd( fixRect, mx + this.targetDistance*sin(variables.Angle/180*pi), my - this.targetDistance*cos(variables.Angle/180*pi) );
-% %                         end
-% %                         Screen('FillOval', graph.window, this.targetColor, fixRect);
-% %                     end
-%                     
-% %                     Screen('DrawLine', graph.window, this.targetColor, mx-200, my, mx+200, my, 2);
-% %                     Screen('DrawLine', graph.window, this.targetColor, mx, my-200, mx, my+200, 2);
-
                     % -----------------------------------------------------------------
                     % --- END Drawing of stimulus -------------------------------------
                     % -----------------------------------------------------------------
@@ -187,27 +149,48 @@ classdef SVVdots < ArumeCore.ExperimentDesign
                     
                     if ( secondsElapsed > 1.2 )
                         
-                        
-                        [d, l, r] = Hardware.GamePad.Query
-                        if ( l == 1)
-                            this.lastResponse = 1;
-                        elseif( r == 1)
-                            this.lastResponse = 2;
+                        if ( this.ExperimentOptions.UseGamePad )
+                            [d, l, r] = ArumeHardware.GamePad.Query;
+                            if ( l == 1)
+                                switch(variables.Position)
+                                    case 'Up'
+                                        this.lastResponse = 2;
+                                    case 'Down'
+                                        this.lastResponse = 1;
+                                end
+                            elseif( r == 1)
+                                switch(variables.Position)
+                                    case 'Up'
+                                        this.lastResponse = 1;
+                                    case 'Down'
+                                        this.lastResponse = 2;
+                                end
+                            end
+                        else
+                            [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
+                            if ( keyIsDown )
+                                keys = find(keyCode);
+                                for i=1:length(keys)
+                                    KbName(keys(i))
+                                    switch(KbName(keys(i)))
+                                        case 'RightArrow'
+                                            switch(variables.Position)
+                                                case 'Up'
+                                                    this.lastResponse = 1;
+                                                case 'Down'
+                                                    this.lastResponse = 2;
+                                            end
+                                        case 'LeftArrow'
+                                            switch(variables.Position)
+                                                case 'Up'
+                                                    this.lastResponse = 2;
+                                                case 'Down'
+                                                    this.lastResponse = 1;
+                                            end
+                                    end
+                                end
+                            end
                         end
-                        
-%                         [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
-%                         if ( keyIsDown )
-%                             keys = find(keyCode);
-%                             for i=1:length(keys)
-%                                 KbName(keys(i))
-%                                 switch(KbName(keys(i)))
-%                                     case 'LeftArrow'
-%                                         this.lastResponse = 1;
-%                                     case 'RightArrow'
-%                                         this.lastResponse = 2;
-%                                 end
-%                             end
-%                         end
                     end
                     if ( this.lastResponse > 0 )
                         disp(num2str(this.lastResponse));
@@ -244,7 +227,7 @@ classdef SVVdots < ArumeCore.ExperimentDesign
     % Data Analysis methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
-        function analysisResults = Plot_Sigmoid(this)
+      function analysisResults = Plot_Sigmoid(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
@@ -253,14 +236,14 @@ classdef SVVdots < ArumeCore.ExperimentDesign
             ds(ds.Response<0,:) = [];
             
             modelspec = 'Response ~ Angle';
-            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'Binomial', 'link', 'probit');
+            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
             
-            angles = [];
-            responses = [];
-            for i=1:length(this.ConditionVars(1).values)
-                angles(i) = this.ConditionVars(1).values(i);
-                responses(i) = mean(ds.Response(ds.Angle==angles(i)));
-            end
+            angles = ds.Angle;
+            responses = ds.Response;
+%             for i=1:length(this.ConditionVars(1).values)
+%                 angles(i) = this.ConditionVars(1).values(i);
+%                 responses(i) = mean(ds.Response(ds.Angle==angles(i)));
+%             end
             a = min(angles):0.1:max(angles);
             
             figure

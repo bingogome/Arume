@@ -19,7 +19,6 @@ classdef ExperimentRun < matlab.mixin.Copyable
     end
     
     methods
-        
         %% GetStats
         function stats = GetStats(this)
             Enum = ArumeCore.ExperimentDesign.getEnum();
@@ -76,7 +75,6 @@ classdef ExperimentRun < matlab.mixin.Copyable
             run = copy(this); 
         end
     end
-    
     
     methods(Static=true)
         

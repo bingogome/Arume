@@ -2,26 +2,22 @@ classdef Arume < handle
     %ARUME Summary of this class goes here
     %   Detailed explanation goes here
     
-    
     properties(Constant=true)
         defaultDataFolder = 'C:\secure\Code\arume\ArumeData';
+        tempFolder = 'C:\secure\Code\arume\Temp';
         
         AnalysisMethodPrefix = 'Analysis_';
         PlotsMethodPrefix = 'Plot_';
         PlotsAggregateMethodPrefix = 'PlotAggregate_';
     end
     
-    properties
-        % Current working project 
-        currentProject
-       
-        % Current selected sessions (if multiple selected enabled)
-        selectedSessions
+    properties(SetAccess=private)
+        currentProject      % Current working project 
+        selectedSessions    % Current selected sessions (if multiple selected enabled)
     end
         
     properties(Dependent=true)
-        % Current selected session
-        currentSession
+        currentSession      % Current selected session
     end
     
     methods
@@ -41,6 +37,10 @@ classdef Arume < handle
         %
         
         function arume = Arume(command)
+            % Starts arume and loads the GUI
+            %   Usage   : Arume
+            %           : Arume( 'clear' ) clears the persistent variable
+            
             % persistent variable to keep the singleton
             persistent arumeSingleton;
             
@@ -73,19 +73,23 @@ classdef Arume < handle
         % Managing projects
         %
         
-        function project = newProject( this, path, name, defaultExperiment )
-            project = ArumeCore.Project.New( path, name, defaultExperiment);
-            this.currentProject = project;
+        function newProject( this, path, name, defaultExperiment )
+            % Creates a new project
+            
+            this.currentProject = ArumeCore.Project.NewProject( path, name, defaultExperiment);
             this.selectedSessions = [];
         end
         
-        function project = loadProject( this, path )
-            project = ArumeCore.Project.Load( path );
-            this.currentProject = project;
+        function loadProject( this, file )
+            % Loads a project from a project file
+            
+            this.currentProject = ArumeCore.Project.LoadProject( file );
             this.selectedSessions = [];
         end
         
         function closeProject( this )
+            % Closes the current project (always saves)
+            
             this.currentProject.save();
             this.currentProject = [];
             this.selectedSessions = [];
@@ -96,6 +100,8 @@ classdef Arume < handle
         %
         
         function setCurrentSession( this, currentSelection )
+            % Updates the current session selection
+            
             if  ~isempty( currentSelection )
                 this.selectedSessions = this.currentProject.sessions(currentSelection);
             else
@@ -104,12 +110,17 @@ classdef Arume < handle
         end
         
         function session = newSession( this, experiment, subject_Code, session_Code, experimentOptions )
+            % Crates a new session to start the experiment and collect data
+            
             session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code, experimentOptions );
             this.selectedSessions = session;
             this.currentProject.save();
         end
         
         function session = importSession( this, experiment, subject_Code, session_Code )
+            % Imports a session from external files containing the data. It
+            % will not be possible to run this session
+            
             session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code );
             
             [dsTrials, dsSamples] = session.experiment.ImportSession();
@@ -120,14 +131,15 @@ classdef Arume < handle
         end
         
         function renameCurrentSession( this, subjectCode, sessionCode)
+            % Renames the current session
+            
             this.currentSession.rename(subjectCode, sessionCode);
             this.currentProject.save();
         end
         
         function deleteCurrentSession( this )
-            sessidx = find( this.currentProject.sessions == this.currentSession );
-            this.currentSession.deleteFolders();
-            this.currentProject.sessions(sessidx) = [];
+            % Deletes the current session
+            this.currentProject.deleteSession(this.currentSession);
             this.selectedSessions = [];
             this.currentProject.save();
         end
@@ -137,16 +149,22 @@ classdef Arume < handle
         %
         
         function runSession( this )
+            % Start running the experimental session
+            
             this.currentSession.start();
             this.currentProject.save();
         end
         
         function resumeSession( this )
+            % Resumes running the experimental session
+            
             this.currentSession.resume();
             this.currentProject.save(); 
         end
         
         function restartSession( this )
+            % Restarts a session from the begining. Past data will be saved.
+            
             this.currentSession.restart();
             this.currentProject.save();
         end
@@ -156,6 +174,9 @@ classdef Arume < handle
         %
         
         function prepareAnalysis( this )
+            % Prepares the session for analysis. Mainly this creates the
+            % trial dataset and the samples dataset
+            
             h = waitbar(0,'Please wait...');
             n = length(this.selectedSessions);
             for i =1:n
@@ -167,6 +188,8 @@ classdef Arume < handle
         end
         
         function runAnalyses( this )        
+            % Runs the selected analysis
+            
             for session = this.selectedSessions
                 session.RunAnalyses();
             end

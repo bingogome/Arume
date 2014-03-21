@@ -8,11 +8,11 @@ classdef GamePad
     methods(Static = true)
         
         function Open()
-            Hardware.joymex2('open', 0);
+            ArumeHardware.joymex2('open', 0);
         end
         function [ direction, left, right, a, b, x, y] = Query()
           
-            gp = Hardware.joymex2('query',0);
+            gp = ArumeHardware.joymex2('query',0);
             
             direction = round(gp.axes/30000);
             direction(2) = -direction(2);
@@ -26,7 +26,7 @@ classdef GamePad
         end
         
         function Close()
-            Hardware.joymex2('close', 0);
+            ArumeHardware.joymex2('close', 0);
         end
     end
     

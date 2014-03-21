@@ -306,7 +306,7 @@ classdef ArumeGui < handle
         
         function loadProject(this, source, eventdata )
             if ( this.closeProjectQuestdlg() )
-                [filename, pathname] = uigetfile([this.arume.defaultDataFolder '\*.mat'], 'Pick a project file');
+                [filename, pathname] = uigetfile([this.arume.defaultDataFolder '\*.aruprj'], 'Pick a project file');
                 if ( ~filename  )
                     return
                 end
@@ -324,21 +324,31 @@ classdef ArumeGui < handle
         
         function newSession( this, source, eventdata ) 
             
-            sDlg.Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
+            sessionDlg.Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
             % Set the default experiment
-            for i=1:length(sDlg.Experiment{1})
-                if ( strcmp(sDlg.Experiment{1}{i}, this.arume.currentProject.defaultExperiment) )
-                    sDlg.Experiment{1}{i} = ['{'  sDlg.Experiment{1}{i} '}'];
-                end
-            end
+            defaultExperimentIndex = strcmp(sessionDlg.Experiment{1},this.arume.currentProject.defaultExperiment);
+            sessionDlg.Experiment{1}{defaultExperimentIndex} = ['{'  sessionDlg.Experiment{1}{defaultExperimentIndex} '}'];
+            sessionDlg.Subject_Code = '000';
+            sessionDlg.Session_Code = 'Z';
             
-            sDlg.Subject_Code = '000';
-            sDlg.Session_Code = 'Z';
-            P = StructDlg(sDlg);
-            if ( isempty( P ) )
+            session = StructDlg(sessionDlg);
+            if ( isempty( session ) )
                 return
             end
-            this.arume.newSession( P.Experiment, P.Subject_Code, P.Session_Code,[] );
+            
+            % Show the dialog for experiment options if necessary
+            optionsDlg = ArumeCore.ExperimentDesign.GetExperimentDesignOptions( session.Experiment );
+            if ( ~isempty( optionsDlg) )
+                options = StructDlg(optionsDlg);
+                if ( isempty( options ) )
+                    options = StructDlg(optionsDlg,'',[],[],'off');
+                end
+            else
+                options = [];
+            end
+            
+            this.arume.newSession( session.Experiment, session.Subject_Code, session.Session_Code, options );
+            
             this.updateGui();
         end
         
@@ -490,6 +500,21 @@ classdef ArumeGui < handle
                 s = [s sprintf('%25s: %s\n', 'Experiment', this.arume.currentSession.experimentName)];
                 s = [s sprintf('%25s: %s\n', 'DataRawPath', this.arume.currentSession.dataRawPath)];
                 s = [s sprintf('%25s: %s\n', 'DataAnalysisPath', this.arume.currentSession.dataAnalysisPath)];
+                if ( ~isempty( this.arume.currentSession.experiment.ExperimentOptions ) )
+                    options = fieldnames(this.arume.currentSession.experiment.ExperimentOptions);
+                    for i=1:length(options)
+                        optionClass = class(this.arume.currentSession.experiment.ExperimentOptions.(options{i}));
+                        switch(optionClass)
+                            case 'double'
+                                optionValue = num2str(this.arume.currentSession.experiment.ExperimentOptions.(options{i}));
+                            case 'char'
+                                optionValue = this.arume.currentSession.experiment.ExperimentOptions.(options{i});
+                            otherwise
+                                optionValue = '-';
+                        end
+                        s = [s sprintf('%25s: %s\n', options{i}, optionValue) ];
+                    end
+                end
                 
                 NoYes = {'No' 'Yes'};
                 s = [s sprintf('%25s: %s\n', 'Started', NoYes{this.arume.currentSession.isStarted+1})];
