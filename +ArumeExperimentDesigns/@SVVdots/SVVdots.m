@@ -117,6 +117,12 @@ classdef SVVdots < ArumeCore.ExperimentDesign
                     fixRect = CenterRectOnPointd( fixRect, mx, my );
                     Screen('FillRect', graph.window, this.fixColor, fixRect);
                     
+%                     
+%                     Screen('DrawLine', graph.window, 255, fromH, fromV, toH, toV, 2);
+%                     Screen('DrawLine', graph.window, 255, fromH, fromV, toH, toV, 2);
+%                     Screen('DrawLine', graph.window, 255, fromH, fromV, toH, toV, 2);
+%                     Screen('DrawLine', graph.window, 255, fromH, fromV, toH, toV, 2);
+%                     
                     if ( secondsElapsed > 1 && secondsElapsed < 1.1 )
                         %-- Draw target
                         fixRect = [0 0 7 7];
@@ -256,6 +262,7 @@ classdef SVVdots < ArumeCore.ExperimentDesign
             
             [svvr svvidx] = min(abs( p-50));
             line([a(svvidx),a(svvidx)], [0 100])
+            set(gca,'xlim',[-10 10])
             %%
         end
     end

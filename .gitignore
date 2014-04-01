@@ -1,3 +1,14 @@
 *.asv
 /ArumeData
 /Temp/TestOptions
+/Temp/Oculus/dataAnalysis/000Zccc/samplesDataSet.mat
+/Temp/Oculus/dataAnalysis/000Zccc/trialDataSet.mat
+/Temp/Oculus/dataAnalysis/000Zdd/samplesDataSet.mat
+/Temp/Oculus/dataAnalysis/000Zdd/trialDataSet.mat
+/Temp/Oculus/dataAnalysis/JOMA/samplesDataSet.mat
+/Temp/Oculus/dataAnalysis/JOMA/trialDataSet.mat
+/Temp/Oculus/dataAnalysis/JOMB/samplesDataSet.mat
+/Temp/Oculus/dataAnalysis/JOMB/trialDataSet.mat
+/Temp/Oculus/dataAnalysis/JOMC/samplesDataSet.mat
+/Temp/Oculus/dataAnalysis/JOMC/trialDataSet.mat
+/Temp/Oculus/project.mat

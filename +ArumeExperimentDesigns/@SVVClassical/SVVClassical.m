@@ -18,6 +18,15 @@ classdef SVVClassical < ArumeCore.ExperimentDesign
     end
     
     % ---------------------------------------------------------------------
+    % Options to set at runtime
+    % ---------------------------------------------------------------------
+    methods ( Static = true )
+        function dlg = GetOptionsStructDlg( this )
+            dlg.UseGamePad = { {'0','{1}'} };
+        end
+    end
+    
+    % ---------------------------------------------------------------------
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods ( Access = protected )
@@ -40,7 +49,11 @@ classdef SVVClassical < ArumeCore.ExperimentDesign
         
         %% run initialization before the first trial is run
         function initBeforeRunning( this )
+            if ( this.ExperimentOptions.UseGamePad )
+                ArumeHardware.GamePad.Open
+            end
         end
+        
         
         
         function [conditionVars] = getConditionVariables( this )
@@ -71,11 +84,9 @@ classdef SVVClassical < ArumeCore.ExperimentDesign
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
                 
-                
                 graph = this.Graph;
                 
                 trialResult = Enum.trialResult.CORRECT;
-                
                 
                 %-- add here the trial code
                 Screen('FillRect', graph.window, 0);
