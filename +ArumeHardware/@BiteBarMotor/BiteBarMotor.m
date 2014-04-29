@@ -54,19 +54,19 @@ classdef BiteBarMotor
     
     methods (Static = true)
         function Home()
-            bitebar = Hardware.BiteBarMotor;
+            bitebar = ArumeHardware.BiteBarMotor;
             bitebar.GoHome();
             bitebar.Close();
         end
         
         function Upright()
-            bitebar = Hardware.BiteBarMotor;
+            bitebar = ArumeHardware.BiteBarMotor;
             bitebar.GoUpright();
             bitebar.Close();
         end
         
         function Stop()
-            bitebar = Hardware.BiteBarMotor;
+            bitebar = ArumeHardware.BiteBarMotor;
             bitebar.Stop1();
             bitebar.Close();
         end

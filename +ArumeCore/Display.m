@@ -238,15 +238,36 @@ classdef Display < handle
             DrawFormattedText( this.window, message, varargin{:} );
             Screen('Flip', this.window);
             
-            char = GetChar;
-            switch(char)
+            while(1)
                 
-                case ESCAPE
-                    result = 0;
-                    
-                otherwise
-                    result = char;
+                try
+                    [ direction, left, right, a, b, x, y] = ArumeHardware.GamePad.Query;
+                catch
+                end
+                
+                if ( a )
+                    result = char('a');
+                    break;
+                end
+                
+                [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
+                if ( keyIsDown )
+                    keys = find(keyCode);
+                    result = keyCode(keys(1));
+                    break;
+                end
             end
+            
+%             char = GetChar;
+%             switch(char)
+%                 
+%                 case ESCAPE
+%                     result = 0;
+%                     
+%                 otherwise
+%                     result = char;
+%             end
+%             
             
             Screen( 'TextColor', this.window, oldDefaultColor); % recover previous default color
         end

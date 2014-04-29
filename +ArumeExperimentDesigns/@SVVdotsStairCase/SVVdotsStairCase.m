@@ -32,13 +32,6 @@ classdef SVVdotsStairCase < ArumeExperimentDesigns.SVVdots
             this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 2, 'trialsToRun', 2) ];
         end
         
-        %% run initialization before the first trial is run
-        function initBeforeRunning( this )
-            if ( this.ExperimentOptions.UseGamePad )
-                ArumeHardware.GamePad.Open
-            end
-        end
-        
         function [conditionVars] = getConditionVariables( this )
             %-- condition variables ---------------------------------------
             i= 0;
