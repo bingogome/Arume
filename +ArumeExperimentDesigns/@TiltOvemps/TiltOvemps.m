@@ -20,6 +20,7 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
     methods ( Static = true )
         function dlg = GetOptionsStructDlg( this )
             dlg.FirstLeftEarDown = { {'0','{1}'} };
+            dlg.Alternate = { {'{0}','1'} };
         end
     end
     
@@ -39,25 +40,46 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             this.trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
             this.trialsPerSession = 6;
             
-            %%-- Blocking
-            this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 1;
-            this.blocksToRun = 2;
-            if ( this.ExperimentOptions.FirstLeftEarDown )
-                this.blocks =  [ ...
-                    struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 3) ...
-                    struct( 'fromCondition', 2, 'toCondition', 2, 'trialsToRun', 3) ];
-            else
-                this.blocks =  [ ...
-                    struct( 'fromCondition', 2, 'toCondition', 2, 'trialsToRun', 3) ...
-                    struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 3) ];
+            if ( ~isfield( this.ExperimentOptions, 'Alternate') )
+                this.ExperimentOptions.Alternate = 0;
             end
+            
+            if ( this.ExperimentOptions.Alternate )
+                %%-- Blocking
+                this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
+                this.numberOfTimesRepeatBlockSequence = 3;
+                this.blocksToRun = 2;
+                if ( this.ExperimentOptions.FirstLeftEarDown )
+                    this.blocks =  [ ...
+                        struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 1) ...
+                        struct( 'fromCondition', 2, 'toCondition', 2, 'trialsToRun', 1) ];
+                else
+                    this.blocks =  [ ...
+                        struct( 'fromCondition', 2, 'toCondition', 2, 'trialsToRun', 1) ...
+                        struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 1) ];
+                end
+            else
+                %%-- Blocking
+                this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
+                this.numberOfTimesRepeatBlockSequence = 1;
+                this.blocksToRun = 2;
+                if ( this.ExperimentOptions.FirstLeftEarDown )
+                    this.blocks =  [ ...
+                        struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 3) ...
+                        struct( 'fromCondition', 2, 'toCondition', 2, 'trialsToRun', 3) ];
+                else
+                    this.blocks =  [ ...
+                        struct( 'fromCondition', 2, 'toCondition', 2, 'trialsToRun', 3) ...
+                        struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 3) ];
+                end
+            end
+            
         end
         
         function initBeforeRunning( this )
             asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\VOGLib.dll');
             this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('localhost',9000);
-            this.bitebar = Hardware.BiteBarMotor();
+            this.bitebar = ArumeHardware.BiteBarMotor();
             this.eyeTracker.SetDataFileName(this.Session.name);
         end
         
@@ -207,7 +229,7 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
     end
     
     % ---------------------------------------------------------------------
-    % Plot  methods
+    % Plot methods for individual sessions
     % ---------------------------------------------------------------------
     methods ( Access = public )
         function plotHandles = Plot_TracesRawTorsionHeadVel(this)
@@ -239,6 +261,34 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             
         end
         
+        function plotHandles = Plot_TracesRawVertical(this)
+            dsTrials =  this.Session.trialDataSet;
+            dsSamples =  this.Session.samplesDataSet;
+            
+            tiltDuration = this.tiltDuration;
+            tiltduration = 60;
+            
+            n = length(dsTrials);
+            plotHandles.figure = figure('name',this.Session.name, 'color','w','position',[100 100 1000 800]);
+            ax = zeros(n,1);
+            for i=1:n
+                idx = dsTrials.TrialStartIdx(i):dsTrials.TrialEndIdx(i);
+                t = (idx-idx(i))/100;
+                ax(i) = subplot(n,1,i);
+                plot(t,[dsSamples.LeftVertical(idx)-nanmean(dsSamples.LeftVertical(idx(1:200))), dsSamples.RightVertical(idx)-nanmean(dsSamples.RightVertical(idx(1:200))), boxcar(sgolayfilt(100*[diff(dsSamples.HeadRollTilt(idx));0],1,51),30)]);
+                
+                title(dsTrials.TiltDirection(i));
+            end
+            
+            set(ax,'ylim',[-10 10])
+            linkaxes(ax,'xy');
+            
+            xlabel('Time (s)');
+            ylabel('Torsion (deg) / Head vel. (deg/s)')
+            
+            legend( {'Left Torsion', 'Right Torsion', 'HeadVelocity'});
+            
+        end
     end
     
     % ---------------------------------------------------------------------
@@ -247,6 +297,11 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
     methods ( Static = true, Access = public )
         
         function plotHandles = PlotAggregate_TorsionAverageTraces( sessions)
+            
+            trialDuration = 180;    % seconds
+            frameRate = 100;        % frames per second
+            totalFrames = trialDuration*frameRate;
+            binsize = 300;          % frames
             
             dataLeft = zeros( length(sessions),3,25);
             dataRight = zeros( length(sessions),3,25);
@@ -262,6 +317,7 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
                 dsSamples =  session.samplesDataSet;
                 
                 torsion = nanmean([dsSamples.LeftTorsion, dsSamples.RightTorsion]');
+                torsion = [dsSamples.LeftTorsion]';
                 
                 leftEarDownTrials = find(strcmp(dsTrials.TiltDirection,'Left'));
                 rightEarDownTrials = find(strcmp(dsTrials.TiltDirection,'Right'));
@@ -272,28 +328,31 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
                     imax = dsTrials.TrialStartIdx(leftEarDownTrials(j));
                     imin = dsTrials.TrialEndIdx(leftEarDownTrials(j));
                     
-                    binsize = 300;
                     
-                    for t=1:binsize:18000
+                    for t=1:binsize:totalFrames
                         idx = imax + t + (1:binsize);
                         if ( max(idx) < length(torsion) )
                             dataLeft(i,j,ceil(t/binsize)) = nanmedian(torsion(idx));
                         end
                     end
-                    dataLeft(i,j,:) = dataLeft(i,j,:) - nanmedian(dataLeft(i,j,5:15));
+                    % fix baseline
+                    %dataLeft(i,j,:) = dataLeft(i,j,:) - nanmedian(dataLeft(i,j,5:15));
+                    dataLeft(i,j,:) = dataLeft(i,j,:) ;
                 end
                 
                 for j=1:length(rightEarDownTrials)
                     imax = dsTrials.TrialStartIdx(rightEarDownTrials(j));
                     imin = dsTrials.TrialEndIdx(rightEarDownTrials(j));
                     
-                    for t=1:binsize:18000
+                    for t=1:binsize:totalFrames
                         idx = imax + t + (1:binsize);
                         if ( max(idx) < length(torsion) )
                             dataRight(i,j,ceil(t/binsize)) = nanmedian(torsion(idx));
                         end
                     end
-                    dataRight(i,j,:) = dataRight(i,j,:) - nanmedian(dataRight(i,j,5:15));
+                    % fix baseline
+%                     dataRight(i,j,:) = dataRight(i,j,:) - nanmedian(dataRight(i,j,5:15));
+                    dataRight(i,j,:) = dataRight(i,j,:);
                 end
             end
             
@@ -305,7 +364,10 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             subplot(2,1,1,'nextplot','add','fontsize',14)
             
             for i=1:length(sessions)
-                pretty_errorbar((1:length(dataLeft))*3,nanmean(squeeze( dataLeft(i,:,:))),nanstd(squeeze( dataLeft(i,:,:)))/sqrt(6),'color',colors(i,:), 'linewidth',2);
+                plot((1:length(dataLeft))*3,squeeze( dataLeft(i,:,:)),'color',colors(i,:), 'linewidth',1);
+            end
+            for i=1:length(sessions)
+                pretty_errorbar((1:length(dataLeft))*3,nanmean(squeeze( dataLeft(i,:,:))),nanstd(squeeze( dataLeft(i,:,:)))/sqrt(2),'color',colors(i,:), 'linewidth',2);
             end
             line([0 180], [0 0],'color',[0.5 0.5 0.5], 'linewidth',2,'LineStyle','-.')
             line([60 60], [-10 10],'color',[0.5 0.5 0.5], 'linewidth',2,'LineStyle','-.')
@@ -315,8 +377,11 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             ylabel('Torsion (deg)')
             
             subplot(2,1,2,'nextplot','add','fontsize',14)
+             for i=1:length(sessions)
+                plot((1:length(dataRight))*3,squeeze( dataRight(i,:,:)),'color',colors(i,:), 'linewidth',1);
+            end
             for i=1:length(sessions)
-                pretty_errorbar((1:length(dataLeft))*3,nanmean(squeeze( dataRight(i,:,:))),nanstd(squeeze( dataRight(i,:,:)))/sqrt(6),'color',colors(i,:), 'linewidth',2);
+                pretty_errorbar((1:length(dataLeft))*3,nanmean(squeeze( dataRight(i,:,:))),nanstd(squeeze( dataRight(i,:,:)))/sqrt(2),'color',colors(i,:), 'linewidth',2);
             end
             line([0 180], [0 0],'color',[0.5 0.5 0.5], 'linewidth',2,'LineStyle','-.')
             line([60 60], [-10 10],'color',[0.5 0.5 0.5], 'linewidth',2,'LineStyle','-.')
@@ -500,7 +565,9 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             filesHead  = {d.name};
             
             % remove aborts
-            ds = ds(ds.TrialResult==0,:);
+%             ds = ds(ds.TrialResult==0,:);
+            
+            ds = ds(1:6,:);
             
             ntrials = length(ds);
             

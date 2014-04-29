@@ -3,7 +3,7 @@ classdef BiteBarMotor
     %   Detailed explanation goes here
     
     properties
-        port = 'com5';
+        port = '';
         
         s;
     end
@@ -12,11 +12,22 @@ classdef BiteBarMotor
         function this = BiteBarMotor()
             persistent ss;
             
-            delete(instrfindall);
-            ss =  serial(this.port,'BaudRate',9600);
-            
-            this.s = ss;
-            fopen(this.s);
+            if ( isempty(ss) )
+                serialInfo = instrhwinfo('serial');
+                
+                if ( length(serialInfo.SerialPorts) < 1 )
+                    error('No serial ports detected');
+                end
+                
+                this.port = serialInfo.SerialPorts{1};
+                
+                
+                delete(instrfindall);
+                ss =  serial(this.port,'BaudRate',9600);
+                
+                this.s = ss;
+                fopen(this.s);
+            end
         end
         function Close(this)
             fclose(this.s);
