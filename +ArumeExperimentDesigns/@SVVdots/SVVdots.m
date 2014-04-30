@@ -7,13 +7,12 @@ classdef SVVdots < ArumeCore.ExperimentDesign
         eyeTracker = [];
         
         lastResponse = '';
+        reactionTime = '';
         
         
-        fixRad = 20;
-        fixColor = [255 0 0];
+        fixColor = [0 255 0];
         
-        targetDistance = 100;
-        targetColor = [0 255 0];
+        targetColor = [255 0 0];
         
     end
     
@@ -23,6 +22,10 @@ classdef SVVdots < ArumeCore.ExperimentDesign
     methods ( Static = true )
         function dlg = GetOptionsStructDlg( this )
             dlg.UseGamePad = { {'0','{1}'} };
+            dlg.FixationDiameter = { 10 '* (pix)' [3 50] };
+            dlg.TargetDiameter = { 10 '* (pix)' [3 50] };
+            dlg.targetDistance = { 100 '* (pix)' [10 500] };
+            dlg.targetDuration = { 200 '* (ms)' [100 500] };
         end
     end
     
@@ -84,9 +87,9 @@ classdef SVVdots < ArumeCore.ExperimentDesign
             
             try
                 this.lastResponse = 0;
+                this.reactionTime = -1;
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
-                
                 
                 graph = this.Graph;
                 
@@ -113,27 +116,22 @@ classdef SVVdots < ArumeCore.ExperimentDesign
                     [mx, my] = RectCenter(graph.wRect);
 
                     %-- Draw fixation spot
-                    fixRect = [0 0 3 3];
+                    fixRect = [0 0 this.ExperimentOptions.FixationDiameter this.ExperimentOptions.FixationDiameter];
                     fixRect = CenterRectOnPointd( fixRect, mx, my );
-                    Screen('FillRect', graph.window, this.fixColor, fixRect);
+                    Screen('FillOval', graph.window, this.fixColor, fixRect);
                     
-%                     
-%                     Screen('DrawLine', graph.window, 255, fromH, fromV, toH, toV, 2);
-%                     Screen('DrawLine', graph.window, 255, fromH, fromV, toH, toV, 2);
-%                     Screen('DrawLine', graph.window, 255, fromH, fromV, toH, toV, 2);
-%                     Screen('DrawLine', graph.window, 255, fromH, fromV, toH, toV, 2);
-%                     
-                    if ( secondsElapsed > 1 && secondsElapsed < 1.2 )
+                    if ( secondsElapsed > 1 && secondsElapsed < (1 +this.ExperimentOptions.targetDuration/1000) )
                         %-- Draw target
-                        fixRect = [0 0 7 7];
+                        targetRect = [0 0 this.ExperimentOptions.TargetDiameter this.ExperimentOptions.TargetDiameter];
                          
+                        targetDist = this.ExperimentOptions.targetDistance;
                         switch(variables.Position)
                             case 'Up'
-                                fixRect = CenterRectOnPointd( fixRect, mx - this.targetDistance*sin(variables.Angle/180*pi), my + this.targetDistance*cos(variables.Angle/180*pi) );
+                                targetRect = CenterRectOnPointd( targetRect, mx - targetDist*sin(variables.Angle/180*pi), my + targetDist*cos(variables.Angle/180*pi) );
                             case 'Down'
-                                fixRect = CenterRectOnPointd( fixRect, mx + this.targetDistance*sin(variables.Angle/180*pi), my - this.targetDistance*cos(variables.Angle/180*pi) );
+                                targetRect = CenterRectOnPointd( targetRect, mx + targetDist*sin(variables.Angle/180*pi), my - targetDist*cos(variables.Angle/180*pi) );
                         end
-                        Screen('FillOval', graph.window, this.targetColor, fixRect);
+                        Screen('FillOval', graph.window, this.targetColor, targetRect);
                     end
                     
                     % -----------------------------------------------------------------
@@ -199,6 +197,7 @@ classdef SVVdots < ArumeCore.ExperimentDesign
                         end
                     end
                     if ( this.lastResponse > 0 )
+                        this.reactionTime = secondsElapsed-1;
                         disp(num2str(this.lastResponse));
                         break;
                     end
@@ -226,6 +225,7 @@ classdef SVVdots < ArumeCore.ExperimentDesign
         function trialOutput = runPostTrial(this)
             trialOutput = [];
             trialOutput.Response = this.lastResponse;
+            trialOutput.ReactionTime = this.reactionTime;
         end
     end
     
@@ -241,28 +241,66 @@ classdef SVVdots < ArumeCore.ExperimentDesign
             ds(ds.TrialResult>0,:) = [];
             ds(ds.Response<0,:) = [];
             
-            modelspec = 'Response ~ Angle';
-            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
+            figure
+            set(gca,'nextplot','add')
+            colors = jet(length(ds)/10);
+            for i=10:10:length(ds)
+                nplot = ceil(10*i/length(ds));
+                subplot(length(colors)/2,2,mod(((nplot*2)-1+floor((nplot-1)/5))-1,10)+1,'nextplot','add')
+                modelspec = 'Response ~ Angle';
+                subds = ds(1:i,:);
+                subds((subds.Response==1 & subds.Angle<-50) | (subds.Response==0 & subds.Angle>50),:) = [];
+                mdl = fitglm(subds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
+                angles = subds.Angle;
+                responses = subds.Response;
+                %             for i=1:length(this.ConditionVars(1).values)
+                %                 angles(i) = this.ConditionVars(1).values(i);
+                %                 responses(i) = mean(ds.Response(ds.Angle==angles(i)));
+                %             end
+                a = min(angles):0.1:max(angles);
+                
+                p = predict(mdl,a')*100;
+                plot(a,p, 'color', colors(nplot,:),'linewidth',2);
+                xlabel('Angle (deg)');
+                ylabel('Percent answered right');
+                
+                [svvr svvidx] = min(abs( p-50));
+                line([a(svvidx),a(svvidx)], [0 100], 'color', colors(nplot,:),'linewidth',2);
+                set(gca,'xlim',[-10 10])
+                plot( angles,responses*100,'o')
+                text(3, 40, sprintf('SVV: %0.2f',a(svvidx)));
+            end
+            
+            %%
+      end
+        
+       function analysisResults = Plot_ReactionTimes(this)
+            analysisResults = 0;
+            
+            ds = this.Session.trialDataSet;
+            ds.Response = ds.Response -1;
+            ds(ds.TrialResult>0,:) = [];
+            ds(ds.Response<0,:) = [];
             
             angles = ds.Angle;
             responses = ds.Response;
-%             for i=1:length(this.ConditionVars(1).values)
-%                 angles(i) = this.ConditionVars(1).values(i);
-%                 responses(i) = mean(ds.Response(ds.Angle==angles(i)));
-%             end
-            a = min(angles):0.1:max(angles);
+            times = ds.ReactionTime;
+            
+            binAngles = [-180 -90 -30 -15 -10 -7:2:7 10 15 30 90 180];
+            
+            binMiddles = binAngles(1:end-1) + diff(binAngles)/2;
+            timeAvg = zeros(size(binMiddles));
+            for i=1:length(binMiddles)
+                timeAvg(i) = median(times(angles>binAngles(i) & angles<binAngles(i+1)));
+            end
             
             figure
-            plot(angles,responses*100,'o')
+            plot(angles,times*1000,'o')
             hold
-            p = predict(mdl,a')*100;
-            plot(a,p)
-            xlabel('Angle (deg)');
-            ylabel('Percent answered right');
-            
-            [svvr svvidx] = min(abs( p-50));
-            line([a(svvidx),a(svvidx)], [0 100])
-            set(gca,'xlim',[-10 10])
+            plot(binMiddles, timeAvg*1000,'r','linewidth',3)
+            set(gca,'xlim',[-20 20])
+                xlabel('Angle (deg)');
+                ylabel('Reaction time (ms) right');
             %%
         end
     end

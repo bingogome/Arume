@@ -6,9 +6,9 @@ classdef SVVdotsAdapt < ArumeExperimentDesigns.SVVdots
     % Options to set at runtime
     % ---------------------------------------------------------------------
     methods ( Static = true )
-        function dlg = GetOptionsStructDlg( this )
-            dlg.UseGamePad = { {'0','{1}'} };
-        end
+%         function dlg = GetOptionsStructDlg( this )
+%             dlg.UseGamePad = { {'0','{1}'} };
+%         end
     end
     
     % ---------------------------------------------------------------------
@@ -27,7 +27,7 @@ classdef SVVdotsAdapt < ArumeExperimentDesigns.SVVdots
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 30;
+            this.numberOfTimesRepeatBlockSequence = 50;
             this.blocksToRun = 1;
             this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 2, 'trialsToRun', 2) ];
         end

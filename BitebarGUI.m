@@ -120,7 +120,7 @@ function butLED30_Callback(hObject, eventdata, handles)
 
 handles.bitebar.GoUpright();
 pause(3)
-handles.bitebar.TiltLeft(30);
+handles.bitebar.TiltLeft(40);
 
 % --- Executes on button press in butRED30.
 function butRED30_Callback(hObject, eventdata, handles)
@@ -130,4 +130,4 @@ function butRED30_Callback(hObject, eventdata, handles)
 
 handles.bitebar.GoUpright();
 pause(3)
-handles.bitebar.TiltRight(30);
+handles.bitebar.TiltRight(40);

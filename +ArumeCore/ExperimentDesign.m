@@ -627,7 +627,7 @@ classdef ExperimentDesign < handle
                 
                 N
                 SVV
-                variables.(varName) = (rand(1)*180-90)/min(36,(2^(N/10))) + SVV;
+                variables.(varName) = (rand(1)*180-90)/min(16,round(2^(N/15))) + SVV;
                 
                 
 %                 % QUEST - DOESNT WORK
