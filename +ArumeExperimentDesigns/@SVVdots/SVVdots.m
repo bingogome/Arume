@@ -123,7 +123,7 @@ classdef SVVdots < ArumeCore.ExperimentDesign
 %                     Screen('DrawLine', graph.window, 255, fromH, fromV, toH, toV, 2);
 %                     Screen('DrawLine', graph.window, 255, fromH, fromV, toH, toV, 2);
 %                     
-                    if ( secondsElapsed > 1 && secondsElapsed < 1.1 )
+                    if ( secondsElapsed > 1 && secondsElapsed < 1.2 )
                         %-- Draw target
                         fixRect = [0 0 7 7];
                          

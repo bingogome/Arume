@@ -30,7 +30,7 @@ classdef ExperimentDesign < handle
         HitKeyBeforeTrial = 0;
         
         ForegroundColor = 0;
-        BackgroundColor = 255;
+        BackgroundColor = 0;
         
         % Trial sequence and blocking
         trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...

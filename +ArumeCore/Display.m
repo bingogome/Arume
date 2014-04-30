@@ -237,6 +237,7 @@ classdef Display < handle
             
             DrawFormattedText( this.window, message, varargin{:} );
             Screen('Flip', this.window);
+            disp( sprintf(['\n' message]));
             
             while(1)
                 
@@ -345,6 +346,7 @@ classdef Display < handle
             
             DrawFormattedText(this.window, [message ' ' yesText ' (enter), ' noText ' (escape)'], varargin{:});
             Screen('Flip', this.window);
+            disp( sprintf( ['\n' message ' ' yesText ' (enter), ' noText ' (escape)']));
             
             while(1)
                 char = GetChar;
@@ -449,6 +451,7 @@ classdef Display < handle
             selection = 0;
             DrawFormattedText( this.window, text, varargin{:} );
             Screen('Flip', this.window);
+            disp( sprintf(['\n'  text]));
             
             while(1) % while no valid key is pressed
                 

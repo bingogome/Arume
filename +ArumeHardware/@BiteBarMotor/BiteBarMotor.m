@@ -19,7 +19,7 @@ classdef BiteBarMotor
                     error('No serial ports detected');
                 end
                 
-                this.port = serialInfo.SerialPorts{1};
+                this.port = serialInfo.SerialPorts{end};
                 
                 
                 delete(instrfindall);
