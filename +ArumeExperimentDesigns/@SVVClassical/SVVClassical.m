@@ -138,24 +138,38 @@ classdef SVVClassical < ArumeCore.ExperimentDesign
                     % -----------------------------------------------------------------
                     
                     exit = 0;
-                    [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
-                    if ( keyIsDown )
-                        keys = find(keyCode);
-                        for i=1:length(keys)
-                            KbName(keys(i))
-                            switch(KbName(keys(i)))
-                                case 'LeftArrow'
-                                    delta = -0.2;
-                                case 'RightArrow'
-                                    delta = 0.2;
-                                case 'space'
-                                    exit = 1;
-                                otherwise
-                                    delta = 0;
-                            end
+                    
+                    if ( this.ExperimentOptions.UseGamePad )
+                        [d, l, r a] = ArumeHardware.GamePad.Query;
+                        if ( l == 1)
+                            delta = -0.2;
+                        elseif( r == 1)
+                            delta = 0.2;
+                        elseif( a == 1)
+                            exit = 1;
+                        else
+                            delta = 0;
                         end
                     else
-                        delta = 0;
+                        [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
+                        if ( keyIsDown )
+                            keys = find(keyCode);
+                            for i=1:length(keys)
+                                KbName(keys(i))
+                                switch(KbName(keys(i)))
+                                    case 'LeftArrow'
+                                        delta = -0.2;
+                                    case 'RightArrow'
+                                        delta = 0.2;
+                                    case 'space'
+                                        exit = 1;
+                                    otherwise
+                                        delta = 0;
+                                end
+                            end
+                        else
+                            delta = 0;
+                        end
                     end
                     if ( exit )
                         break;

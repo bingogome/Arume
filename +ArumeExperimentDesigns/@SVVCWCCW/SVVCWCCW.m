@@ -18,6 +18,15 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
     end
     
     % ---------------------------------------------------------------------
+    % Options to set at runtime
+    % ---------------------------------------------------------------------
+    methods ( Static = true )
+        function dlg = GetOptionsStructDlg( this )
+            dlg.UseGamePad = { {'0','{1}'} };
+        end
+    end
+    
+    % ---------------------------------------------------------------------
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods ( Access = protected )
@@ -44,7 +53,11 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
         
         %% run initialization before the first trial is run
         function initBeforeRunning( this )
+            if ( this.ExperimentOptions.UseGamePad )
+                ArumeHardware.GamePad.Open
+            end
         end
+        
         
         
         function [conditionVars] = getConditionVariables( this )
@@ -76,6 +89,7 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
             
             try
                 this.lastResponse = 0;
+                buttonReleased = 0;
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
                 
@@ -142,19 +156,36 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
                     % --- Collecting responses  ---------------------------------------
                     % -----------------------------------------------------------------
                     
-                    if ( secondsElapsed > 0.2 )
-                        [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
-                        if ( keyIsDown )
-                            keys = find(keyCode);
-                            for i=1:length(keys)
-                                KbName(keys(i))
-                                switch(KbName(keys(i)))
-                                    case 'LeftArrow'
-                                        this.lastResponse = 1;
-                                    case 'RightArrow'
-                                        this.lastResponse = 2;
-                                    case 'UpArrow'
-                                        this.lastResponse = 3;
+                    if ( this.ExperimentOptions.UseGamePad )
+                        [d, l, r a] = ArumeHardware.GamePad.Query;
+                        if ( buttonReleased == 0 )
+                            if ( l==0 && r==0 && a==0)
+                                buttonReleased = 1;
+                            end
+                        else % wait until the buttons are released
+                            if ( l == 1)
+                                this.lastResponse = 1;
+                            elseif( r == 1)
+                                this.lastResponse = 2;
+                            elseif( a == 1)
+                                this.lastResponse = 3;
+                            end
+                        end
+                    else
+                        if ( secondsElapsed > 0.2 )
+                            [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
+                            if ( keyIsDown )
+                                keys = find(keyCode);
+                                for i=1:length(keys)
+                                    KbName(keys(i))
+                                    switch(KbName(keys(i)))
+                                        case 'LeftArrow'
+                                            this.lastResponse = 1;
+                                        case 'RightArrow'
+                                            this.lastResponse = 2;
+                                        case 'UpArrow'
+                                            this.lastResponse = 3;
+                                    end
                                 end
                             end
                         end
