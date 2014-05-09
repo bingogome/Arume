@@ -87,6 +87,7 @@ classdef SVVClassical < ArumeCore.ExperimentDesign
                 graph = this.Graph;
                 
                 trialResult = Enum.trialResult.CORRECT;
+                buttonReleased = 0;
                 
                 %-- add here the trial code
                 Screen('FillRect', graph.window, 0);
@@ -118,7 +119,10 @@ classdef SVVClassical < ArumeCore.ExperimentDesign
                     fromV = my + this.lineLength*cos(this.currentAngle/180*pi);
                     toH = mx + this.lineLength*sin(this.currentAngle/180*pi);
                     toV = my - this.lineLength*cos(this.currentAngle/180*pi);
-                    Screen('DrawLine', graph.window, this.lineColor, fromH, fromV, toH, toV, 2);
+                    
+                    if ( secondsElapsed > 1 )
+                        Screen('DrawLine', graph.window, this.lineColor, fromH, fromV, toH, toV, 2);
+                    end
                     
                     % -----------------------------------------------------------------
                     % --- END Drawing of stimulus -------------------------------------
@@ -141,14 +145,20 @@ classdef SVVClassical < ArumeCore.ExperimentDesign
                     
                     if ( this.ExperimentOptions.UseGamePad )
                         [d, l, r a] = ArumeHardware.GamePad.Query;
-                        if ( l == 1)
-                            delta = -0.2;
-                        elseif( r == 1)
-                            delta = 0.2;
-                        elseif( a == 1)
-                            exit = 1;
+                        if ( buttonReleased == 0 )
+                            if ( l==0 && r==0 && a==0)
+                                buttonReleased = 1;
+                            end
                         else
-                            delta = 0;
+                            if ( l == 1)
+                                delta = -0.2;
+                            elseif( r == 1)
+                                delta = 0.2;
+                            elseif( a == 1)
+                                exit = 1;
+                            else
+                                delta = 0;
+                            end
                         end
                     else
                         [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
@@ -207,24 +217,14 @@ classdef SVVClassical < ArumeCore.ExperimentDesign
             ds.Response = ds.Response -1;
             ds(ds.TrialResult>0,:) = [];
             
-            modelspec = 'Response ~ Angle';
-            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
-            
-            angles = [];
-            responses = [];
-            for i=1:length(this.ConditionVars(1).values)
-                angles(i) = this.ConditionVars(1).values(i);
-                responses(i) = mean(ds.Response(ds.Angle==angles(i)));
-            end
-            a = min(angles):0.1:max(angles);
-            
             figure
-            plot(angles,responses*100,'o')
-            hold
-            p = predict(mdl,a')*100;
-            plot(a,p)
+            plot(ds.Response,ds.TrialNumber, 'o')
             xlabel('Angle (deg)');
-            ylabel('Percent answered right');
+            ylabel('Trial Number');
+            set(gca,'xlim',[-10 10])
+            
+            
+            text(3, 10, sprintf('SVV: %0.2f',mean(ds.Response)));
             
             [svvr svvidx] = min(abs( p-50));
             line([a(svvidx),a(svvidx)], [0 100])

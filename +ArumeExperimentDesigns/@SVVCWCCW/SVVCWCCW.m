@@ -12,7 +12,7 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
         fixRad = 20;
         fixColor = [255 0 0];
         
-        lineLength = 100;
+        lineLength = 300;
         lineColor = [255 0 0];
         
     end
@@ -122,23 +122,26 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
                     fixRect = [0 0 10 10];
                     %                 fixRect = CenterRectOnPointd( fixRect, mx-graph.wRect(3)/4, my );
                     fixRect = CenterRectOnPointd( fixRect, mx, my );
+                    if ( secondsElapsed > 0.5 )
                     Screen('FillOval', graph.window, this.fixColor, fixRect);
                     
-                    if ( secondsElapsed > 1 && secondsElapsed < 1.1 )
-                        %-- Draw target
-%                         mx = mx-graph.wRect(3)/4;
-                        switch(variables.Direction)
-                            case 'CW'
-                            case 'CCW'
-                                variables.Angle = -variables.Angle;
-                        end
+                    %-- Draw target
+                    %                         mx = mx-graph.wRect(3)/4;
+                    switch(variables.Direction)
+                        case 'CW'
+                            angle1 = variables.Angle;
+                        case 'CCW'
+                            angle1 = -variables.Angle;
                     end
+                    
                     fromH = mx;
                     fromV = my;
-                    toH = mx + this.lineLength*sin(variables.Angle/180*pi);
-                    toV = my - this.lineLength*cos(variables.Angle/180*pi);
-                    Screen('DrawLine', graph.window, this.lineColor, fromH, fromV, toH, toV, 2);
+                    toH = mx + this.lineLength*sin(angle1/180*pi);
+                    toV = my - this.lineLength*cos(angle1/180*pi);
                     
+                    if ( secondsElapsed > 1 )
+                        Screen('DrawLine', graph.window, this.lineColor, fromH, fromV, toH, toV, 2);
+                    end
                     % -----------------------------------------------------------------
                     % --- END Drawing of stimulus -------------------------------------
                     % -----------------------------------------------------------------
@@ -228,25 +231,11 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
-            ds.Response = ds.Response -1;
+            ds.Response = (ds.Response-1)/2;
             ds(ds.TrialResult>0,:) = [];
-            
-            modelspec = 'Response ~ Angle';
-            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
-            
-            angles = [];
-            responses = [];
-            for i=1:length(this.ConditionVars(1).values)
-                angles(i) = this.ConditionVars(1).values(i);
-                responses(i) = mean(ds.Response(ds.Angle==angles(i)));
-            end
-            a = min(angles):0.1:max(angles);
-            
+                       
             figure
-            plot(angles,responses*100,'o')
-            hold
-            p = predict(mdl,a')*100;
-            plot(a,p)
+            plot(ds.Angle,ds.Response+rand(size(ds.Angle))/10,'o')
             xlabel('Angle (deg)');
             ylabel('Percent answered right');
             

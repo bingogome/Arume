@@ -40,7 +40,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
         
         function initExperimentDesign( this  )
             
-            this.trialDuration = 2; %seconds
+            this.trialDuration = 2.5; %seconds
             
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
@@ -174,14 +174,14 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                     %-- Find the center of the screen
                     [mx, my] = RectCenter(graph.wRect);
 
-                    if ( secondsElapsed < (0.5 +this.ExperimentOptions.targetDuration/1000) )
+                    if (secondsElapsed > 0.5 && secondsElapsed < (1 +this.ExperimentOptions.targetDuration/1000) )
                         %-- Draw fixation spot
                         fixRect = [0 0 this.ExperimentOptions.FixationDiameter this.ExperimentOptions.FixationDiameter];
                         fixRect = CenterRectOnPointd( fixRect, mx, my );
                         Screen('FillOval', graph.window, this.fixColor, fixRect);
                     end
                     
-                    if ( secondsElapsed > 0.5 && secondsElapsed < (0.5 +this.ExperimentOptions.targetDuration/1000) )
+                    if ( secondsElapsed > 1 && secondsElapsed < (1 +this.ExperimentOptions.targetDuration/1000) )
                         %-- Draw target
                         targetRect = [0 0 this.ExperimentOptions.TargetDiameter this.ExperimentOptions.TargetDiameter];
                          
@@ -203,7 +203,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                 % -----------------------------------------------------------------
                 % DEBUG
                 % -----------------------------------------------------------------
-                if (1)
+                if (0)
                     % TODO: it would be nice to have some call back system here
                     Screen('DrawText', graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.white);
                     currentline = 50 + 25;
@@ -235,7 +235,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                     % --- Collecting responses  ---------------------------------------
                     % -----------------------------------------------------------------
                     
-                    if ( secondsElapsed > 0.5 + this.ExperimentOptions.targetDuration/1000  )
+                    if ( secondsElapsed > 1 + this.ExperimentOptions.targetDuration/1000  )
                         
                         if ( this.ExperimentOptions.UseGamePad )
                             [d, l, r] = ArumeHardware.GamePad.Query;
@@ -281,7 +281,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                         end
                     end
                     if ( this.lastResponse >= 0 )
-                        this.reactionTime = secondsElapsed-0.5;
+                        this.reactionTime = secondsElapsed-1;
                         disp(num2str(this.lastResponse));
                         break;
                     end
@@ -373,12 +373,10 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
-            ds.Response = ds.Response -1;
             ds(ds.TrialResult>0,:) = [];
             ds(ds.Response<0,:) = [];
             
             angles = ds.Angle;
-            responses = ds.Response;
             times = ds.ReactionTime;
             
             binAngles = [-180 -90 -30 -15 -10 -7:2:7 10 15 30 90 180];
