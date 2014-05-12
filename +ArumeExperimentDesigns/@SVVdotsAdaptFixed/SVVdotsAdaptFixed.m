@@ -366,6 +366,10 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                 text(3, 40, sprintf('SVV: %0.2f',a(svvidx)));
             end
             
+            figure
+            plot(ds(ds.Response==0,'TrialNumber'), ds(ds.Response==0,'Angle'),'o');
+            hold
+            plot(ds(ds.Response==1,'TrialNumber'), ds(ds.Response==1,'Angle'),'ro');
             %%
       end
         
