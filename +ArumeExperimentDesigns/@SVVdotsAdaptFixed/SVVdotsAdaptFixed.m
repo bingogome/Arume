@@ -49,7 +49,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 1;
+            this.numberOfTimesRepeatBlockSequence = 10;
             this.blocksToRun = 1;
             this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 10, 'trialsToRun', 10) ];
         end
