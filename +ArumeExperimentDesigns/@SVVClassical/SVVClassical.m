@@ -217,17 +217,18 @@ classdef SVVClassical < ArumeCore.ExperimentDesign
             ds.Response = ds.Response -1;
             ds(ds.TrialResult>0,:) = [];
             
-            figure
-            plot(ds.Response,ds.TrialNumber, 'o')
-            xlabel('Angle (deg)');
-            ylabel('Trial Number');
-            set(gca,'xlim',[-10 10])
+            figure('position',[400 400 600 400],'color','w','name',this.Session.name)
+            plot(ds.Response,ds.TrialNumber, 'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
+            xlabel('Angle (deg)','fontsize',16)
+            ylabel('Trial Number','fontsize',16)
+                        
+            set(gca,'xlim',[-30 30],'ylim',[-1 14])
+            set(gca,'xgrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
             
             
-            text(3, 10, sprintf('SVV: %0.2f',mean(ds.Response)));
+            text(20, 5, sprintf('SVV: %0.2f°',mean(ds.Response')), 'fontsize',16);
             
-            [svvr svvidx] = min(abs( p-50));
-            line([a(svvidx),a(svvidx)], [0 100])
             %%
         end
     end

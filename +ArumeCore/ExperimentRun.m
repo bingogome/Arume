@@ -122,6 +122,7 @@ classdef ExperimentRun < matlab.mixin.Copyable
                     %                         disp(['Error with the manual block sequence. Please fix.']);
                     %                     end
             end
+            blockSequence = repmat( blockSequence,experiment.numberOfTimesRepeatBlockSequence,1);
             
             newRun.futureConditions = [];
             for iblock=1:length(blockSequence)
@@ -144,7 +145,6 @@ classdef ExperimentRun < matlab.mixin.Copyable
             end
             
             newRun.pastConditions = zeros(0,5);
-            newRun.futureConditions = repmat( newRun.futureConditions,experiment.numberOfTimesRepeatBlockSequence,1);
             newRun.SessionsToRun    = ceil(size(newRun.futureConditions,1) / experiment.trialsPerSession);
             newRun.originalFutureConditions = newRun.futureConditions;
             

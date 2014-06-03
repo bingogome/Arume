@@ -49,7 +49,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 10;
+            this.numberOfTimesRepeatBlockSequence = 1;
             this.blocksToRun = 1;
             this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 10, 'trialsToRun', 10) ];
         end
@@ -119,13 +119,15 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                     ds.Response = previousResponses(1:end);
                     ds.Angle = previousValues(1:end);
                     modelspec = 'Response ~ Angle';
-                    mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
+                    subds = ds;
+                    subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
+                    mdl = fitglm(subds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
                     p = predict(mdl,a')*100;
                     [svvr svvidx] = min(abs( p-50));
                     SVV = a(svvidx);
                     this.currentCenterRange = SVV;            
 
-                    this.currentRange = (180)./min(36,round(2.^(Nblocks/15)));
+                    this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
                 end
             else
                 this.currentCenterRange = rand(1)*30-15;
@@ -314,12 +316,12 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
         end
     end
     
-          % ---------------------------------------------------------------------
+    % ---------------------------------------------------------------------
     % Data Analysis methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-      function analysisResults = Plot_Sigmoid(this)
+      function analysisResults = Plot_ExperimentTimeCourse(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
@@ -366,11 +368,77 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                 text(3, 40, sprintf('SVV: %0.2f',a(svvidx)));
             end
             
-            figure
-            plot(ds(ds.Response==0,'TrialNumber'), ds(ds.Response==0,'Angle'),'o');
+            figure('position',[400 200 700 400],'color','w','name',this.Session.name)
+            plot(ds(ds.Response==0,'TrialNumber'), ds(ds.Response==0,'Angle'),'o','MarkerEdgeColor',[0.3 0.3 0.3],'linewidth',2);
             hold
-            plot(ds(ds.Response==1,'TrialNumber'), ds(ds.Response==1,'Angle'),'ro');
-            %%
+            plot(ds(ds.Response==1,'TrialNumber'), ds(ds.Response==1,'Angle'),'o','MarkerEdgeColor','r','linewidth',2);
+            
+            legend({'Ansered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
+            legend('boxoff')
+            set(gca,'xlim',[-3 103],'ylim',[-90 90])
+            ylabel('Angle (deg)', 'fontsize',16);
+            xlabel('Trial number', 'fontsize',16);
+            set(gca,'ygrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+      end
+        
+      function analysisResults = Plot_Sigmoid(this)
+            analysisResults = 0;
+            
+            ds = this.Session.trialDataSet;
+            ds(ds.TrialResult>0,:) = [];
+            ds(ds.Response<0,:) = [];
+
+            
+            subds = ds(:,:);
+            subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
+            modelspec = 'Response ~ Angle';
+            mdl = fitglm(subds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
+            angles = subds.Angle;
+            responses = subds.Response;
+            
+            a = min(angles):0.1:max(angles);
+            p = predict(mdl,a')*100;
+            
+            [svvr svvidx] = min(abs( p-50));
+                
+            allAngles = -90:90;
+            allResponses = nan(size(allAngles));
+            trialCounts = nan(size(allAngles));
+            for ia=1:length(allAngles)
+                allResponses(ia) = mean(responses(angles==allAngles(ia))*100);
+                trialCounts(ia) = sum(angles==allAngles(ia));
+            end
+            
+            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
+            subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
+            
+            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
+            plot(a,p, 'color', 'k','linewidth',2);
+            line([a(svvidx),a(svvidx)], [0 100], 'color','k','linewidth',2);
+            
+               
+            
+            
+            %xlabel('Angle (deg)', 'fontsize',16);
+            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
+            text(20, 80, sprintf('SVV: %0.2f°',a(svvidx)), 'fontsize',16);
+            
+            set(gca,'xlim',[-30 30],'ylim',[-10 110])
+            set(gca,'xgrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+            set(gca,'xticklabel',[])
+            
+            
+            subplot(3,1,[3],'nextplot','add', 'fontsize',12);
+            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
+                
+            set(gca,'xlim',[-30 30],'ylim',[0 15])
+            xlabel('Angle (deg)', 'fontsize',16);
+            ylabel('Number of trials', 'fontsize',16);
+            set(gca,'xgrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+            set(gca, 'YAxisLocation','right')
       end
         
        function analysisResults = Plot_ReactionTimes(this)
@@ -383,7 +451,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             angles = ds.Angle;
             times = ds.ReactionTime;
             
-            binAngles = [-180 -90 -30 -15 -10 -7:2:7 10 15 30 90 180];
+            binAngles = [-90:5:90];
             
             binMiddles = binAngles(1:end-1) + diff(binAngles)/2;
             timeAvg = zeros(size(binMiddles));
@@ -391,13 +459,17 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                 timeAvg(i) = median(times(angles>binAngles(i) & angles<binAngles(i+1)));
             end
             
-            figure
-            plot(angles,times*1000,'o')
+            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
+            axes( 'fontsize',12);
+            plot(angles,times*1000,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
             hold
-            plot(binMiddles, timeAvg*1000,'r','linewidth',3)
-            set(gca,'xlim',[-20 20])
-                xlabel('Angle (deg)');
-                ylabel('Reaction time (ms) right');
+            plot(binMiddles, timeAvg*1000, 'color', 'k','linewidth',2);
+            set(gca,'xlim',[-30 30],'ylim',[0 1500])
+            xlabel('Angle (deg)','fontsize',16);
+            ylabel('Reaction time (ms)','fontsize',16);
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+            set(gca,'xgrid','on')
+            
             %%
         end
     end
