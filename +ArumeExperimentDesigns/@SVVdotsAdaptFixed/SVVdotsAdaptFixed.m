@@ -29,7 +29,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             dlg.FixationDiameter = { 10 '* (pix)' [3 50] };
             dlg.TargetDiameter = { 10 '* (pix)' [3 50] };
             dlg.targetDistance = { 100 '* (pix)' [10 500] };
-            dlg.targetDuration = { 300 '* (ms)' [100 500] };
+            dlg.targetDuration = { 300 '* (ms)' [100 1000] };
         end
     end
     
@@ -40,7 +40,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
         
         function initExperimentDesign( this  )
             
-            this.trialDuration = 2.5; %seconds
+            this.trialDuration = 2.5+0.5; %seconds
             
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
