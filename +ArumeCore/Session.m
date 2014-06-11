@@ -15,7 +15,6 @@ classdef Session < ArumeCore.DataDB
     
     %% dependent properties... see the related get.property method
     properties ( Dependent = true )
-        experimentName
         
         name
         isStarted
@@ -39,9 +38,6 @@ classdef Session < ArumeCore.DataDB
     % Methods for dependent variables
     %
     methods
-        function name = get.experimentName(this)
-            name = strrep(class(this.experiment), 'ArumeExperimentDesigns.','');
-        end
         
         function name = get.name(this)
             name = [this.subjectCode this.sessionCode];
@@ -151,7 +147,7 @@ classdef Session < ArumeCore.DataDB
         function data = save( this )
             data = [];
             
-            data.experimentName     = this.experimentName;
+            data.experimentName     = this.experiment.Name;
             data.subjectCode        = this.subjectCode;
             data.sessionCode        = this.sessionCode;
             data.experimentOptions  = this.experiment.ExperimentOptions;

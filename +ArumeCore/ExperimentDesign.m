@@ -19,6 +19,15 @@ classdef ExperimentDesign < handle
         StaircaseVars = [];
         
         ConditionMatrix
+        
+    end
+    properties ( Dependent = true )
+        Name
+    end
+    methods
+        function name = get.Name(this)
+            name = strrep(class(this), 'ArumeExperimentDesigns.','');
+        end
     end
     
     %
@@ -740,6 +749,18 @@ classdef ExperimentDesign < handle
             %%-- Blocking
             this.blocks(1).toCondition    = numberOfConditions;
             this.blocks(1).trialsToRun    = numberOfConditions;
+            
+            %%-- Check if all the options are there, if not add the default
+            %%values. This is important to mantain past compatibility if
+            %%options are added in the future.
+            optionsDlg = ArumeCore.ExperimentDesign.GetExperimentDesignOptions( this.Name );
+            options = StructDlg(optionsDlg,'',[],[],'off');
+            fields = fieldnames(options);
+            for i=1:length(fields)
+                if ( ~isfield(this.ExperimentOptions, fields{i}))
+                    this.ExperimentOptions.(fields{i}) = options.(fields{i});
+                end
+            end
             
             %-- init the parameters of this specific experiment
             this.initExperimentDesign( );

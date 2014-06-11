@@ -494,7 +494,7 @@ classdef ArumeGui < handle
                 % populate sessionlist
                 sessionNames = cell(length(this.arume.currentProject.sessions),1);
                 for i=1:length( this.arume.currentProject.sessions )
-                    sessionNames{i} = [this.arume.currentProject.sessions(i).experimentName ' - ' this.arume.currentProject.sessions(i).name];
+                    sessionNames{i} = [this.arume.currentProject.sessions(i).experiment.Name ' - ' this.arume.currentProject.sessions(i).name];
                 end
                 set(this.sessionListBox, 'String', sessionNames);
                 if ( ~isempty( this.arume.currentSession ) )
@@ -514,7 +514,7 @@ classdef ArumeGui < handle
             % update info box
             if ( ~isempty( this.arume.currentSession ) )
                 s = '';
-                s = [s sprintf('%25s: %s\n', 'Experiment', this.arume.currentSession.experimentName)];
+                s = [s sprintf('%25s: %s\n', 'Experiment', this.arume.currentSession.experiment.Name)];
                 s = [s sprintf('%25s: %s\n', 'DataRawPath', this.arume.currentSession.dataRawPath)];
                 s = [s sprintf('%25s: %s\n', 'DataAnalysisPath', this.arume.currentSession.dataAnalysisPath)];
                 if ( ~isempty( this.arume.currentSession.experiment.ExperimentOptions ) )
@@ -609,7 +609,7 @@ classdef ArumeGui < handle
             
             if ( ~isempty( this.arume.currentSession ) )
                 
-                set(this.experimentTextLabel, 'String', ['Experiment: ' this.arume.currentSession.experimentName] );
+                set(this.experimentTextLabel, 'String', ['Experiment: ' this.arume.currentSession.experiment.Name] );
                 
                 if ( ~this.arume.currentSession.isStarted )
                     set(this.menuRunStartSession, 'Enable', 'on');

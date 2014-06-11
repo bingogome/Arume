@@ -29,7 +29,9 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             dlg.FixationDiameter = { 10 '* (pix)' [3 50] };
             dlg.TargetDiameter = { 10 '* (pix)' [3 50] };
             dlg.targetDistance = { 100 '* (pix)' [10 500] };
+            dlg.fixationDuration = { 1000 '* (ms)' [100 3000] };
             dlg.targetDuration = { 300 '* (ms)' [100 1000] };
+            dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
         end
     end
     
@@ -40,7 +42,9 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
         
         function initExperimentDesign( this  )
             
-            this.trialDuration = 2.5+0.5; %seconds
+            this.trialDuration = this.ExperimentOptions.fixationDuration/1000 ...
+                + this.ExperimentOptions.targetDuration/1000 ...
+                + this.ExperimentOptions.responseDuration/1000 ; %seconds
             
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
@@ -172,14 +176,17 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                     %-- Find the center of the screen
                     [mx, my] = RectCenter(graph.wRect);
 
-                    if (secondsElapsed > 0.5 && secondsElapsed < (1 +this.ExperimentOptions.targetDuration/1000) )
+                    t1 = this.ExperimentOptions.fixationDuration/1000;
+                    t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
+                    
+                    if (secondsElapsed < t2)
                         %-- Draw fixation spot
                         fixRect = [0 0 this.ExperimentOptions.FixationDiameter this.ExperimentOptions.FixationDiameter];
                         fixRect = CenterRectOnPointd( fixRect, mx, my );
                         Screen('FillOval', graph.window, this.fixColor, fixRect);
                     end
                     
-                    if ( secondsElapsed > 1 && secondsElapsed < (1 +this.ExperimentOptions.targetDuration/1000) )
+                    if ( secondsElapsed > t1 && secondsElapsed < t2 )
                         %-- Draw target
                         targetRect = [0 0 this.ExperimentOptions.TargetDiameter this.ExperimentOptions.TargetDiameter];
                          
@@ -233,7 +240,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                     % --- Collecting responses  ---------------------------------------
                     % -----------------------------------------------------------------
                     
-                    if ( secondsElapsed > 1 + this.ExperimentOptions.targetDuration/1000  )
+                    if ( secondsElapsed > t1  )
                         
                         if ( this.ExperimentOptions.UseGamePad )
                             [d, l, r] = ArumeHardware.GamePad.Query;
