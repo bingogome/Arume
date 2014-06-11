@@ -28,7 +28,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             dlg.UseGamePad = { {'0','{1}'} };
             dlg.FixationDiameter = { 10 '* (pix)' [3 50] };
             dlg.TargetDiameter = { 10 '* (pix)' [3 50] };
-            dlg.targetDistance = { 100 '* (pix)' [10 500] };
+            dlg.targetDistance = { 200 '* (pix)' [10 500] };
             dlg.targetDuration = { 300 '* (ms)' [100 500] };
         end
     end
@@ -49,7 +49,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 1;
+            this.numberOfTimesRepeatBlockSequence = 10;
             this.blocksToRun = 1;
             this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 10, 'trialsToRun', 10) ];
         end
@@ -88,7 +88,6 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             Enum = ArumeCore.ExperimentDesign.getEnum();
             % Add stuff here
             
-            
             if ( ~isempty( this.Session.CurrentRun ) )
                 nCorrect = sum(this.Session.CurrentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
                 
@@ -106,7 +105,6 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                 end
             end
             
-            a = -90:0.1:90;
             NtrialPerBlock = 10;
             
             % recalculate every 10 trials
@@ -120,11 +118,9 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                     ds.Angle = previousValues(1:end);
                     modelspec = 'Response ~ Angle';
                     subds = ds;
-                    subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
-                    mdl = fitglm(subds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
-                    p = predict(mdl,a')*100;
-                    [svvr svvidx] = min(abs( p-50));
-                    SVV = a(svvidx);
+                    
+                    SVV = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+
                     this.currentCenterRange = SVV;            
 
                     this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
@@ -340,16 +336,9 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                 modelspec = 'Response ~ Angle';
                 subds = ds(1:i,:);
                 subds((subds.Response==1 & subds.Angle<-50) | (subds.Response==0 & subds.Angle>50),:) = [];
-                mdl = fitglm(subds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
-                angles = subds.Angle;
-                responses = subds.Response;
-                %             for i=1:length(this.ConditionVars(1).values)
-                %                 angles(i) = this.ConditionVars(1).values(i);
-                %                 responses(i) = mean(ds.Response(ds.Angle==angles(i)));
-                %             end
-                a = min(angles):0.1:max(angles);
                 
-                p = predict(mdl,a')*100;
+                [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+                
                 plot(a,p, 'color', colors(nplot,:),'linewidth',2);
                 xlabel('Angle (deg)');
                 ylabel('Percent answered right');
@@ -389,40 +378,25 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             ds(ds.TrialResult>0,:) = [];
             ds(ds.Response<0,:) = [];
 
-            
             subds = ds(:,:);
-            subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
-            modelspec = 'Response ~ Angle';
-            mdl = fitglm(subds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
-            angles = subds.Angle;
-            responses = subds.Response;
             
-            a = min(angles):0.1:max(angles);
-            p = predict(mdl,a')*100;
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
             
-            [svvr svvidx] = min(abs( p-50));
                 
-            allAngles = -90:90;
-            allResponses = nan(size(allAngles));
-            trialCounts = nan(size(allAngles));
-            for ia=1:length(allAngles)
-                allResponses(ia) = mean(responses(angles==allAngles(ia))*100);
-                trialCounts(ia) = sum(angles==allAngles(ia));
-            end
-            
+           
             figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
             subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
             
             plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
             plot(a,p, 'color', 'k','linewidth',2);
-            line([a(svvidx),a(svvidx)], [0 100], 'color','k','linewidth',2);
+            line([SVV, SVV], [0 100], 'color','k','linewidth',2);
             
                
             
             
             %xlabel('Angle (deg)', 'fontsize',16);
             ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',a(svvidx)), 'fontsize',16);
+            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
             
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
@@ -441,6 +415,78 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             set(gca, 'YAxisLocation','right')
       end
         
+      
+      function analysisResults = Plot_SigmoidUpDown(this)
+            analysisResults = 0;
+            
+            ds = this.Session.trialDataSet;
+            ds(ds.TrialResult>0,:) = [];
+            ds(ds.Response<0,:) = [];
+
+            figure('position',[400 400 1000 600],'color','w','name',this.Session.name)
+            subds = ds(strcmp(ds.Position,'Up'),:);
+            subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];          
+            
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+
+            subplot(6,1,[1:2],'nextplot','add', 'fontsize',12);
+            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
+            plot(a,p, 'color', 'k','linewidth',2);
+            line([SVV,SVV], [0 100], 'color','k','linewidth',2);
+            
+            
+            %xlabel('Angle (deg)', 'fontsize',16);
+            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
+            text(20, 80, sprintf('SVV: %0.2f°',a(svvidx)), 'fontsize',16);
+            
+            set(gca,'xlim',[-30 30],'ylim',[-10 110])
+            set(gca,'xgrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+            set(gca,'xticklabel',[])
+            
+            
+            subplot(6,1,[3],'nextplot','add', 'fontsize',12);
+            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
+                
+            set(gca,'xlim',[-30 30],'ylim',[0 15])
+            xlabel('Angle (deg)', 'fontsize',16);
+            ylabel('Number of trials', 'fontsize',16);
+            set(gca,'xgrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+            set(gca, 'YAxisLocation','right')
+            
+            
+            
+            subds = ds(strcmp(ds.Position,'Down'),:);
+            subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
+          
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+            
+            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
+            plot(a,p, 'color', 'k','linewidth',2);
+            line([SVV, SVV], [0 100], 'color','k','linewidth',2);
+            
+            %xlabel('Angle (deg)', 'fontsize',16);
+            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
+            text(20, 80, sprintf('SVV: %0.2f°',a(svvidx)), 'fontsize',16);
+            
+            set(gca,'xlim',[-30 30],'ylim',[-10 110])
+            set(gca,'xgrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+            set(gca,'xticklabel',[])
+            
+            
+            subplot(6,1,[6],'nextplot','add', 'fontsize',12);
+            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
+                
+            set(gca,'xlim',[-30 30],'ylim',[0 15])
+            xlabel('Angle (deg)', 'fontsize',16);
+            ylabel('Number of trials', 'fontsize',16);
+            set(gca,'xgrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+            set(gca, 'YAxisLocation','right')
+      end
+      
        function analysisResults = Plot_ReactionTimes(this)
             analysisResults = 0;
             
@@ -473,4 +519,47 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             %%
         end
     end
+    
+    % ---------------------------------------------------------------------
+    % Utility methods
+    % ---------------------------------------------------------------------
+    methods ( Static = true )
+        
+        function [SVV, a, p, allAngles, allResponses, trialCounts] = FitAngleResponses( angles, responses)
+            ds = dataset;
+            ds.Response = responses;
+            ds.Angle = angles;
+
+            outliers = find((ds.Response==0 & ds.Angle<-50) | (ds.Response==1 & ds.Angle>50));
+
+            ds(outliers,:) = [];
+
+            modelspec = 'Response ~ Angle';
+            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
+
+            ds(mdl.Diagnostics.CooksDistance>0.3,:) = [];
+            modelspec = 'Response ~ Angle';
+            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
+
+            angles = ds.Angle;
+            responses = ds.Response;
+
+            a = min(angles):0.1:max(angles);
+            p = predict(mdl,a')*100;
+
+            [svvr svvidx] = min(abs( p-50));
+
+            SVV = a(svvidx);
+            
+            allAngles = -90:90;
+            allResponses = nan(size(allAngles));
+            trialCounts = nan(size(allAngles));
+            for ia=1:length(allAngles)
+                allResponses(ia) = mean(responses(angles==allAngles(ia))*100);
+                trialCounts(ia) = sum(angles==allAngles(ia));
+            end
+            
+        end
+    end
 end
+

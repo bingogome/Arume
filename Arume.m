@@ -36,7 +36,7 @@ classdef Arume < handle
         % Main constructor
         %
         
-        function arume = Arume(command)
+        function arume = Arume(command, param)
             % Starts arume and loads the GUI
             %   Usage   : Arume
             %           : Arume( 'clear' ) clears the persistent variable
@@ -56,6 +56,11 @@ classdef Arume < handle
                         % do nothing, just let the constructor finish so 
                         % the object is created
                         return;
+                        
+                    case 'open'
+                        if ( exist('param','var') )
+                            projectPath = param;
+                        end
                 end
             end
             
@@ -66,7 +71,12 @@ classdef Arume < handle
             end
             
             % Load the GUI
-            ArumeGui( arumeSingleton );
+            gui = ArumeGui( arumeSingleton );
+            
+            if ( exist('projectPath','var') )
+                arumeSingleton.loadProject( projectPath )
+                gui.updateGui();
+            end
         end
            
         %

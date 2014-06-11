@@ -243,12 +243,12 @@ classdef Display < handle
                 
                 try
                     [ direction, left, right, a, b, x, y] = ArumeHardware.GamePad.Query;
+
+                    if ( a )
+                        result = char('a');
+                        break;
+                    end
                 catch
-                end
-                
-                if ( a )
-                    result = char('a');
-                    break;
                 end
                 
                 [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
