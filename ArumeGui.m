@@ -319,7 +319,7 @@ classdef ArumeGui < handle
         
         function loadProject(this, source, eventdata )
             if ( this.closeProjectQuestdlg() )
-                [filename, pathname] = uigetfile([this.arume.defaultDataFolder '\*.aruprj'], 'Pick a project file');
+                [filename, pathname] = uigetfile([this.arume.defaultDataFolder '/*.aruprj'], 'Pick a project file');
                 if ( ~filename  )
                     return
                 end
