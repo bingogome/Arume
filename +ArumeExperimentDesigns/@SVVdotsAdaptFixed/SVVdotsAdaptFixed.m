@@ -70,7 +70,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             
             i = i+1;
             conditionVars(i).name   = 'AnglePercentRange';
-            conditionVars(i).values = ([-100:100/2.5:100-100/5]+100/5)
+            conditionVars(i).values = ([-100:100/2.5:100-100/5]+100/5);
             
             i = i+1;
             conditionVars(i).name   = 'Position';
@@ -422,7 +422,6 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             set(gca, 'YAxisLocation','right')
       end
         
-      
       function analysisResults = Plot_SigmoidUpDown(this)
             analysisResults = 0;
             
@@ -494,7 +493,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             set(gca, 'YAxisLocation','right')
       end
       
-       function analysisResults = Plot_ReactionTimes(this)
+      function analysisResults = Plot_ReactionTimes(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
@@ -524,6 +523,14 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             set(gca,'xgrid','on')
             
             %%
+      end
+      
+      function analysisResults = Plot_AmirTest(this)
+            analysisResults = 0;
+            
+            ds = this.Session.trialDataSet;
+            
+            ds
         end
     end
     
