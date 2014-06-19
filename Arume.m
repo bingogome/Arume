@@ -3,8 +3,8 @@ classdef Arume < handle
     %   Detailed explanation goes here
     
     properties(Constant=true)
-        defaultDataFolder = 'C:\secure\Code\arume\ArumeData';
-        tempFolder = 'C:\secure\Code\arume\Temp';
+        defaultDataFolder = fullfile('C:', 'secure' ,'Code' ,'arume', 'ArumeData')
+        tempFolder = fullfile('C:', 'secure' ,'Code' ,'arume', 'Temp');
         
         AnalysisMethodPrefix = 'Analysis_';
         PlotsMethodPrefix = 'Plot_';
