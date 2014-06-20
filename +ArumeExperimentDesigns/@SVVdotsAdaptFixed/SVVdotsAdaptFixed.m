@@ -337,32 +337,32 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             
             Nblocks = ceil(length(ds)/NtrialPerBlock/2)*2;
             
-            for i=NtrialPerBlock:NtrialPerBlock:length(ds)
-                nplot = ceil(i/NtrialPerBlock);
-                subplot(ceil(length(colors)/2),2,mod(((nplot*2)-1+floor((nplot-1)/(Nblocks/2)))-1,Nblocks)+1,'nextplot','add')
-                modelspec = 'Response ~ Angle';
-                subds = ds(1:i,:);
-                subds((subds.Response==1 & subds.Angle<-50) | (subds.Response==0 & subds.Angle>50),:) = [];
-                
-                [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
-                
-                plot(a,p, 'color', colors(nplot,:),'linewidth',2);
-                xlabel('Angle (deg)');
-                ylabel('Percent answered right');
-                
-                [svvr svvidx] = min(abs( p-50));
-                line([a(svvidx),a(svvidx)], [0 100], 'color', colors(nplot,:),'linewidth',2);
-                set(gca,'xlim',[-20 20])
-                
-                allAngles = -90:90;
-                allResponses = nan(size(allAngles));
-                for ia=1:length(allAngles)
-                    allResponses(ia) = mean(responses(angles==allAngles(ia))*100);
-                end
-                
-                plot( allAngles,allResponses,'o')
-                text(3, 40, sprintf('SVV: %0.2f',a(svvidx)));
-            end
+%             for i=NtrialPerBlock:NtrialPerBlock:length(ds)
+%                 nplot = ceil(i/NtrialPerBlock);
+%                 subplot(ceil(length(colors)/2),2,mod(((nplot*2)-1+floor((nplot-1)/(Nblocks/2)))-1,Nblocks)+1,'nextplot','add')
+%                 modelspec = 'Response ~ Angle';
+%                 subds = ds(1:i,:);
+%                 subds((subds.Response==1 & subds.Angle<-50) | (subds.Response==0 & subds.Angle>50),:) = [];
+%                 
+%                 [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+%                 
+%                 plot(a,p, 'color', colors(nplot,:),'linewidth',2);
+%                 xlabel('Angle (deg)');
+%                 ylabel('Percent answered right');
+%                 
+%                 [svvr svvidx] = min(abs( p-50));
+%                 line([a(svvidx),a(svvidx)], [0 100], 'color', colors(nplot,:),'linewidth',2);
+%                 set(gca,'xlim',[-20 20])
+%                 
+%                 allAngles = -90:90;
+%                 allResponses = nan(size(allAngles));
+%                 for ia=1:length(allAngles)
+%                     allResponses(ia) = mean(responses(angles==allAngles(ia))*100);
+%                 end
+%                 
+%                 plot( allAngles,allResponses,'o')
+%                 text(3, 40, sprintf('SVV: %0.2f',a(svvidx)));
+%             end
             
             figure('position',[400 200 700 400],'color','w','name',this.Session.name)
             plot(ds(ds.Response==0,'TrialNumber'), ds(ds.Response==0,'Angle'),'o','MarkerEdgeColor',[0.3 0.3 0.3],'linewidth',2);
@@ -444,7 +444,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             
             %xlabel('Angle (deg)', 'fontsize',16);
             ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',a(svvidx)), 'fontsize',16);
+            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
             
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
@@ -469,13 +469,14 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
           
             [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
             
+            subplot(6,1,[4:5],'nextplot','add', 'fontsize',12);
             plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
             plot(a,p, 'color', 'k','linewidth',2);
             line([SVV, SVV], [0 100], 'color','k','linewidth',2);
             
             %xlabel('Angle (deg)', 'fontsize',16);
             ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',a(svvidx)), 'fontsize',16);
+            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
             
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
