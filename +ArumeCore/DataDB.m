@@ -39,18 +39,18 @@ classdef DataDB < handle
                 error('folder does not exist');
             end
             
-            if ( ~exist([this.folder '\' this.session],'dir') )
+            if ( ~exist(fullfile(this.folder, this.session),'dir') )
                 mkdir(this.folder, this.session);
             end
         end
         
         function RenameDB( this, newname )
-            movefile([this.folder '\' this.session], [this.folder '\' newname]);
+            movefile(fullfile(this.folder, this.session), fullfile(this.folder , newname));
             this.session = newname;
         end
         
         function result = IsVariableInDB( this, variableName )
-            d = dir( fullfile( [this.folder '\' this.session], [variableName '.mat'] ) );
+            d = dir( fullfile( this.folder , this.session, [variableName '.mat'] ) );
             if isempty(d)
                 result = 0;
                 return
@@ -72,19 +72,19 @@ classdef DataDB < handle
                 else
                     % if variable is not in cache
                     try
-                        d = dir( fullfile( [this.folder '\' this.session], [variableName '.mat'] ) );
+                        d = dir( fullfile( this.folder , this.session, [variableName '.mat'] ) );
                         if isempty(d)
                             return
                         end
                         % read variable
-                        dat = load(fullfile( [this.folder '\' this.session], d(1).name));
+                        dat = load(fullfile( this.folder , this.session, d(1).name));
                     catch me
                         % if memory error
                         if ( isequal(me.identifier, 'MATLAB:nomem') )
                             % empty cache
                             this.cache = struct();
                             % read variable again
-                            dat = load(fullfile( [this.folder '\' this.session], d(1).name));
+                            dat = load(fullfile( this.folder, this.session, d(1).name));
                         else
                             rethrow(me)
                         end
@@ -108,7 +108,7 @@ classdef DataDB < handle
                     fullname = [variableName '.mat'];
                     eval([variableName ' =  variable ;']);
                     
-                    save(fullfile([this.folder '\' this.session],fullname), variableName);
+                    save(fullfile(this.folder , this.session,fullname), variableName);
                     
                     if ( isfield( this.cache, ['Session_' this.session]) && isfield( this.cache.(['Session_' this.session]), variableName ) )
                         this.cache.(['Session_' this.session]).(variableName) = variable;

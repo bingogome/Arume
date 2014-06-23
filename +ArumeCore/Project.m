@@ -58,14 +58,14 @@ classdef Project < handle
         
         function initNew( this, parentFolder, name, defaultExperiment )
             
-            this.projectFile = [parentFolder '\' name '.aruprj'];
+            this.projectFile = [parentFolder '/' name '.aruprj'];
             
             if ( exist( this.projectFile, 'file' ) )
                 error( 'Arume: project file already exists' );
             end
             
             % initialize the project
-            this.init( [Arume.tempFolder '\' name], name, defaultExperiment );
+            this.init( [Arume.tempFolder '/' name], name, defaultExperiment );
             
             % prepare folder structure
             mkdir( Arume.tempFolder, name );
