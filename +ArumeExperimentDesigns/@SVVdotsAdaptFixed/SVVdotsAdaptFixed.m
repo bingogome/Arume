@@ -324,7 +324,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-      function analysisResults = Plot_ExperimentTimeCourse(this)
+      function plotResults = Plot_ExperimentTimeCourse(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
@@ -378,7 +378,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
       end
         
-      function analysisResults = Plot_Sigmoid(this)
+      function plotResults = Plot_Sigmoid(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
@@ -422,7 +422,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             set(gca, 'YAxisLocation','right')
       end
         
-      function analysisResults = Plot_SigmoidUpDown(this)
+      function plotResults = Plot_SigmoidUpDown(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
@@ -494,7 +494,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             set(gca, 'YAxisLocation','right')
       end
       
-      function analysisResults = Plot_ReactionTimes(this)
+      function plotResults = Plot_ReactionTimes(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
@@ -526,13 +526,24 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             %%
       end
       
-      function analysisResults = Plot_AmirTest(this)
+      function plotResults = Plot_AmirTest(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
             
             ds
-        end
+      end
+        
+      function plotResults = PlotAggregate_SigmoidCombined(this, sessions)
+          
+            ds = this.Session.trialDataSet;
+            ds(ds.TrialResult>0,:) = [];
+            ds(ds.Response<0,:) = [];
+
+            subds = ds(:,:);
+            
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+      end
     end
     
     % ---------------------------------------------------------------------

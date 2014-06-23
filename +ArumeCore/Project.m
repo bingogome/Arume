@@ -9,7 +9,7 @@ classdef Project < handle
         
         defaultExperiment % default experiment for this project
                 
-        sessions 
+        sessions    % Sessions that belong to this project
         
         analysis
         figures
@@ -49,23 +49,24 @@ classdef Project < handle
         %
         % Initialization methods
         %
-        function init ( this, path, name, defaultExperiment )
+        function init ( this, tempPath, name, defaultExperiment )
             this.name               = name;
-            this.path               = path;
+            this.path               = tempPath;
             this.defaultExperiment  = defaultExperiment;
             this.sessions           = [];
         end
         
-        function initNew( this, parentFolder, name, defaultExperiment )
+        function initNew( this, projectFilePath, projectName, tempPath, defaultExperiment )
+        % Initializes a new project
             
-            this.projectFile = [parentFolder '/' name '.aruprj'];
+            this.projectFile = fullfile(projectFilePath, [projectName '.aruprj']);
             
             if ( exist( this.projectFile, 'file' ) )
                 error( 'Arume: project file already exists' );
             end
             
             % initialize the project
-            this.init( [Arume.tempFolder '/' name], name, defaultExperiment );
+            this.init( fullfile(tempPath, projectName), defaultExperiment );
             
             % prepare folder structure
             mkdir( Arume.tempFolder, name );
@@ -79,20 +80,22 @@ classdef Project < handle
             this.save();
         end
         
-        function initExisting( this, file )
-            [filePath, projectName] = fileparts(file);
-            
+        function initExisting( this, file, tempPath )
+        % Initializes a project loading from a file
+        
             this.projectFile = file;
             
+            [filePath, projectName] = fileparts(file);
+            
             % clean the temp folder
-            rmdir(Arume.tempFolder,'s');
-            mkdir(Arume.tempFolder);
+            rmdir(tempPath,'s');
+            mkdir(tempPath);
             
             % uncompress project file into temp folder
-            untar(file, Arume.tempFolder);
+            untar(file, tempPath);
             
-            projectPath = fullfile(Arume.tempFolder, projectName);
-            projectMatFile = fullfile(Arume.tempFolder, projectName, 'project.mat');
+            projectPath = fullfile(tempPath, projectName);
+            projectMatFile = fullfile(tempPath, projectName, 'project.mat');
             
             % load project data
             data = load( projectMatFile, 'data' );
@@ -128,8 +131,7 @@ classdef Project < handle
             save( filename, 'data' );
             
             % compress project file and keep temp folder
-            tempPath = Arume.tempFolder;
-            tar(this.projectFile , fullfile(tempPath, this.name));
+            tar(this.projectFile , this.path);
             movefile([this.projectFile '.tar'], this.projectFile);
         end
         
@@ -157,7 +159,7 @@ classdef Project < handle
         %
         % Factory methods
         %
-        function project = NewProject( parentFolder, name, defaultExperiment)            
+        function project = NewProject( projectFilePath, projectName, tempPath, defaultExperiment)            
             
             % check if parentFolder exists
             if ( ~exist( parentFolder, 'dir' ) )
@@ -171,13 +173,13 @@ classdef Project < handle
             
             % create project object
             project = ArumeCore.Project();
-            project.initNew( parentFolder, name, defaultExperiment );
+            project.initNew( projectFilePath, projectName, tempPath, defaultExperiment );
         end
         
-        function this = LoadProject( file )
+        function this = LoadProject( projectFile, tempPath )
             % read project info
             this = ArumeCore.Project();
-            this.initExisting( file );
+            this.initExisting( projectFile, tempPath );
         end
         
         %
