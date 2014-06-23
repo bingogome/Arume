@@ -12,7 +12,7 @@ classdef SVVClassicalUpDown < ArumeCore.ExperimentDesign
         fixRad = 20;
         fixColor = [255 0 0];
         
-        lineLength = 100;
+        lineLength = 125;
         lineColor = [255 0 0];
         
     end
@@ -101,7 +101,7 @@ classdef SVVClassicalUpDown < ArumeCore.ExperimentDesign
                 this.currentAngle = variables.InitialAngle;
                 delta = 0;
                 
-                while secondsRemaining > 0
+                while secondsRemaining > -10000
                     
                     secondsElapsed      = GetSecs - startLoopTime;
                     secondsRemaining    = this.trialDuration - secondsElapsed;
@@ -125,18 +125,19 @@ classdef SVVClassicalUpDown < ArumeCore.ExperimentDesign
                             toH = mx + this.lineLength*sin(this.currentAngle/180*pi);
                             toV = my - this.lineLength*cos(this.currentAngle/180*pi);
                         case 'Down'
-                            fromH = mx - this.lineLength*sin(this.currentAngle/180*pi);
-                            fromV = my + this.lineLength*cos(this.currentAngle/180*pi);
-                            toH = mx;
-                            toV = my;
+                            fromH = mx;
+                            fromV = my;
+                            toH = mx - this.lineLength*sin(this.currentAngle/180*pi);
+                            toV = my + this.lineLength*cos(this.currentAngle/180*pi);
                     end
                     
-                    if ( secondsElapsed > 1 )
-                        Screen('DrawLine', graph.window, this.lineColor, fromH, fromV, toH, toV, 2);
+                    
+                    if ( secondsElapsed > 0.5 )
+                        Screen('DrawLine', graph.window, this.lineColor, fromH, fromV, toH, toV, 4);
                     end
                     
-                    fixRect = [0 0 10 10];
-                    fixRect = CenterRectOnPointd( fixRect, mx, my );
+                    fixRect = [0 0 4 4];
+                    fixRect = CenterRectOnPointd( fixRect, mx, my )
                     Screen('FillOval', graph.window,  [0 255 0], fixRect);
                     
                     % -----------------------------------------------------------------
@@ -244,10 +245,11 @@ classdef SVVClassicalUpDown < ArumeCore.ExperimentDesign
             set(gca,'nextplot','add');
             plot(ds.Response(streq(ds.Position,'Up'),:),ds.InitialAngle(streq(ds.Position,'Up'),:), 'o', 'color', [0 0.7 0.7], 'markersize',10,'linewidth',2)
             plot(ds.Response(streq(ds.Position,'Down'),:),ds.InitialAngle(streq(ds.Position,'Down'),:), 'o', 'color', [0.7 0 0.7], 'markersize',10,'linewidth',2)
-            xlabel('Angle (deg)','fontsize',16)
-            ylabel('Trial Number','fontsize',16)
+            xlabel('SVV Angle (deg)','fontsize',16)
+            ylabel('Initial Line Angle','fontsize',16)
                         
-            set(gca,'xlim',[-30 30],'ylim',[-1 14])
+            legend({'Up' 'Down'})
+            set(gca,'xlim',[-30 30],'ylim',[-32 32])
             set(gca,'xgrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
             

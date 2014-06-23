@@ -57,7 +57,8 @@ classdef Display < handle
 %         	graph.selectedScreen=1;
     
             %-- window
-            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
+%             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
+            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0);
          
             %-- color
             
