@@ -58,7 +58,7 @@ classdef ArumeGui < handle
     %% Constructor
     methods
         function this = ArumeGui( parent )
-            
+              
             % Ensure singleton behavior
             h = findall(0,'tag','Arume');
             if ( ~isempty( h ) )
@@ -262,9 +262,11 @@ classdef ArumeGui < handle
                 'Callback'  , @this.RenameSession);
             set(this.sessionListBox, 'uicontextmenu', this.sessionContextMenu)
             
-            
             % Move the GUI to the center of the screen.
             movegui(this.figureHandle,'center')
+            
+            % This is to avoid a close all closing the GUI
+            set(this.figureHandle, 'handlevisibility', 'off');
             
             % Make the GUI visible.
             set(this.figureHandle,'Visible','on');
@@ -319,7 +321,7 @@ classdef ArumeGui < handle
         
         function loadProject(this, source, eventdata )
             if ( this.closeProjectQuestdlg() )
-                [filename, pathname] = uigetfile([this.arume.defaultDataFolder '\*.aruprj'], 'Pick a project file');
+                [filename, pathname] = uigetfile([this.arume.defaultDataFolder '/*.aruprj'], 'Pick a project file');
                 if ( ~filename  )
                     return
                 end

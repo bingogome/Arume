@@ -835,14 +835,14 @@ classdef ExperimentDesign < handle
             Enum.keys.SPACE     = KbName('space');
             Enum.keys.ESCAPE    = KbName('ESCAPE');
             Enum.keys.RETURN    = KbName('return');
-            Enum.keys.BACKSPACE = KbName('backspace');
-            
-            Enum.keys.TAB       = KbName('tab');
-            Enum.keys.SHIFT     = KbName('shift');
-            Enum.keys.CONTROL   = KbName('control');
-            Enum.keys.ALT       = KbName('alt');
-            Enum.keys.END       = KbName('end');
-            Enum.keys.HOME      = KbName('home');
+           % Enum.keys.BACKSPACE = KbName('backspace');
+%             
+%             Enum.keys.TAB       = KbName('tab');
+%             Enum.keys.SHIFT     = KbName('shift');
+%             Enum.keys.CONTROL   = KbName('control');
+%             Enum.keys.ALT       = KbName('alt');
+%             Enum.keys.END       = KbName('end');
+%             Enum.keys.HOME      = KbName('home');
             
             Enum.keys.LEFT      = KbName('LeftArrow');
             Enum.keys.UP        = KbName('UpArrow');

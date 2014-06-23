@@ -1,23 +1,42 @@
 classdef Arume < handle
-    %ARUME Summary of this class goes here
-    %   Detailed explanation goes here
+    % ARUME Is a GUI to control experiments and analyze their results.
+    %
+    %   Usage   : Arume, opens Arume GUI.
+    %           : Arume( 'open', 'C:\path\to\project.aprj' ), opens a given project
+    %
+    % A project in Arume consists on multiple experimental SESSIONS and the
+    % results ana analyses associted with them.
+    %
+    % A session is asociated with a given experimental paradigm selected
+    % when the session is created.
+    %
+    % A session can be restarted, paused and resumed. Every time a new
+    % experiment run is created containing the data related to each run.
+    % That is, if you run the experiment, almost finish and the restart
+    % over. All the data will be saved. For the first partial run and for
+    % the second complete run.
+    %
+    % A project can have sessions of different paradigms but a session will
+    % have runs of one individual paradigm.
+    %
+    % The projects can be managed with the GUI but also with command line. 
     
-    properties(Constant=true)
-        defaultDataFolder = 'C:\secure\Code\arume\ArumeData';
-        tempFolder = 'C:\secure\Code\arume\Temp';
-        
+    properties( Constant=true )
         AnalysisMethodPrefix = 'Analysis_';
         PlotsMethodPrefix = 'Plot_';
         PlotsAggregateMethodPrefix = 'PlotAggregate_';
     end
     
-    properties(SetAccess=private)
+    properties( SetAccess=private )
+        
         currentProject      % Current working project 
         selectedSessions    % Current selected sessions (if multiple selected enabled)
+        defaultDataFolder   % Default data folder for new projects
+        tempFolder          % Temporary folder where data from the current project is unpacked
     end
         
     properties(Dependent=true)
-        currentSession      % Current selected session
+        currentSession      % Current selected session (empty if none)
     end
     
     methods
@@ -40,6 +59,8 @@ classdef Arume < handle
             % Starts arume and loads the GUI
             %   Usage   : Arume
             %           : Arume( 'clear' ) clears the persistent variable
+            %           : Arume( 'open', 'C:\path\to\project.aprj' ) opens
+            %               a given project
             
             % persistent variable to keep the singleton
             persistent arumeSingleton;
@@ -53,8 +74,11 @@ classdef Arume < handle
                         return;
                         
                     case 'createSingleton'
-                        % do nothing, just let the constructor finish so 
-                        % the object is created
+                        % Initialization, object is created automatically
+                        % (this is the constructor) and then initialized
+                        
+                        arume.init();
+                        
                         return;
                         
                     case 'open'
@@ -78,7 +102,22 @@ classdef Arume < handle
                 gui.updateGui();
             end
         end
-           
+        
+        function init( this)
+            % find the folder of arume
+            [folder, name, ext] = fileparts(which('Arume'));
+            
+            this.defaultDataFolder = fullfile(folder, 'ArumeData');
+            if ( ~exist( this.defaultDataFolder, 'dir') )
+                mkdir(folder, 'ArumeData');
+            end
+            
+            this.tempFolder = fullfile(folder, 'Temp');
+            if ( ~exist( this.tempFolder, 'dir') )
+                mkdir(folder, 'Temp');
+            end
+        end
+        
         %
         % Managing projects
         %
@@ -86,14 +125,14 @@ classdef Arume < handle
         function newProject( this, path, name, defaultExperiment )
             % Creates a new project
             
-            this.currentProject = ArumeCore.Project.NewProject( path, name, defaultExperiment);
+            this.currentProject = ArumeCore.Project.NewProject( projectFilePath, projectName, this.tempFolder, defaultExperiment);
             this.selectedSessions = [];
         end
         
         function loadProject( this, file )
             % Loads a project from a project file
             
-            this.currentProject = ArumeCore.Project.LoadProject( file );
+            this.currentProject = ArumeCore.Project.LoadProject( file, this.tempFolder );
             this.selectedSessions = [];
         end
         
@@ -195,9 +234,11 @@ classdef Arume < handle
                 waitbar(i/n,h)
             end
             close(h);
+            
+            this.currentProject.save();
         end
         
-        function runAnalyses( this )        
+        function runAnalyses( this ) 
             % Runs the selected analysis
             
             for session = this.selectedSessions
@@ -238,10 +279,12 @@ classdef Arume < handle
             if ( ~isempty( selection ) )
                 for i=1:length(selection)
                     if ( ismethod( this.currentSession.experiment, [this.PlotsMethodPrefix plots{selection(i)}] ) )
+                        % Single sessions plot
                         for session = this.selectedSessions
                             session.experiment.([this.PlotsMethodPrefix plots{selection(i)}])();
                         end
                     elseif ( ismethod( this.currentSession.experiment, [this.PlotsAggregateMethodPrefix plots{selection(i)}] ) )
+                        % Aggregate session plots
                         this.currentSession.experiment.([this.PlotsAggregateMethodPrefix plots{selection(i)}])( this.selectedSessions );
                     end
                 end

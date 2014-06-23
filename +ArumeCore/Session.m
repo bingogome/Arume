@@ -29,8 +29,26 @@ classdef Session < ArumeCore.DataDB
     %% properties from analysis
     properties( Dependent = true ) % not stored in the object (memory) BIG VARIABLES
         
+        % Dataset with all the trial information (one row per trial)
+        %
+        % Most of is created automatically for all the experiments using the 
+        % experiment design and the experiment run information.
+        % Each experiment can add extra information in the method prepareTrialDataSet.
         trialDataSet
-        
+            
+        % Dataset with all the sample data (one row per sample) :
+        % 
+        % Different experiments can load different columns.
+        % Each experiment has to take care of preparing the dataset
+        %
+        % TimeStamp
+        % LeftHorizontal
+        % LeftVertical
+        % LeftTorsion
+        % RightHorizontal
+        % RightVertical
+        % RightTorsion
+        % HeadRollTilt
         samplesDataSet
     end
     
