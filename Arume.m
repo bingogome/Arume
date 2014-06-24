@@ -158,10 +158,18 @@ classdef Arume < handle
             end
         end
         
-        function session = newSession( this, experiment, subject_Code, session_Code, experimentOptions )
+        function session = newSession( this, experiment, subjectCode, sessionCode, experimentOptions )
             % Crates a new session to start the experiment and collect data
             
-            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code, experimentOptions );
+            % check if session already exists with that subjectCode and
+            % sessionCode
+            for session = this.currentProject.sessions
+                if ( isequal(subjectCode, session.subjectCode) && isequal( sessionCode, session.sessionCode) )
+                    error( 'Arume: session already exists use a diferent name' );
+                end
+            end
+            
+            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subjectCode, sessionCode, experimentOptions );
             this.selectedSessions = session;
             this.currentProject.save();
         end

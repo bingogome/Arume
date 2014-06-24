@@ -113,24 +113,22 @@ classdef Session < ArumeCore.DataDB
             this.subjectCode    = subjectCode;
             this.sessionCode    = sessionCode;
             
-            this.InitDB( this.project.dataAnalysisPath, this.name );
-            this.project.addSession(this);
+            % to create stand alone sessions that do not belong to a
+            % project and don't save data
+            if ( ~isempty( project) ) 
+                this.InitDB( this.project.dataAnalysisPath, this.name );
+                this.project.addSession(this);
+            end
         end
         
         function initNew( this, project, experimentName, subjectCode, sessionCode, experimentOptions )
             
-            % check if session already exists with that subjectCode and
-            % sessionCode
-            for session = project.sessions
-                if ( isequal(subjectCode, session.subjectCode) && isequal( sessionCode, session.sessionCode) )
-                    error( 'Arume: session already exists use a diferent name' );
-                end
-            end
-            
             this.init( project, experimentName, subjectCode, sessionCode, experimentOptions );
             
             % create the new folders
-            mkdir( project.dataRawPath, this.name );
+            if ( ~isempty( project) ) 
+                mkdir( project.dataRawPath, this.name );
+            end
         end
         
         function initExisting( this, project, data )
@@ -192,6 +190,15 @@ classdef Session < ArumeCore.DataDB
             
             % Start the experiment
             this.experiment.run();
+        end
+        
+        function simulate( this )
+            
+            % Set up the new run: trial sequence, etc ...
+            this.CurrentRun = ArumeCore.ExperimentRun.SetUpNewRun( this.experiment );
+            
+            % Start the experiment
+            this.experiment.runSimulation();
         end
         
         function resume( this )
