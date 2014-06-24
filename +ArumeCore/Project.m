@@ -66,10 +66,10 @@ classdef Project < handle
             end
             
             % initialize the project
-            this.init( fullfile(tempPath, projectName), defaultExperiment );
+            this.init( fullfile(tempPath, projectName),projectName, defaultExperiment );
             
             % prepare folder structure
-            mkdir( Arume.tempFolder, name );
+            mkdir( tempPath, projectName );
             mkdir( this.path, 'dataRaw' );
             mkdir( this.path, 'dataAnalysis' );
             mkdir( this.path, 'stimuli' );
@@ -162,12 +162,12 @@ classdef Project < handle
         function project = NewProject( projectFilePath, projectName, tempPath, defaultExperiment)            
             
             % check if parentFolder exists
-            if ( ~exist( parentFolder, 'dir' ) )
+            if ( ~exist( projectFilePath, 'dir' ) )
                 error('Arume: parent folder does not exist');
             end
             
             % check if name is a valid name
-            if ( ~ArumeCore.Project.IsValidProjectName( name ) )
+            if ( ~ArumeCore.Project.IsValidProjectName( projectName ) )
                 error('Arume: project name is not valid');
             end
             

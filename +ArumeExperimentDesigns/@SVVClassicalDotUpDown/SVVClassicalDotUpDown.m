@@ -1,4 +1,4 @@
-classdef SVVClassicalUpDown < ArumeCore.ExperimentDesign
+classdef SVVClassicalDotUpDown < ArumeCore.ExperimentDesign
     %OPTOKINETICTORSION Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -132,16 +132,20 @@ classdef SVVClassicalUpDown < ArumeCore.ExperimentDesign
                     end
                     
                     
-                    if ( secondsElapsed > 0.5 )
-                        Screen('DrawLine', graph.window, this.lineColor, fromH, fromV, toH, toV, 4);
-                    end
+                    fixRect = [0 0 10 10];
+                    fixRect = CenterRectOnPointd( fixRect, toH, toV );
+                    Screen('FillOval', graph.window,  this.lineColor, fixRect);
                     
+%                     if ( secondsElapsed > 0.5 )
+%                         Screen('DrawLine', graph.window, this.lineColor, fromH, fromV, toH, toV, 4);
+%                     end
+%                     
                     
                     
                     % black patch to block part of the line
-                    fixRect = [0 0 150 150];
-                    fixRect = CenterRectOnPointd( fixRect, mx, my );
-                    Screen('FillOval', graph.window,  [0 0 0] , fixRect);
+%                     fixRect = [0 0 150 150];
+%                     fixRect = CenterRectOnPointd( fixRect, mx, my );
+%                     Screen('FillOval', graph.window,  [0 0 0] , fixRect);
                     
                     fixRect = [0 0 10 10];
                     fixRect = CenterRectOnPointd( fixRect, mx, my );

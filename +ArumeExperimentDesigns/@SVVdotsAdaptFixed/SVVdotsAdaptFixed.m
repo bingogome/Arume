@@ -10,7 +10,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
         reactionTime = '';
         
         
-        fixColor = [0 255 0];
+        fixColor = [255 0 0];
         
         targetColor = [255 0 0];
         
@@ -30,7 +30,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
             dlg.targetDistance = { 125 '* (pix)' [10 500] };
             dlg.fixationDuration = { 1000 '* (ms)' [100 3000] };
-            dlg.targetDuration = { 300 '* (ms)' [100 1000] };
+            dlg.targetDuration = { 300 '* (ms)' [100 30000] };
             dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
         end
     end
