@@ -251,13 +251,22 @@ classdef SVVLineAdaptFixed < ArumeCore.ExperimentDesign
                     % -----------------------------------------------------------------
                     
                     if ( secondsElapsed > t1  )
-                        
                         if ( this.ExperimentOptions.UseGamePad )
                             [d, l, r] = ArumeHardware.GamePad.Query;
                             if ( l == 1)
-                                this.lastResponse = 1;
+                                switch(variables.Position)
+                                    case 'Up'
+                                        this.lastResponse = 1;
+                                    case 'Down'
+                                        this.lastResponse = 0;
+                                end
                             elseif( r == 1)
-                                this.lastResponse = 0;
+                                switch(variables.Position)
+                                    case 'Up'
+                                        this.lastResponse = 0;
+                                    case 'Down'
+                                        this.lastResponse = 1;
+                                end
                             end
                         else
                             [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
@@ -267,13 +276,45 @@ classdef SVVLineAdaptFixed < ArumeCore.ExperimentDesign
                                     KbName(keys(i))
                                     switch(KbName(keys(i)))
                                         case 'RightArrow'
-                                            this.lastResponse = 1;
+                                            switch(variables.Position)
+                                                case 'Up'
+                                                    this.lastResponse = 1;
+                                                case 'Down'
+                                                    this.lastResponse = 0;
+                                            end
                                         case 'LeftArrow'
-                                            this.lastResponse = 0;
+                                            switch(variables.Position)
+                                                case 'Up'
+                                                    this.lastResponse = 0;
+                                                case 'Down'
+                                                    this.lastResponse = 1;
+                                            end
                                     end
                                 end
                             end
                         end
+%                         if ( this.ExperimentOptions.UseGamePad )
+%                             [d, l, r] = ArumeHardware.GamePad.Query;
+%                             if ( l == 1)
+%                                 this.lastResponse = 1;
+%                             elseif( r == 1)
+%                                 this.lastResponse = 0;
+%                             end
+%                         else
+%                             [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
+%                             if ( keyIsDown )
+%                                 keys = find(keyCode);
+%                                 for i=1:length(keys)
+%                                     KbName(keys(i))
+%                                     switch(KbName(keys(i)))
+%                                         case 'RightArrow'
+%                                             this.lastResponse = 1;
+%                                         case 'LeftArrow'
+%                                             this.lastResponse = 0;
+%                                     end
+%                                 end
+%                             end
+%                         end
                     end
                     if ( this.lastResponse >= 0 )
                         this.reactionTime = secondsElapsed-1;
