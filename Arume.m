@@ -194,10 +194,16 @@ classdef Arume < handle
             this.currentProject.save();
         end
         
-        function deleteCurrentSession( this )
+        function deleteSelectedSessions( this )
             % Deletes the current session
-            this.currentProject.deleteSession(this.currentSession);
+            sessions = this.selectedSessions;
+            
+            for i =1:length(sessions)
+                this.currentProject.deleteSession(sessions(i));
+            end
+            
             this.selectedSessions = [];
+            
             this.currentProject.save();
         end
         

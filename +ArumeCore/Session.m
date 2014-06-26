@@ -8,6 +8,7 @@ classdef Session < ArumeCore.DataDB
         
         subjectCode = '000';
         sessionCode = 'Z';
+        comment = '';
         
         CurrentRun  = [];
         PastRuns    = [];
@@ -134,11 +135,17 @@ classdef Session < ArumeCore.DataDB
         function initExisting( this, project, data )
              
             this.init( project, data.experimentName, data.subjectCode, data.sessionCode, data.experimentOptions  );
-            if (~isempty( data.CurrentRun ))
+            
+            if (isfield(data, 'CurrentRun') && ~isempty( data.CurrentRun ))
                 this.CurrentRun  = ArumeCore.ExperimentRun.LoadRunData( data.CurrentRun, this.experiment );
             end
-            if (~isempty( data.PastRuns ))
+            
+            if (isfield(data, 'PastRuns') && ~isempty( data.PastRuns ))
                 this.PastRuns  = ArumeCore.ExperimentRun.LoadRunDataArray( data.PastRuns, this.experiment );
+            end
+            
+            if (isfield(data, 'comment') && ~isempty( data.comment ))
+                this.comment  = data.comment;
             end
         end
         
@@ -166,6 +173,7 @@ classdef Session < ArumeCore.DataDB
             data.experimentName     = this.experiment.Name;
             data.subjectCode        = this.subjectCode;
             data.sessionCode        = this.sessionCode;
+            data.comment        = this.comment;
             data.experimentOptions  = this.experiment.ExperimentOptions;
             
             if (~isempty( this.CurrentRun ))
@@ -175,6 +183,10 @@ classdef Session < ArumeCore.DataDB
                 data.CurrentRun = [];
                 data.PastRuns = [];
             end
+        end
+        
+        function updateComment( this, comment)
+            this.comment = comment;
         end
         
         %

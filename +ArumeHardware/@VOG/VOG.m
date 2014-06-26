@@ -13,6 +13,13 @@ classdef VOG
             vogdata = ArumeHardware.VOG.LoadVOGData( ['C:\secure\Data\dataVOGvsCoil\reprocessed\' file]);
         end
         
+        function sampleDataSet = LoadVOGDataV3( datafile)
+            
+            import ArumeHardware.*;
+            
+            
+        end
+        
         function sampleDataSet = LoadVOGData( datafile)
             
             import ArumeHardware.*;

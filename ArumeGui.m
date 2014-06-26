@@ -158,7 +158,7 @@ classdef ArumeGui < handle
                 'Max'       , 10, ...
                 'HorizontalAlignment'   , 'Left',...
                 'FontName'	, 'consolas',...
-                'String'    , 'INFO:',...
+                'String'    , '',...
                 'Units'     ,'normalized',...
                 'Position'  , [0.5 0.62 0.47 0.36], ...
                 'BackgroundColor'     , 'w', ...
@@ -255,8 +255,8 @@ classdef ArumeGui < handle
             % Define a context menu; it is not attached to anything
             this.sessionContextMenu = uicontextmenu;
             this.sessionContextMenuDelete = uimenu(this.sessionContextMenu, ...
-                'Label'     , 'Delete session ...', ...
-                'Callback'  , @this.DeleteSession);
+                'Label'     , 'Delete sessions ...', ...
+                'Callback'  , @this.DeleteSessions);
             this.sessionContextMenuRename = uimenu(this.sessionContextMenu, ...
                 'Label'     , 'Rename session ...', ...
                 'Callback'  , @this.RenameSession);
@@ -280,6 +280,9 @@ classdef ArumeGui < handle
         
         function figureCloseRequest( this, source, eventdata )
             if ( this.closeProjectQuestdlg( ) )
+                if ( ~isempty( this.arume.currentProject) )
+                    this.arume.currentProject.save();
+                end
                 delete(this.figureHandle)
                 Arume('clear');
             end
@@ -314,6 +317,8 @@ classdef ArumeGui < handle
                 if ( isempty( P ) )
                     return
                 end
+                this.arume.currentProject.save();
+                
                 this.arume.newProject( P.Path, P.Name, P.Default_Experiment);
                 this.updateGui();
             end
@@ -325,6 +330,8 @@ classdef ArumeGui < handle
                 if ( ~filename  )
                     return
                 end
+                this.arume.currentProject.save();
+                
                 this.arume.loadProject(fullfile(pathname, filename));
                 this.updateGui();
             end
@@ -388,13 +395,13 @@ classdef ArumeGui < handle
             this.updateGui();
         end 
         
-        function DeleteSession( this, source, eventdata )
-            choice = questdlg('Are you sure you want to delete the session?', ...
+        function DeleteSessions( this, source, eventdata )
+            choice = questdlg('Are you sure you want to delete the sessions?', ...
                 'Closing', ...
                 'Yes','No','No');
             switch choice
                 case 'Yes'
-                this.arume.deleteCurrentSession();
+                this.arume.deleteSelectedSessions();
                 this.updateGui();
             end
         end
@@ -467,7 +474,7 @@ classdef ArumeGui < handle
         end
         
         function commentsTextBoxCallBack( this, source, eventdata )
-            a=1;
+            this.arume.currentSession.updateComment(get(this.commentsTextBox, 'string'));
         end
         
         
@@ -517,8 +524,8 @@ classdef ArumeGui < handle
             if ( ~isempty( this.arume.currentSession ) )
                 s = '';
                 s = [s sprintf('%25s: %s\n', 'Experiment', this.arume.currentSession.experiment.Name)];
-                s = [s sprintf('%25s: %s\n', 'DataRawPath', this.arume.currentSession.dataRawPath)];
-                s = [s sprintf('%25s: %s\n', 'DataAnalysisPath', this.arume.currentSession.dataAnalysisPath)];
+                %                 s = [s sprintf('%25s: %s\n', 'DataRawPath', this.arume.currentSession.dataRawPath)];
+                %                 s = [s sprintf('%25s: %s\n', 'DataAnalysisPath', this.arume.currentSession.dataAnalysisPath)];
                 if ( ~isempty( this.arume.currentSession.experiment.ExperimentOptions ) )
                     options = fieldnames(this.arume.currentSession.experiment.ExperimentOptions);
                     for i=1:length(options)
@@ -544,6 +551,13 @@ classdef ArumeGui < handle
                 end
                 
                 set(this.infoBox,'string', s);
+            end
+            
+            % update comments text box
+            if ( ~isempty( this.arume.currentSession ) )
+                set(this.commentsTextBox,'string',this.arume.currentSession.comment);
+            else
+                set(this.commentsTextBox,'string','');
             end
             
             % update analysis listbox

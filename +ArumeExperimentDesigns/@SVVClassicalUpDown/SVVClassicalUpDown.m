@@ -139,10 +139,10 @@ classdef SVVClassicalUpDown < ArumeCore.ExperimentDesign
                     
                     
                     % black patch to block part of the line
-                    fixRect = [0 0 150 150];
-                    fixRect = CenterRectOnPointd( fixRect, mx, my );
-                    Screen('FillOval', graph.window,  [0 0 0] , fixRect);
-                    
+%                     fixRect = [0 0 150 150];
+%                     fixRect = CenterRectOnPointd( fixRect, mx, my );
+%                     Screen('FillOval', graph.window,  [0 0 0] , fixRect);
+%                     
                     fixRect = [0 0 10 10];
                     fixRect = CenterRectOnPointd( fixRect, mx, my );
                     Screen('FillOval', graph.window,  this.lineColor, fixRect);

@@ -1,14 +1,12 @@
-classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
+classdef SVVForcedChoice < ArumeCore.ExperimentDesign
     %SVVdotsAdaptFixed Summary of this class goes here
     %   Detailed explanation goes here
     
     properties
-        
         eyeTracker = [];
         
         lastResponse = '';
         reactionTime = '';
-        
         
         fixColor = [255 0 0];
         
@@ -17,7 +15,6 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
         currentAngle = 0;
         currentCenterRange = 0;
         currentRange = 180;
-        
     end
     
     % ---------------------------------------------------------------------
@@ -26,6 +23,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
     methods ( Static = true )
         function dlg = GetOptionsStructDlg( this )
             dlg.UseGamePad = { {'0','{1}'} };
+            dlg.UseLine = { {'{0}','1'} };
             dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
             dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
             dlg.targetDistance = { 125 '* (pix)' [10 500] };
@@ -39,7 +37,6 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods ( Access = protected )
-        
         function initExperimentDesign( this  )
             
             this.trialDuration = this.ExperimentOptions.fixationDuration/1000 ...
@@ -49,13 +46,13 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
-            this.trialsPerSession   = 100;
+            this.trialsPerSession   = 170;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 10;
+            this.numberOfTimesRepeatBlockSequence = 5;
             this.blocksToRun = 1;
-            this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 10, 'trialsToRun', 10) ];
+            this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 34, 'trialsToRun', 34) ];
         end
         
         function initBeforeRunning( this )
@@ -69,77 +66,19 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             i= 0;
             
             i = i+1;
-            conditionVars(i).name   = 'AnglePercentRange';
-            conditionVars(i).values = ([-100:100/2.5:100-100/5]+100/5);
+            conditionVars(i).name   = 'Angle';
+            conditionVars(i).values = [-16:2:16];
             
             i = i+1;
             conditionVars(i).name   = 'Position';
             conditionVars(i).values = {'Up' 'Down'};
         end
         
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
-        end
-        
-        function staircaseVars = getStaircaseVariables( this )
-            i= 0;
-            
-            i = i+1;
-            staircaseVars = [];
-        end
-        
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
             % Add stuff here
             
-            if ( ~isempty( this.Session.CurrentRun ) )
-                nCorrect = sum(this.Session.CurrentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
-                
-                previousValues = zeros(nCorrect,1);
-                previousResponses = zeros(nCorrect,1);
-                
-                n = 1;
-                for i=1:length(this.Session.CurrentRun.pastConditions(:,1))
-                    if ( this.Session.CurrentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
-                        isdown = strcmp(this.Session.CurrentRun.Data{i}.variables.Position, 'Down');
-                        previousValues(n) = this.Session.CurrentRun.Data{i}.trialOutput.Angle;
-                        previousResponses(n) = this.Session.CurrentRun.Data{i}.trialOutput.Response;
-                        n = n+1;
-                    end
-                end
-            end
-            
-            NtrialPerBlock = 10;
-            
-            % recalculate every 10 trials
-            N = mod(length(previousValues),NtrialPerBlock);
-            Nblocks = floor(length(previousValues)/NtrialPerBlock)*NtrialPerBlock+1;
-            
-            if ( length(previousValues)>0 )
-                if ( N == 0 )
-                    ds = dataset;
-                    ds.Response = previousResponses(1:end);
-                    ds.Angle = previousValues(1:end);
-                    modelspec = 'Response ~ Angle';
-                    subds = ds;
-                    
-                    SVV = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
-
-                    this.currentCenterRange = SVV;            
-
-                    this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
-                end
-            else
-                this.currentCenterRange = rand(1)*30-15;
-                this.currentRange = 90;
-            end
-            
-            this.currentAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
-            this.currentAngle = mod(this.currentAngle+90,180)-90;
-            
-            this.currentAngle = round(this.currentAngle);
-            
-            disp(['CURRENT: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(N) ' SVV : ' num2str(this.currentCenterRange) ' RANGE: ' num2str(this.currentRange)]);
+            this.currentAngle = variables.Angle;
             
             trialResult =  Enum.trialResult.CORRECT;
         end
@@ -187,17 +126,34 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                     end
                     
                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
-                        %-- Draw target
-                        targetRect = [0 0 this.ExperimentOptions.TargetDiameter this.ExperimentOptions.TargetDiameter];
-                         
-                        targetDist = this.ExperimentOptions.targetDistance;
-                        switch(variables.Position)
-                            case 'Up'
-                                targetRect = CenterRectOnPointd( targetRect, mx + targetDist*sin(this.currentAngle/180*pi), my - targetDist*cos(this.currentAngle/180*pi) );
-                            case 'Down'
-                                targetRect = CenterRectOnPointd( targetRect, mx - targetDist*sin(this.currentAngle/180*pi), my + targetDist*cos(this.currentAngle/180*pi) );
+                        switch(this.ExperimentOptions.UseLine )
+                            case 0
+                                %-- Draw target
+                                targetRect = [0 0 this.ExperimentOptions.TargetDiameter this.ExperimentOptions.TargetDiameter];
+                                
+                                targetDist = this.ExperimentOptions.targetDistance;
+                                switch(variables.Position)
+                                    case 'Up'
+                                        targetRect = CenterRectOnPointd( targetRect, mx + targetDist*sin(this.currentAngle/180*pi), my - targetDist*cos(this.currentAngle/180*pi) );
+                                    case 'Down'
+                                        targetRect = CenterRectOnPointd( targetRect, mx - targetDist*sin(this.currentAngle/180*pi), my + targetDist*cos(this.currentAngle/180*pi) );
+                                end
+                                Screen('FillOval', graph.window, this.targetColor, targetRect);
+                            case 1
+                                switch(variables.Position)
+                                    case 'Up'
+                                        fromH = mx;
+                                        fromV = my;
+                                        toH = mx + this.ExperimentOptions.targetDistance*sin(this.currentAngle/180*pi);
+                                        toV = my - this.ExperimentOptions.targetDistance*cos(this.currentAngle/180*pi);
+                                    case 'Down'
+                                        fromH = mx;
+                                        fromV = my;
+                                        toH = mx - this.ExperimentOptions.targetDistance*sin(this.currentAngle/180*pi);
+                                        toV = my + this.ExperimentOptions.targetDistance*cos(this.currentAngle/180*pi);
+                                end
+                                Screen('DrawLine', graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
                         end
-                        Screen('FillOval', graph.window, this.targetColor, targetRect);
                     end
                     
                     % -----------------------------------------------------------------

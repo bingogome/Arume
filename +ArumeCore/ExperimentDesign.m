@@ -889,11 +889,13 @@ classdef ExperimentDesign < handle
             %%values. This is important to mantain past compatibility if
             %%options are added in the future.
             optionsDlg = ArumeCore.ExperimentDesign.GetExperimentDesignOptions( this.Name );
-            options = StructDlg(optionsDlg,'',[],[],'off');
-            fields = fieldnames(options);
-            for i=1:length(fields)
-                if ( ~isfield(this.ExperimentOptions, fields{i}))
-                    this.ExperimentOptions.(fields{i}) = options.(fields{i});
+            if ( ~isempty( optionsDlg ) )
+                options = StructDlg(optionsDlg,'',[],[],'off');
+                fields = fieldnames(options);
+                for i=1:length(fields)
+                    if ( ~isfield(this.ExperimentOptions, fields{i}))
+                        this.ExperimentOptions.(fields{i}) = options.(fields{i});
+                    end
                 end
             end
             
@@ -950,8 +952,13 @@ classdef ExperimentDesign < handle
         
         function experiment = Create(session, experimentName, experimentOptions)
             
-            % Create the experiment design object
-            experiment = ArumeExperimentDesigns.(experimentName)();
+            if ( exist( ['ArumeExperimentDesigns.' experimentName],  'class') )
+                % Create the experiment design object
+                experiment = ArumeExperimentDesigns.(experimentName)();
+            else
+                % Create the experiment design object
+                experiment = ArumeExperimentDesigns.BlankExperiment();
+            end
             
             % Initialize the experiment design
             experiment.init(session, experimentOptions);

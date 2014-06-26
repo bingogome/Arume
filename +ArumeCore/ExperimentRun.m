@@ -3,6 +3,9 @@ classdef ExperimentRun < matlab.mixin.Copyable
     %   Detailed explanation goes here
     
     properties
+        % IMPORTANT! all properties must be saved in the method
+        % SaveRunData and loaded in LoadRunData
+        
         ExperimentDesign
         
         Info
