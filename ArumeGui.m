@@ -317,7 +317,9 @@ classdef ArumeGui < handle
                 if ( isempty( P ) )
                     return
                 end
-                this.arume.currentProject.save();
+                if ( ~isempty( this.arume.currentProject ) )
+                    this.arume.currentProject.save();
+                end
                 
                 this.arume.newProject( P.Path, P.Name, P.Default_Experiment);
                 this.updateGui();
