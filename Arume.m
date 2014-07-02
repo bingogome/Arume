@@ -28,7 +28,6 @@ classdef Arume < handle
     end
     
     properties( SetAccess=private )
-        
         currentProject      % Current working project 
         selectedSessions    % Current selected sessions (if multiple selected enabled)
         defaultDataFolder   % Default data folder for new projects

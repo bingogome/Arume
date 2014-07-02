@@ -77,7 +77,7 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
         end
         
         function initBeforeRunning( this )
-            asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\VOGLib.dll');
+            asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
             this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('localhost',9000);
             this.bitebar = ArumeHardware.BiteBarMotor();
             this.eyeTracker.SetDataFileName(this.Session.name);
@@ -107,7 +107,7 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             
             trialResult =  Enum.trialResult.CORRECT;
             
-            this.bitebar.GoUpright();
+           % this.bitebar.GoUpright();
         end
         
         function trialResult = runTrial( this, variables )
@@ -172,9 +172,9 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
                         if ( ~isTilted ) 
                             switch(variables.TiltDirection)
                                 case 'Left'
-                                        this.bitebar.TiltLeft(this.tiltAngle);
+                                       this.bitebar.TiltLeft(this.tiltAngle);
                                 case 'Right'
-                                        this.bitebar.TiltRight(this.tiltAngle);
+                                       this.bitebar.TiltRight(this.tiltAngle);
                             end
                             isTilted = 1;
                         end

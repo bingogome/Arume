@@ -39,13 +39,13 @@ classdef SVVdotsAdaptFixedSimulation < ArumeCore.ExperimentDesign
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
-            this.trialsPerSession   = 100;
+            this.trialsPerSession   = 128;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 10;
+            this.numberOfTimesRepeatBlockSequence = 16;
             this.blocksToRun = 1;
-            this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 10, 'trialsToRun', 10) ];
+            this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 16, 'trialsToRun', 16) ];
         end
         
         function initBeforeRunning( this )
@@ -58,7 +58,7 @@ classdef SVVdotsAdaptFixedSimulation < ArumeCore.ExperimentDesign
             
             i = i+1;
             conditionVars(i).name   = 'AnglePercentRange';
-            conditionVars(i).values = ([-100:100/2.5:100-100/5]+100/5);
+            conditionVars(i).values = ([-100:100/4:100-100/8]+100/8);
             
             i = i+1;
             conditionVars(i).name   = 'Position';
@@ -97,35 +97,36 @@ classdef SVVdotsAdaptFixedSimulation < ArumeCore.ExperimentDesign
                 end
             end
             
-            NtrialPerBlock = 10;
+            NtrialPerBlock = 16;
+            
+            Ranges = [90 45 16 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 8 ];
             
             % recalculate every 10 trials
             N = mod(length(previousValues),NtrialPerBlock);
-            Nblocks = floor(length(previousValues)/NtrialPerBlock)*NtrialPerBlock+1;
+            Nblocks = ceil(length(previousValues)/NtrialPerBlock);
             
             if ( length(previousValues)>0 )
                 if ( N == 0 )
                     ds = dataset;
                     ds.Response = previousResponses(1:end);
                     ds.Angle = previousValues(1:end);
-                    modelspec = 'Response ~ Angle';
                     subds = ds;
                     
                     SVV = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
 
                     this.currentCenterRange = SVV;            
 
-                    this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
+                    this.currentRange = Ranges(Nblocks);
                 end
             else
-                this.currentCenterRange = rand(1)*30-15;
+                this.currentCenterRange = (rand(1)*2-1)*Ranges(1)/NtrialPerBlock*4;
                 this.currentRange = 90;
             end
             
             this.currentAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
             this.currentAngle = mod(this.currentAngle+90,180)-90;
             
-            this.currentAngle = round(this.currentAngle);
+            this.currentAngle = round(this.currentAngle/2)*2;
             trialResult =  Enum.trialResult.CORRECT;
         end
         

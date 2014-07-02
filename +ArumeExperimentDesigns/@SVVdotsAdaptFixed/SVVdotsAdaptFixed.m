@@ -29,7 +29,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
             dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
             dlg.targetDistance = { 125 '* (pix)' [10 500] };
-            dlg.fixationDuration = { 1000 '* (ms)' [100 3000] };
+            dlg.fixationDuration = { 1000 '* (ms)' [1 3000] };
             dlg.targetDuration = { 300 '* (ms)' [100 30000] };
             dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
         end

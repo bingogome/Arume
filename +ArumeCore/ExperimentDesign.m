@@ -601,7 +601,6 @@ classdef ExperimentDesign < handle
                             if ( this.Session.CurrentRun.CurrentSession < this.Session.CurrentRun.SessionsToRun)
                                 % -- session finished
                                 this.Session.CurrentRun.CurrentSession = this.Session.CurrentRun.CurrentSession + 1;
-                                this.Graph.DlgHitKey( 'Session finished, hit a key to exit' );
                             end
                             break
                     end
