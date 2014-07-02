@@ -332,7 +332,7 @@ classdef ArumeGui < handle
                 if ( ~filename  )
                     return
                 end
-                if ( ~isempty( this.arume.currentProject ) )
+                if ( ~isempty(this.arume.currentProject) )
                     this.arume.currentProject.save();
                 end
                 

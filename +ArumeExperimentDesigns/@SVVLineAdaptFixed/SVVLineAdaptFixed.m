@@ -121,7 +121,7 @@ classdef SVVLineAdaptFixed < ArumeExperimentDesigns.SVVdotsAdaptFixed
                     % --- Collecting responses  ---------------------------------------
                     % -----------------------------------------------------------------
                     
-                    if ( secondsElapsed > max(t1,0.2)  )
+                    if ( secondsElapsed > max(t1,0.200)  )
                         if ( this.ExperimentOptions.UseGamePad )
                             [d, l, r] = ArumeHardware.GamePad.Query;
                             if ( l == 1)
