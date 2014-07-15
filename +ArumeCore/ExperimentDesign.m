@@ -21,9 +21,11 @@ classdef ExperimentDesign < handle
         ConditionMatrix
         
     end
+    
     properties ( Dependent = true )
         Name
     end
+    
     methods
         function name = get.Name(this)
             name = strrep(class(this), 'ArumeExperimentDesigns.','');

@@ -41,14 +41,32 @@ classdef Arume < handle
     methods
         function session = get.currentSession( this )
             if ( length(this.selectedSessions) >= 1 )
-                session = this.selectedSessions(1);
+                session = this.selectedSessions(end);
             else
                 session = [];
             end
         end
     end
     
-    methods
+    methods( Access=private )
+        
+        function init( this)
+            % find the folder of arume
+            [folder, name, ext] = fileparts(which('Arume'));
+            
+            this.defaultDataFolder = fullfile(folder, 'ArumeData');
+            if ( ~exist( this.defaultDataFolder, 'dir') )
+                mkdir(folder, 'ArumeData');
+            end
+            
+            this.tempFolder = fullfile(folder, 'Temp');
+            if ( ~exist( this.tempFolder, 'dir') )
+                mkdir(folder, 'Temp');
+            end
+        end
+    end
+    
+    methods( Access=public )
         
         %
         % Main constructor
@@ -102,21 +120,6 @@ classdef Arume < handle
             end
         end
         
-        function init( this)
-            % find the folder of arume
-            [folder, name, ext] = fileparts(which('Arume'));
-            
-            this.defaultDataFolder = fullfile(folder, 'ArumeData');
-            if ( ~exist( this.defaultDataFolder, 'dir') )
-                mkdir(folder, 'ArumeData');
-            end
-            
-            this.tempFolder = fullfile(folder, 'Temp');
-            if ( ~exist( this.tempFolder, 'dir') )
-                mkdir(folder, 'Temp');
-            end
-        end
-        
         %
         % Managing projects
         %
@@ -130,6 +133,10 @@ classdef Arume < handle
         
         function loadProject( this, file )
             % Loads a project from a project file
+            
+            if ( ~exist( file, 'file') )
+                msgbox( 'The project file does not exist.');
+            end
             
             this.currentProject = ArumeCore.Project.LoadProject( file, this.tempFolder );
             this.selectedSessions = [];
@@ -273,6 +280,10 @@ classdef Arume < handle
             for i=1:length(analysisList)
                 this.experiment.([this.AnalysisMethodPrefix analysisList{i}])();
             end
+        end
+        
+        function exportAnalysesData(this)
+            a=1;
         end
         
         function plotList = GetPlotList( this )

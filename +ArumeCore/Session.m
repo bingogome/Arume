@@ -51,6 +51,9 @@ classdef Session < ArumeCore.DataDB
         % RightTorsion
         % HeadRollTilt
         samplesDataSet
+        
+        % Results of the experiment specific analysis
+        analysisResults 
     end
     
     %

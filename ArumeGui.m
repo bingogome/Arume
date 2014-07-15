@@ -53,6 +53,10 @@ classdef ArumeGui < handle
         sessionContextMenu
         sessionContextMenuRename
         sessionContextMenuDelete
+        
+        % Analysis Contextual menu
+        analysisContextMenu
+        analysisContextMenuSendToWorkspace
     end
     
     %% Constructor
@@ -262,6 +266,14 @@ classdef ArumeGui < handle
                 'Callback'  , @this.RenameSession);
             set(this.sessionListBox, 'uicontextmenu', this.sessionContextMenu)
             
+            % session contextual menu
+            % Define a context menu; it is not attached to anything
+            this.analysisContextMenu = uicontextmenu;
+            this.analysisContextMenuSendToWorkspace = uimenu(this.analysisContextMenu, ...
+                'Label'     , 'Send data to matlab workspace ...', ...
+                'Callback'  , @this.SendToWorkspace);
+            set(this.analysisListBox, 'uicontextmenu', this.analysisContextMenu)
+            
             % Move the GUI to the center of the screen.
             movegui(this.figureHandle,'center')
             
@@ -409,6 +421,7 @@ classdef ArumeGui < handle
                 this.updateGui();
             end
         end
+        
         function RenameSession( this, source, eventdata )
             
             sDlg.Subject_Code = this.arume.currentSession.subjectCode;
@@ -487,6 +500,10 @@ classdef ArumeGui < handle
         end
         
         function plotsListBoxCallBack( this, source, eventdata )
+            
+        end
+        
+        function SendToWorkspace( this, source, eventdata)
             
         end
     end
