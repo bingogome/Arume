@@ -26,6 +26,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
     methods ( Static = true )
         function dlg = GetOptionsStructDlg( this )
             dlg.UseGamePad = { {'0','{1}'} };
+            dlg.UseEyeTracker = { {'0','{1}'} };
             dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
             dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
             dlg.targetDistance = { 125 '* (pix)' [10 500] };
@@ -61,6 +62,12 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
         function initBeforeRunning( this )
             if ( this.ExperimentOptions.UseGamePad )
                 ArumeHardware.GamePad.Open
+            end
+            
+            if ( this.ExperimentOptions.UseEyeTracker )
+                asm = NET.addAssembly('D:\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('10.17.101.13',9000);
+                this.eyeTracker.SetDataFileName(this.Session.name);
             end
         end
         
@@ -145,6 +152,15 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
         end
         
         function trialResult = runTrial( this, variables )
+            
+            if ( ~isempty(this.eyeTracker) )
+                this.eyeTracker.SetDataFileName(this.Session.name);
+                if ( ~this.eyeTracker.recording )
+                    this.eyeTracker.StartRecording();
+                    pause(1);
+                end
+                this.eyeTracker.SaveEvent(size(this.Session.CurrentRun.pastConditions,1));
+            end
             
             try
                 this.lastResponse = -1;
@@ -298,7 +314,9 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                     
                 end
             catch ex
-                %  this.eyeTracker.StopRecording();
+                if ( ~isempty( this.eyeTracker ) )
+                    this.eyeTracker.StopRecording();
+                end
                 rethrow(ex)
             end
             
@@ -307,7 +325,12 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                 trialResult =  Enum.trialResult.ABORT;
             end
             
-            % this.eyeTracker.StopRecording();
+            if ( ~isempty( this.eyeTracker ) )
+                
+                if ( length(this.Session.CurrentRun.futureConditions) == 0 )
+                    this.eyeTracker.StopRecording();
+                end
+            end
             
         end
         
@@ -394,7 +417,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                 
            
             figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-            subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
+            ax1=subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
             
             plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
             plot(a,p, 'color', 'k','linewidth',2);
@@ -413,7 +436,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             set(gca,'xticklabel',[])
             
             
-            subplot(3,1,[3],'nextplot','add', 'fontsize',12);
+            ax2=subplot(3,1,[3],'nextplot','add', 'fontsize',12);
             bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
                 
             set(gca,'xlim',[-30 30],'ylim',[0 15])
@@ -422,6 +445,8 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             set(gca,'xgrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
             set(gca, 'YAxisLocation','right')
+            
+            linkaxes([ax1 ax2],'x');
       end
         
       function plotResults = Plot_SigmoidUpDown(this)
@@ -527,25 +552,111 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             
             %%
       end
-      
-      function plotResults = Plot_AmirTest(this)
-            analysisResults = 0;
-            
-            ds = this.Session.trialDataSet;
-            
-            ds
-      end
-        
-      function plotResults = PlotAggregate_SigmoidCombined(this, sessions)
+              
+      function plotResults = PlotAggregate_SVVCombined(this, sessions)
           
-            ds = this.Session.trialDataSet;
-            ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
-
-            subds = ds(:,:);
+          SVV = nan(size(sessions));
+          SVVUp = nan(size(sessions));
+          SVVDown = nan(size(sessions));
+          SVVLine = nan(size(sessions));
+          names = {};
+          for i=1:length(sessions)
+              session = sessions(i);
+              names{i} = session.sessionCode;
+              switch(class(session.experiment))
+                  case {'ArumeExperimentDesigns.SVVdotsAdaptFixed' 'ArumeExperimentDesigns.SVVLineAdaptFixed' 'ArumeExperimentDesigns.SVVForcedChoice'}
+                      ds = session.trialDataSet;
+                      ds(ds.TrialResult>0,:) = [];
+                      ds(ds.Response<0,:) = [];
+                      
+                      subds = ds(:,:);
+                      [SVV(i), a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+                      
+                      subds = ds(strcmp(ds.Position,'Up'),:);
+                      [SVVUp(i), a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+                      subds = ds(strcmp(ds.Position,'Down'),:);
+                      [SVVDown(i), a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+                      
+                      
+                  case 'ArumeExperimentDesigns.SVVClassical'
+                      ds = session.trialDataSet;
+                      ds(ds.TrialResult>0,:) = [];
+                   
+                      SVV(i) = median(ds.Response');
+                      SVVLine(i) = SVV(i);
+                  case {'ArumeExperimentDesigns.SVVClassicalUpDown' 'ArumeExperimentDesigns.SVVClassicalDotUpDown'}
+                      ds = session.trialDataSet;
+                      ds(ds.TrialResult>0,:) = [];
+                   
+                      SVV(i) = median(ds.Response');
+                      SVVLine(i) = SVV(i);
+                      
+                      SVVUp(i) = median(ds.Response(streq(ds.Position,'Up'),:)');
+                      SVVDown(i) = median(ds.Response(streq(ds.Position,'Down'),:)');
+              end
+          end
+          
+          figure('position',[100 100 1000 700])
+          
+          subplot(1,2,1,'fontsize',14);
+          plot(SVV,1:length(SVV),'o','markersize',10)
+          hold
+          plot(SVVLine,1:length(SVV),'+','markersize',10)
+          set(gca,'ytick',1:length(SVV),'yticklabel',names)
+          
+          set(gca,'ydir','reverse');
+          line([0 0], get(gca,'ylim'),'color',[0.5 0.5 0.5])
+          
+          set(gca,'xlim',[-20 20])
+          
+          xlabel('SVV (deg)','fontsize',16);
+          
+          subplot(1,2,2,'fontsize',14);
+          plot(SVVUp-SVVDown,1:length(SVV),'o','markersize',10)
+          set(gca,'ytick',1:length(SVV),'yticklabel',names)
+          set(gca,'ydir','reverse');
+          line([0 0], get(gca,'ylim'),'color',[0.5 0.5 0.5])
+          
+          xlabel('SVV UP-Down diff. (deg)','fontsize',16);
+          
+          set(gca,'xlim',[-6 6])
+           
+          ds =[];
+          
+          for i=1:length(sessions)
+              session = sessions(i);
+              names{i} = session.sessionCode;
+              switch(class(session.experiment))
+                  case {'ArumeExperimentDesigns.SVVdotsAdaptFixed' 'ArumeExperimentDesigns.SVVLineAdaptFixed' 'ArumeExperimentDesigns.SVVForcedChoice'}
+                        sds = session.trialDataSet;
+                        sds(sds.TrialResult>0,:) = [];
+                        sds(sds.Response<0,:) = [];
+                        
+                        if ( isempty(ds) )
+                            ds = sds;
+                        else
+                            ds =[ds;sds]
+                        end
+                          
+              end
+          end
+          
+          figure
+         
+           [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( ds.Angle, ds.Response);
             
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
+            plot(a,p, 'color', 'k','linewidth',2);
+            line([SVV, SVV], [0 100], 'color','k','linewidth',2);
       end
+      
+      function analysisResults = Analysis_SVV(this)
+          
+      end
+      
+      function analysisResults = Analysis_SVVUpDown(this)
+      end
+      
     end
     
     % ---------------------------------------------------------------------
@@ -565,7 +676,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             modelspec = 'Response ~ Angle';
             mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
 
-            ds(mdl.Diagnostics.CooksDistance>0.3,:) = [];
+            ds(mdl.Diagnostics.CooksDistance>0.1,:) = [];
             modelspec = 'Response ~ Angle';
             mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
 

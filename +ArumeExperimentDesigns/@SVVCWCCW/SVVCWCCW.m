@@ -1,6 +1,5 @@
 classdef SVVCWCCW < ArumeCore.ExperimentDesign
-    %OPTOKINETICTORSION Summary of this class goes here
-    %   Detailed explanation goes here
+    
     
     properties
         
@@ -37,17 +36,17 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
             % default parameters of any experiment
             this.trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
             this.trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
-            this.trialsPerSession = 136;
+            this.trialsPerSession = 17*8*2;
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 4;
+            this.numberOfTimesRepeatBlockSequence = 1;
             this.blocksToRun              = 2;
             this.blocks(1).fromCondition  = 1;
             this.blocks(1).toCondition    = 17;
-            this.blocks(1).trialsToRun    = 17;
+            this.blocks(1).trialsToRun    = 17*8;
             this.blocks(2).fromCondition  = 18;
             this.blocks(2).toCondition    = 34;
-            this.blocks(2).trialsToRun    = 17;
+            this.blocks(2).trialsToRun    = 17*8;
             
         end
         
@@ -57,7 +56,6 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
                 ArumeHardware.GamePad.Open
             end
         end
-        
         
         
         function [conditionVars] = getConditionVariables( this )
@@ -122,87 +120,89 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
                     fixRect = [0 0 10 10];
                     %                 fixRect = CenterRectOnPointd( fixRect, mx-graph.wRect(3)/4, my );
                     fixRect = CenterRectOnPointd( fixRect, mx, my );
-                    if ( secondsElapsed > 0.5 )
-                    Screen('FillOval', graph.window, this.fixColor, fixRect);
-                    
-                    %-- Draw target
-                    %                         mx = mx-graph.wRect(3)/4;
-                    switch(variables.Direction)
-                        case 'CW'
-                            angle1 = variables.Angle;
-                        case 'CCW'
-                            angle1 = -variables.Angle;
-                    end
-                    
-                    fromH = mx;
-                    fromV = my;
-                    toH = mx + this.lineLength*sin(angle1/180*pi);
-                    toV = my - this.lineLength*cos(angle1/180*pi);
-                    
-                    if ( secondsElapsed > 1 )
-                        Screen('DrawLine', graph.window, this.lineColor, fromH, fromV, toH, toV, 2);
-                    end
-                    % -----------------------------------------------------------------
-                    % --- END Drawing of stimulus -------------------------------------
-                    % -----------------------------------------------------------------
-                    
-                    
-                    
-                    % -----------------------------------------------------------------
-                    % -- Flip buffers to refresh screen -------------------------------
-                    % -----------------------------------------------------------------
-                    this.Graph.Flip();
-                    % -----------------------------------------------------------------
-                    
-                    
-                    % -----------------------------------------------------------------
-                    % --- Collecting responses  ---------------------------------------
-                    % -----------------------------------------------------------------
-                    
-                    if ( this.ExperimentOptions.UseGamePad )
-                        [d, l, r a] = ArumeHardware.GamePad.Query;
-                        if ( buttonReleased == 0 )
-                            if ( l==0 && r==0 && a==0)
-                                buttonReleased = 1;
-                            end
-                        else % wait until the buttons are released
-                            if ( l == 1)
-                                this.lastResponse = 1;
-                            elseif( r == 1)
-                                this.lastResponse = 2;
-                            elseif( a == 1)
-                                this.lastResponse = 3;
-                            end
+                    if ( secondsElapsed > 0 )
+                        Screen('FillOval', graph.window, this.fixColor, fixRect);
+                        
+                        %-- Draw target
+                        %                         mx = mx-graph.wRect(3)/4;
+                        switch(variables.Direction)
+                            case 'CW'
+                                angle1 = variables.Angle;
+                            case 'CCW'
+                                angle1 = -variables.Angle;
                         end
-                    else
-                        if ( secondsElapsed > 0.2 )
-                            [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
-                            if ( keyIsDown )
-                                keys = find(keyCode);
-                                for i=1:length(keys)
-                                    KbName(keys(i))
-                                    switch(KbName(keys(i)))
-                                        case 'LeftArrow'
-                                            this.lastResponse = 1;
-                                        case 'RightArrow'
-                                            this.lastResponse = 2;
-                                        case 'UpArrow'
-                                            this.lastResponse = 3;
+                        
+                        fromH = mx;
+                        fromV = my;
+                        toH = mx + this.lineLength*sin(angle1/180*pi);
+                        toV = my - this.lineLength*cos(angle1/180*pi);
+                        
+                        if ( secondsElapsed > 0.1 )
+                            Screen('DrawLine', graph.window, this.lineColor, fromH, fromV, toH, toV, 2);
+                        end
+                        % -----------------------------------------------------------------
+                        % --- END Drawing of stimulus -------------------------------------
+                        % -----------------------------------------------------------------
+                        
+                        
+                        
+                        % -----------------------------------------------------------------
+                        % -- Flip buffers to refresh screen -------------------------------
+                        % -----------------------------------------------------------------
+                        this.Graph.Flip();
+                        % -----------------------------------------------------------------
+                        
+                        
+                        % -----------------------------------------------------------------
+                        % --- Collecting responses  ---------------------------------------
+                        % -----------------------------------------------------------------
+                        
+                        if ( this.ExperimentOptions.UseGamePad )
+                            [d, l, r a] = ArumeHardware.GamePad.Query;
+                            if ( buttonReleased == 0 )
+                                if ( l==0 && r==0 && a==0)
+                                    buttonReleased = 1;
+                                end
+                            else % wait until the buttons are released
+                                if ( l == 1)
+                                    this.lastResponse = 1;
+                                elseif( r == 1)
+                                    this.lastResponse = 2;
+                                elseif( a == 1)
+                                    this.lastResponse = 3;
+                                end
+                            end
+                        else
+                            if ( secondsElapsed > 0.4 )
+                                [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
+                                if ( keyIsDown )
+                                    keys = find(keyCode);
+                                    for i=1:length(keys)
+                                        KbName(keys(i))
+                                        switch(KbName(keys(i)))
+                                            case 'LeftArrow'
+                                                this.lastResponse = 1;
+                                            case 'RightArrow'
+                                                this.lastResponse = 2;
+                                            case 'UpArrow'
+                                                this.lastResponse = 3;
+                                        end
                                     end
                                 end
                             end
                         end
+                        if ( this.lastResponse > 0 )
+                            break;
+                        end
+                        
+                        
+                        % -----------------------------------------------------------------
+                        % --- END Collecting responses  -----------------------------------
+                        % -----------------------------------------------------------------
+                        
                     end
-                    if ( this.lastResponse > 0 )
-                        break;
-                    end
-                    
-                    
-                    % -----------------------------------------------------------------
-                    % --- END Collecting responses  -----------------------------------
-                    % -----------------------------------------------------------------
-                    
                 end
+                
             catch ex
                 %  this.eyeTracker.StopRecording();
                 rethrow(ex)
@@ -217,6 +217,7 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
             
         end
         
+        
         function trialOutput = runPostTrial(this)
             trialOutput = [];
             trialOutput.Response = this.lastResponse;
@@ -228,19 +229,49 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = public )
         function analysisResults = Plot_Sigmoid(this)
-            analysisResults = 0;
+             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
-            ds.Response = (ds.Response-1)/2;
             ds(ds.TrialResult>0,:) = [];
-                       
-            figure
-            plot(ds.Angle,ds.Response+rand(size(ds.Angle))/10,'o')
-            xlabel('Angle (deg)');
-            ylabel('Percent answered right');
+            ds(ds.Response<0,:) = [];
+
+            subds = ds(:,:);
+            subds.Response = subds.Response-1;
+            subds.Response(streq(ds.Direction,'CCW')) = 1-subds.Response(streq(ds.Direction,'CCW')) ;
             
-            [svvr svvidx] = min(abs( p-50));
-            line([a(svvidx),a(svvidx)], [0 100])
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+            
+                
+           
+            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
+            subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
+            
+            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
+            plot(a,p, 'color', 'k','linewidth',2);
+            line([SVV, SVV], [0 100], 'color','k','linewidth',2);
+            
+               
+            
+            
+            %xlabel('Angle (deg)', 'fontsize',16);
+            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
+            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
+            
+            set(gca,'xlim',[-30 30],'ylim',[-10 110])
+            set(gca,'xgrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+            set(gca,'xticklabel',[])
+            
+            
+            subplot(3,1,[3],'nextplot','add', 'fontsize',12);
+            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
+                
+            set(gca,'xlim',[-30 30],'ylim',[0 15])
+            xlabel('Angle (deg)', 'fontsize',16);
+            ylabel('Number of trials', 'fontsize',16);
+            set(gca,'xgrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+            set(gca, 'YAxisLocation','right')
             %%
         end
     end
