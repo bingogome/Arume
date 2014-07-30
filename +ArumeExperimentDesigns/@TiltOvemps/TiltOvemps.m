@@ -170,6 +170,7 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
                     
                     if ( secondsElapsed > this.tiltTime && secondsElapsed < this.tiltTime + this.tiltDuration )
                         if ( ~isTilted ) 
+                            disp('Tilt');
                             switch(variables.TiltDirection)
                                 case 'Left'
                                        this.bitebar.TiltLeft(this.tiltAngle);

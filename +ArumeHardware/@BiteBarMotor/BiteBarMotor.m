@@ -26,9 +26,17 @@ classdef BiteBarMotor
                 ss =  serial(this.port,'BaudRate',9600);
                 
                 this.s = ss;
-                fopen(this.s);
+                if ( ~isequal(this.s.Status,'open') )
+                    fopen(this.s);
+                end
+            else     
+                this.s = ss;
+                if ( ~isequal(this.s.Status,'open') )
+                    fopen(this.s);
+                end
             end
         end
+        
         function Close(this)
             fclose(this.s);
         end

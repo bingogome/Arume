@@ -688,7 +688,8 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
 
             SVV = a(svvidx);
             
-            allAngles = -90:90;
+            allAngles = -90:2:90;
+            angles = 2*round(angles/2);
             allResponses = nan(size(allAngles));
             trialCounts = nan(size(allAngles));
             for ia=1:length(allAngles)
