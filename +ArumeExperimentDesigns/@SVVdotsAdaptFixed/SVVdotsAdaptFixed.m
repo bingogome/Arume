@@ -65,7 +65,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             end
             
             if ( this.ExperimentOptions.UseEyeTracker )
-                asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+                asm = NET.addAssembly('D:\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
                 this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('10.17.101.13',9000);
                 this.eyeTracker.SetDataFileName(this.Session.name);
             end
@@ -159,7 +159,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                     this.eyeTracker.StartRecording();
                     pause(1);
                 end
-                this.eyeTracker.SaveEvent(length(this.Session.CurrentRun.pastConditions));
+                this.eyeTracker.SaveEvent(size(this.Session.CurrentRun.pastConditions,1));
             end
             
             try
@@ -417,7 +417,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                 
            
             figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-            subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
+            ax1=subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
             
             plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
             plot(a,p, 'color', 'k','linewidth',2);
@@ -436,7 +436,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             set(gca,'xticklabel',[])
             
             
-            subplot(3,1,[3],'nextplot','add', 'fontsize',12);
+            ax2=subplot(3,1,[3],'nextplot','add', 'fontsize',12);
             bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
                 
             set(gca,'xlim',[-30 30],'ylim',[0 15])
@@ -445,6 +445,8 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             set(gca,'xgrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
             set(gca, 'YAxisLocation','right')
+            
+            linkaxes([ax1 ax2],'x');
       end
         
       function plotResults = Plot_SigmoidUpDown(this)
@@ -674,7 +676,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             modelspec = 'Response ~ Angle';
             mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
 
-            ds(mdl.Diagnostics.CooksDistance>0.3,:) = [];
+            ds(mdl.Diagnostics.CooksDistance>0.1,:) = [];
             modelspec = 'Response ~ Angle';
             mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
 
