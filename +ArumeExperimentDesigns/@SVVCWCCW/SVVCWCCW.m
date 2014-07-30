@@ -237,8 +237,8 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
 
             subds = ds(:,:);
             subds.Response = subds.Response-1;
-            subds.Response(streq(ds.Direction,'CCW')) = 1-subds.Response(streq(ds.Direction,'CCW')) ;
-            
+%              subds.Response(streq(ds.Direction,'CCW')) = 1-subds.Response(streq(ds.Direction,'CCW')) ;
+            subds.Angle(streq(ds.Direction,'CCW')) = -subds.Angle(streq(ds.Direction,'CCW'));
             [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
             
                 
