@@ -325,6 +325,11 @@ classdef ArumeGui < handle
                 sDlg.Path = { {['uigetdir(''' this.arume.defaultDataFolder ''')']} };
                 sDlg.Name = 'ProjectName';
                 sDlg.Default_Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
+                
+%                 for i=1:length(ArumeCore.ExperimentDesign.GetExperimentList)
+%                     sessionDlg.(ArumeCore.ExperimentDesign.GetExperimentList{i}) = { {'0','{1}'} };
+%                 end
+                
                 P = StructDlg(sDlg);
                 if ( isempty( P ) )
                     return
@@ -363,6 +368,7 @@ classdef ArumeGui < handle
         function newSession( this, source, eventdata ) 
             
             sessionDlg.Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
+            
             % Set the default experiment
             defaultExperimentIndex = strcmp(sessionDlg.Experiment{1},this.arume.currentProject.defaultExperiment);
             sessionDlg.Experiment{1}{defaultExperimentIndex} = ['{'  sessionDlg.Experiment{1}{defaultExperimentIndex} '}'];
@@ -571,6 +577,11 @@ classdef ArumeGui < handle
                     s = [s sprintf('%25s: %s\n', 'Trials Good/Aborts/Left', sprintf('%d/%d/%d', stats.trialsCorrect, stats.trialsAbort, stats.totalTrials-stats.trialsCorrect))];
                 end
                 
+                if ( ~isempty(this.arume.currentSession.CurrentRun) && size(this.arume.currentSession.CurrentRun.Events,2) > 4)
+                    s = [s sprintf('%25s : %s\n','Time first trial ', datestr(this.arume.currentSession.CurrentRun.Events(1,2)))];
+                    s = [s sprintf('%25s : %s\n','Time last trial ',datestr(this.arume.currentSession.CurrentRun.Events(end,2)))];
+                end
+                        
                 set(this.infoBox,'string', s);
             end
             

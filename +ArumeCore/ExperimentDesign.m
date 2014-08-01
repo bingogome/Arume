@@ -661,7 +661,7 @@ classdef ExperimentDesign < handle
             % TODO: think much better
             currentTrial            = size( this.Session.CurrentRun.pastConditions, 1) +1;
             currentCondition        = this.Session.CurrentRun.futureConditions(1);
-            this.Session.CurrentRun.Events  = cat(1, this.Session.CurrentRun.Events, [GetSecs event currentTrial currentCondition] );
+            this.Session.CurrentRun.Events  = cat(1, this.Session.CurrentRun.Events, [GetSecs now event currentTrial currentCondition] );
         end
         
         %% getVariablesCurrentCondition

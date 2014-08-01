@@ -26,7 +26,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
     methods ( Static = true )
         function dlg = GetOptionsStructDlg( this )
             dlg.UseGamePad = { {'0','{1}'} };
-            dlg.UseEyeTracker = { {'0','{1}'} };
+            dlg.UseEyeTracker = { {'{0}','1'} };
             dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
             dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
             dlg.targetDistance = { 125 '* (pix)' [10 500] };

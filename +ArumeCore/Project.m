@@ -8,6 +8,7 @@ classdef Project < handle
         path        % Working path of the uncompressed project (typically the temp folder)
         
         defaultExperiment % default experiment for this project
+        enabledExperiments % experiments that are enabled for this project. To facilitate selections
                 
         sessions    % Sessions that belong to this project
         
