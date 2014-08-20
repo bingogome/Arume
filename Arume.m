@@ -27,15 +27,20 @@ classdef Arume < handle
         PlotsAggregateMethodPrefix = 'PlotAggregate_';
     end
     
+    properties( Access=private )
+        configuration       % Configuration options saved into a mat file in the Arume folder
+    end
+    
     properties( SetAccess=private )
         currentProject      % Current working project 
         selectedSessions    % Current selected sessions (if multiple selected enabled)
-        defaultDataFolder   % Default data folder for new projects
-        tempFolder          % Temporary folder where data from the current project is unpacked
     end
         
     properties(Dependent=true)
         currentSession      % Current selected session (empty if none)
+        
+        defaultDataFolder   % Default data folder for new projects
+        recentProjects      % List of recent projects
     end
     
     methods
@@ -46,6 +51,22 @@ classdef Arume < handle
                 session = [];
             end
         end
+        
+        function defaultDataFolder = get.defaultDataFolder( this )
+            if (~isempty(this.configuration) && isfield( this.configuration, 'defaultDataFolder' ) )
+                defaultDataFolder = this.configuration.defaultDataFolder;
+            else
+                defaultDataFolder = '';
+            end
+        end
+        
+        function recentProjects = get.recentProjects( this )
+            if (~isempty(this.configuration) && isfield( this.configuration, 'recentProjects' ) )
+                recentProjects = this.configuration.recentProjects;
+            else
+                recentProjects = '';
+            end
+        end
     end
     
     methods( Access=private )
@@ -54,16 +75,38 @@ classdef Arume < handle
             % find the folder of arume
             [folder, name, ext] = fileparts(which('Arume'));
             
-            this.defaultDataFolder = fullfile(folder, 'ArumeData');
-            if ( ~exist( this.defaultDataFolder, 'dir') )
+            % find the configuration file
+            if ( ~ exist(fullfile(folder,'arumeconf.mat')))
+                conf = [];
+                this.configuration = conf;
+                save(fullfile(folder,'arumeconf.mat'), 'conf'); 
+            end
+            confdata = load(fullfile(folder,'arumeconf.mat'));
+            conf = confdata.conf;
+            
+            % double check configuration fields
+            if ( ~isfield( conf, 'defaultDataFolder') )
+                conf.defaultDataFolder = fullfile(folder, 'ArumeData');
+            end
+            
+            if ( ~isfield( conf, 'tempFolder') )
+                conf.tempFolder = fullfile(folder, 'Temp');
+            end
+
+            % save the updated configuration
+            this.configuration = conf;
+            save(fullfile(folder,'arumeconf.mat'), 'conf'); 
+            
+            % create folders if they don't exist
+            if ( ~exist( this.configuration.defaultDataFolder, 'dir') )
                 mkdir(folder, 'ArumeData');
             end
             
-            this.tempFolder = fullfile(folder, 'Temp');
-            if ( ~exist( this.tempFolder, 'dir') )
+            if ( ~exist( this.configuration.tempFolder, 'dir') )
                 mkdir(folder, 'Temp');
             end
         end
+        
     end
     
     methods( Access=public )
@@ -138,8 +181,18 @@ classdef Arume < handle
                 msgbox( 'The project file does not exist.');
             end
             
-            this.currentProject = ArumeCore.Project.LoadProject( file, this.tempFolder );
+            this.currentProject = ArumeCore.Project.LoadProject( file, this.configuration.tempFolder );
             this.selectedSessions = [];
+            
+            if ( ~isfield(this.configuration, 'recentProjects' ) )
+                this.configuration.recentProjects = {};
+            end
+            
+            this.configuration.recentProjects{end+1} = file;
+            this.configuration.recentProjects = unique(this.configuration.recentProjects);
+            conf = this.configuration;
+            [folder, name, ext] = fileparts(which('Arume'));
+            save(fullfile(folder,'arumeconf.mat'), 'conf'); 
         end
         
         function closeProject( this )
@@ -315,9 +368,6 @@ classdef Arume < handle
             end
         end
         
-    end
-    
-    methods ( Static = true )
     end
     
 end

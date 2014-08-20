@@ -100,8 +100,8 @@ classdef SVVClassical < ArumeCore.ExperimentDesign
                 delta = 0;
                 
                 while secondsRemaining > 0
-                    
-                    secondsElapsed      = GetSecs - startLoopTime;
+                     
+                    secondsElapsed     = GetSecs - startLoopTime;
                     secondsRemaining    = this.trialDuration - secondsElapsed;
                     
                     % -----------------------------------------------------------------
