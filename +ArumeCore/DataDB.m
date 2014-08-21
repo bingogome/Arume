@@ -45,7 +45,9 @@ classdef DataDB < handle
         end
         
         function RenameDB( this, newname )
-            movefile(fullfile(this.folder, this.session), fullfile(this.folder , newname));
+            if ( ~strcmp( fullfile(this.folder, this.session), fullfile(this.folder , newname) ))
+                movefile(fullfile(this.folder, this.session), fullfile(this.folder , newname));
+            end
             this.session = newname;
         end
         

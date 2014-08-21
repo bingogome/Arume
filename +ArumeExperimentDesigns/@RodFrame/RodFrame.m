@@ -246,7 +246,7 @@ classdef RodFrame < ArumeCore.ExperimentDesign
 %                 subds = ds(1:i,:);
 %                 subds((subds.Response==1 & subds.Angle<-50) | (subds.Response==0 & subds.Angle>50),:) = [];
 %                 
-%                 [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+%                 [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
 %                 
 %                 plot(a,p, 'color', colors(nplot,:),'linewidth',2);
 %                 xlabel('Angle (deg)');
@@ -291,7 +291,7 @@ classdef RodFrame < ArumeCore.ExperimentDesign
 
             subds = ds(:,:);
             
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
             
                 
            

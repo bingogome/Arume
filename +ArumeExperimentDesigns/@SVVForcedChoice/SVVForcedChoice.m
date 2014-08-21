@@ -300,7 +300,7 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
 %                 subds = ds(1:i,:);
 %                 subds((subds.Response==1 & subds.Angle<-50) | (subds.Response==0 & subds.Angle>50),:) = [];
 %                 
-%                 [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+%                 [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
 %                 
 %                 plot(a,p, 'color', colors(nplot,:),'linewidth',2);
 %                 xlabel('Angle (deg)');
@@ -345,7 +345,7 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
 
             subds = ds(:,:);
             
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
             
                 
            
@@ -391,7 +391,7 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
             subds = ds(strcmp(ds.Position,'Up'),:);
             subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];          
             
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
 
             subplot(6,1,[1:2],'nextplot','add', 'fontsize',12);
             plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
@@ -424,7 +424,7 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
             subds = ds(strcmp(ds.Position,'Down'),:);
             subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
           
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
             
             subplot(6,1,[4:5],'nextplot','add', 'fontsize',12);
             plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
@@ -500,7 +500,7 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
 
             subds = ds(:,:);
             
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
       end
     end
     
@@ -508,42 +508,6 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
     % Utility methods
     % ---------------------------------------------------------------------
     methods ( Static = true )
-        
-        function [SVV, a, p, allAngles, allResponses, trialCounts] = FitAngleResponses( angles, responses)
-            ds = dataset;
-            ds.Response = responses;
-            ds.Angle = angles;
-
-            outliers = find((ds.Response==0 & ds.Angle<-50) | (ds.Response==1 & ds.Angle>50));
-
-            ds(outliers,:) = [];
-
-            modelspec = 'Response ~ Angle';
-            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
-
-            ds(mdl.Diagnostics.CooksDistance>0.3,:) = [];
-            modelspec = 'Response ~ Angle';
-            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
-
-            angles = ds.Angle;
-            responses = ds.Response;
-
-            a = min(angles):0.1:max(angles);
-            p = predict(mdl,a')*100;
-
-            [svvr svvidx] = min(abs( p-50));
-
-            SVV = a(svvidx);
-            
-            allAngles = -90:90;
-            allResponses = nan(size(allAngles));
-            trialCounts = nan(size(allAngles));
-            for ia=1:length(allAngles)
-                allResponses(ia) = mean(responses(angles==allAngles(ia))*100);
-                trialCounts(ia) = sum(angles==allAngles(ia));
-            end
-            
-        end
     end
 end
 

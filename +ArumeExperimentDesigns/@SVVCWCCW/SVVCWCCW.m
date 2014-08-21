@@ -1,12 +1,10 @@
-classdef SVVCWCCW < ArumeCore.ExperimentDesign
-    
+classdef SVVCWCCW < ArumeExperimentDesigns.SVV2AFC
     
     properties
         
         lastResponse = '';
         
         eyeTracker = [];
-        
         
         fixRad = 20;
         fixColor = [255 0 0];
@@ -217,7 +215,6 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
             
         end
         
-        
         function trialOutput = runPostTrial(this)
             trialOutput = [];
             trialOutput.Response = this.lastResponse;
@@ -228,52 +225,21 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
     % Data Analysis methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
-        function analysisResults = Plot_Sigmoid(this)
-             analysisResults = 0;
-            
+        
+        % Function that gets the angles of each trial with 0 meaning 
+        % upright, positive tilted CW and negative CCW.
+        function angles = GetAngles( this )
             ds = this.Session.trialDataSet;
-            ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
-
-            subds = ds(:,:);
-            subds.Response = subds.Response-1;
-%              subds.Response(streq(ds.Direction,'CCW')) = 1-subds.Response(streq(ds.Direction,'CCW')) ;
-            subds.Angle(streq(ds.Direction,'CCW')) = -subds.Angle(streq(ds.Direction,'CCW'));
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
-            
-                
-           
-            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-            subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
-            
-            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
-            plot(a,p, 'color', 'k','linewidth',2);
-            line([SVV, SVV], [0 100], 'color','k','linewidth',2);
-            
-               
-            
-            
-            %xlabel('Angle (deg)', 'fontsize',16);
-            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
-            
-            set(gca,'xlim',[-30 30],'ylim',[-10 110])
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xticklabel',[])
-            
-            
-            subplot(3,1,[3],'nextplot','add', 'fontsize',12);
-            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
-                
-            set(gca,'xlim',[-30 30],'ylim',[0 15])
-            xlabel('Angle (deg)', 'fontsize',16);
-            ylabel('Number of trials', 'fontsize',16);
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca, 'YAxisLocation','right')
-            %%
+            angles = ds.Angle;
+            angles(streq(ds.Direction,'CCW')) = -angles(streq(ds.Direction,'CCW'));
         end
+        
+        % Function that gets the left and right responses with 1 meaning 
+        % right and 0 meaning left.
+        function responses = GetLeftRightResponses( this )
+            responses = this.Session.trialDataSet.Response-1;
+        end
+        
     end
     
     % ---------------------------------------------------------------------
