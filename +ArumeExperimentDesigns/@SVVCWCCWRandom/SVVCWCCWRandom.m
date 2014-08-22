@@ -299,7 +299,7 @@ classdef SVVCWCCWRandom < ArumeCore.ExperimentDesign
             
             ds = this.Session.trialDataSet;
             ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
+            ds(ds.Response<0 | ds.Response>2,:) = [];
 
             subds = ds(:,:);
             subds.Response = subds.Response-1;
