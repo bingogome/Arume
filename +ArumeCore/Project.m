@@ -152,6 +152,18 @@ classdef Project < handle
             sessidx = find( this.sessions == session );
             this.sessions(sessidx) = [];
         end
+        
+        function session = findSession( this, subjectCode, sessionCode)
+            for i=1:length(this.sessions)
+                if ( strcmp(upper(this.sessions(i).subjectCode), upper(subjectCode)) &&  ...
+                       strcmp(upper(this.sessions(i).sessionCode), upper(sessionCode)))
+                   session = this.sessions(i);
+                   return;
+                end
+            end
+            % if not found
+            session = [];
+        end
     end
     
     

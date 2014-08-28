@@ -88,7 +88,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Static = true )
         
-        function [SVV, a, p, allAngles, allResponses, trialCounts] = FitAngleResponses( angles, responses)
+        function [SVV, a, p, allAngles, allResponses, trialCounts, SVVth] = FitAngleResponses( angles, responses)
             ds = dataset;
             ds.Response = responses;
             ds.Angle = angles;
@@ -113,6 +113,9 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             [svvr svvidx] = min(abs( p-50));
             
             SVV = a(svvidx);
+            
+            [svvr2 svvidx2] = min(abs( p-75));
+            SVVth = a(svvidx2)-SVV;
             
             allAngles = -90:2:90;
             angles = 2*round(angles/2);

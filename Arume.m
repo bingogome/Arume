@@ -1,4 +1,4 @@
-function arumeController = Arume(command)
+function arumeController = Arume(command, param)
 
 
 % persistent variable to keep the singleton
