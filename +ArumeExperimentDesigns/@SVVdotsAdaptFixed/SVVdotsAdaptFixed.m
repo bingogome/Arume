@@ -33,6 +33,8 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             dlg.fixationDuration = { 1000 '* (ms)' [1 3000] };
             dlg.targetDuration = { 300 '* (ms)' [100 30000] };
             dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
+            
+            dlg.offset = {0 '* (deg)' [-20 20] };
         end
     end
     
@@ -132,7 +134,7 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
                     
                     SVV = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
 
-                    this.currentCenterRange = SVV;            
+                    this.currentCenterRange = SVV + this.ExperimentOptions.offset;            
 
                     this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
                 end
@@ -339,6 +341,8 @@ classdef SVVdotsAdaptFixed < ArumeCore.ExperimentDesign
             trialOutput.Response = this.lastResponse;
             trialOutput.ReactionTime = this.reactionTime;
             trialOutput.Angle = this.currentAngle;
+            trialOutput.Range = this.currentRange;
+            trialOutput.RanceCenter = this.currentCenterRange;
         end
     end
     

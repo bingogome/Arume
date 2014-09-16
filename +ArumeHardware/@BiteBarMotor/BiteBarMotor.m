@@ -47,19 +47,19 @@ classdef BiteBarMotor
         end
         
         function GoUpright(this)
-            bytes = ArumeHardware.BiteBarMotor.IntToBytes(23900);
+            bytes = ArumeHardware.BiteBarMotor.IntToBytes(380000);
             homecmd = [1 20 bytes];
             fwrite(this.s,homecmd);
         end
         
         function TiltLeft(this, angle)
-            bytes = ArumeHardware.BiteBarMotor.IntToBytes(angle/90*23900);
+            bytes = ArumeHardware.BiteBarMotor.IntToBytes(angle/90*380000);
             upcmd = [1 21 bytes];
             fwrite(this.s,upcmd);
         end
         
         function TiltRight(this, angle)
-            bytes = ArumeHardware.BiteBarMotor.IntToBytes(-angle/90*23900);
+            bytes = ArumeHardware.BiteBarMotor.IntToBytes(-angle/90*380000);
             downcmd = [1 21 bytes];
             fwrite(this.s,downcmd);
         end

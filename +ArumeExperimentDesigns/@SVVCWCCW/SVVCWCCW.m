@@ -22,6 +22,7 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
     methods ( Static = true )
         function dlg = GetOptionsStructDlg( this )
             dlg.UseGamePad = { {'0','{1}'} };
+            dlg.offset = {0 '* (deg)' [-20 20] };
         end
     end
     
@@ -132,6 +133,8 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
                                 angle1 = -variables.Angle;
                         end
                         
+                        angle1 = angle1+this.ExperimentOptions.offset;
+                        
                         fromH = mx;
                         fromV = my;
                         toH = mx + this.lineLength*sin(angle1/180*pi);
@@ -239,7 +242,7 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
             subds.Response = subds.Response-1;
 %              subds.Response(streq(ds.Direction,'CCW')) = 1-subds.Response(streq(ds.Direction,'CCW')) ;
             subds.Angle(streq(ds.Direction,'CCW')) = -subds.Angle(streq(ds.Direction,'CCW'));
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle, subds.Response);
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle+this.ExperimentOptions.offset, subds.Response);
             
                 
            
