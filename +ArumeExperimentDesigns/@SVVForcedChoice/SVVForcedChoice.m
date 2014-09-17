@@ -23,10 +23,10 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
     methods ( Static = true )
         function dlg = GetOptionsStructDlg( this )
             dlg.UseGamePad = { {'0','{1}'} };
-            dlg.UseLine = { {'{0}','1'} };
+            dlg.UseLine = { {'0','{1}'} };
             dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
             dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
-            dlg.targetDistance = { 125 '* (pix)' [10 500] };
+            dlg.targetDistance = { 300 '* (pix)' [10 500] };
             dlg.fixationDuration = { 1000 '* (ms)' [100 3000] };
             dlg.targetDuration = { 300 '* (ms)' [100 30000] };
             dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
