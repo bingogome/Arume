@@ -338,6 +338,8 @@ classdef SVVdotsAdaptFixed < ArumeExperimentDesigns.SVV2AFC
             trialOutput.Response = this.lastResponse;
             trialOutput.ReactionTime = this.reactionTime;
             trialOutput.Angle = this.currentAngle;
+            trialOutput.Range = this.currentRange;
+            trialOutput.RangeCenter = this.currentCenterRange;
         end
     end
     
@@ -404,6 +406,20 @@ classdef SVVdotsAdaptFixed < ArumeExperimentDesigns.SVV2AFC
             plot(ds(ds.Response==1 & strcmp(ds.Position,'Up'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Up'),'Angle'),'^','MarkerEdgeColor','r','linewidth',2);
             plot(ds(ds.Response==0 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==0 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor',[0.3 0.3 0.3],'linewidth',2);
             plot(ds(ds.Response==1 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor','r','linewidth',2);
+            
+            
+            SVV = nan(1,100);
+            
+            for i=1:10
+                idx = (1:10) + (i-1)*10;
+                ang = ds.Angle(idx);
+                res = ds.Response(idx);
+                
+                [SVV1, a, p, allAngles, allResponses,trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( ang, res);
+                SVV(idx) = SVV1;
+            end
+            
+            plot(SVV,'linewidth',2,'color',[.5 .8 .3]);
             
             legend({'Ansered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
             legend('boxoff')

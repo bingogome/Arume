@@ -89,6 +89,15 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     methods ( Static = true )
         
         function [SVV, a, p, allAngles, allResponses, trialCounts, SVVth] = FitAngleResponses( angles, responses)
+            
+            % add values in the extremes to "support" the logistic fit
+%             angles(end+1) = -90;
+%             angles(end+1) = 90;
+%             
+%             responses(end+1) = 1;
+%             responses(end+1) = 0;
+
+            
             ds = dataset;
             ds.Response = responses;
             ds.Angle = angles;
@@ -97,17 +106,30 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             ds(outliers,:) = [];
             
-            modelspec = 'Response ~ Angle';
-            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
+%             if ( length(ds.Responses) > 20 )
+                modelspec = 'Response ~ Angle';
+                mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
+                ds(mdl.Diagnostics.CooksDistance > 4/length(mdl.Diagnostics.CooksDistance),:) = [];
+%             end
             
-            ds(mdl.Diagnostics.CooksDistance>0.1,:) = [];
+            if ( sum(ds.Response==0) == 0 )
+                ds.Response(end+1) = 0;
+                ds.Angle(end) = max(ds.Angle(1:end-1))+1;
+            end
+            
+            if ( sum(ds.Response==1) == 0 )
+                ds.Response(end+1) = 1;
+                ds.Angle(end) = min(ds.Angle(1:end-1))-1;
+            end
+            
+            
             modelspec = 'Response ~ Angle';
             mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
             
             angles = ds.Angle;
             responses = ds.Response;
             
-            a = min(angles):0.1:max(angles);
+            a = -90:0.1:90;
             p = predict(mdl,a')*100;
             
             [svvr svvidx] = min(abs( p-50));

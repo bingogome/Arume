@@ -121,7 +121,7 @@ classdef ArumeController < handle
         function newProject( this, projectFilePath, projectName, defaultExperiment )
             % Creates a new project
             
-            this.currentProject = ArumeCore.Project.NewProject( projectFilePath, projectName, this.tempFolder, defaultExperiment);
+            this.currentProject = ArumeCore.Project.NewProject( projectFilePath, projectName, this.configuration.tempFolder, defaultExperiment);
             this.selectedSessions = [];
         end
         

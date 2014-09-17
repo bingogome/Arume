@@ -560,6 +560,9 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             pathHead = this.Session.dataRawPath;
             name = this.Session.name;
             
+             pathHead = 'N:\RAW_DATA\TorsionVemps\DI20140725';
+             path = 'N:\RAW_DATA\TorsionVemps\DI20140725';
+            
             samplerate = 100;
             
             d = dir([pathHead '\' name '*.txt']);
@@ -611,6 +614,10 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
                 path = this.Session.dataRawPath;
             end
             pathHead = this.Session.dataRawPath;
+            
+             pathHead = 'N:\RAW_DATA\TorsionVemps\DI20140725';
+             path = 'N:\RAW_DATA\TorsionVemps\DI20140725';
+             
             name = this.Session.name;
             
             d = dir([path '\' name '*.txt']);

@@ -25,7 +25,7 @@ if isempty(arumeSingleton)
     % Initialization, object is created automatically
     % (this is the constructor) and then initialized
     
-    arumeSingleton = ArumeController();
+    arumeSingleton = ArumeCore.ArumeController();
     arumeSingleton.init();
     arumeController = arumeSingleton;
 end

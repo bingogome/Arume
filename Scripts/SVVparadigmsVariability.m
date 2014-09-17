@@ -33,6 +33,9 @@ for i=1:length(fields)
 end
 
 %%
+warning('off','stats:glmfit:PerfectSeparation')
+warning('off','stats:glmfit:IterationLimit')
+
 arume = Arume;
 
 subjects = {'BL' 'KP' 'BX' 'BM' 'EI' 'UM'};
@@ -40,11 +43,20 @@ sessions = {'A' 'B' 'C'};
 headPositions = {'upright' 'RED'};
 repeatitions = [1 2 3];
 
+% 
+% subjects = { 'EI' 'UM'};
+% sessions = {'A' 'B' 'C'};
+% headPositions = {'RED'};
+% repeatitions = [3];
+
+
 Subject = {};
 Experiment = {};
 HeadPosition = {};
 Repetition = [];
 SVV = [];
+SVVTrialToTrialVariability = [];
+SVVVariability= [];
 SVVth = [];
 
 n=0;
@@ -54,14 +66,17 @@ for isubj=1:length(subjects)
             for i=repeatitions
                 % build the session name
                 sessionName = [sessions{isess} headPositions{ihead} num2str(i)];
+                
                 % find the session data
                 session = arume.currentProject.findSession(subjects{isubj},sessionName);
+                disp(session.name)
                 
                 % get the angles presented
                 angles = session.experiment.GetAngles();
                 
                 % get the responses (tilt left or tilt right)
                 responses = session.experiment.GetLeftRightResponses();
+                responses(responses==2) = 0;
                 
                 % remove aborts
                 angles(responses<0 | responses>1 ) = [];
@@ -79,18 +94,49 @@ for isubj=1:length(subjects)
                 
                 SVV(n) = SVV1;
                 SVVth(n) = SVVth1;
+                
+                
+                switch(session.experiment.Name)
+                    case 'SVVCWCCWRandom'
+                        SVVtime = zeros(1,16);
+                        for i=1:16
+                            idx = (1:18)+18*(i-1);
+                            [SVV1, a, p, allAngles, allResponses,trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles(idx), responses(idx));
+                            SVVtime(i) = SVV1;
+                        end
+                        SVVTrialToTrialVariability(n) = mean(abs(diff(SVVtime)));
+                        SVVVariability(n) = std(SVVtime);
+                    case 'SVVCWCCW'
+                        SVVtime = zeros(1,16);
+                        for i=1:16
+                            idx = (1:17)+17*(i-1);
+                            [SVV1, a, p, allAngles, allResponses,trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles(idx), responses(idx));
+                            SVVtime(i) = SVV1;
+                        end
+                        SVVTrialToTrialVariability(n) = mean(abs(diff(SVVtime)));
+                        SVVVariability(n) = std(SVVtime);
+                    case 'SVVLineAdaptFixed'
+                        SVVtime = zeros(1,5);
+                        for i=6:10
+                            idx = (1:10)+10*(i-1);
+                            [SVV1, a, p, allAngles, allResponses,trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles(idx), responses(idx));
+                            SVVtime(i-5) = SVV1;
+                        end
+                        SVVTrialToTrialVariability(n) = mean(abs(diff(SVVtime)));
+                        SVVVariability(n) = std(SVVtime);
+                end
             end
         end
     end
 end
 
 % build the dataset
-ds = dataset(Subject', Experiment', HeadPosition', Repetition', SVV', SVVth');
-ds.Properties.VarNames = {'Subject' 'Experiment' 'HeadPosition' 'Repetition' 'SVV' 'SVVth'};
+ds = dataset(Subject', Experiment', HeadPosition', Repetition', SVV', SVVth', SVVTrialToTrialVariability', SVVVariability');
+ds.Properties.VarNames = {'Subject' 'Experiment' 'HeadPosition' 'Repetition' 'SVV' 'SVVth' 'SVVTrialToTrialVariability' 'SVVVariability'};
 ds.Subject = nominal(ds.Subject,  unique(ds.Subject));
 ds.HeadPosition = nominal(ds.HeadPosition,  unique(ds.HeadPosition));
 ds.Experiment = nominal(ds.Experiment,  unique(ds.Experiment));
-
+return
 %% SVV PLOTS
 experiments = {'SVVCWCCW' 'SVVCWCCWRandom' 'SVVLineAdaptFixed'};
 
@@ -267,6 +313,130 @@ for i=1:3
         set(gca,'xticklabelmode','auto', 'yticklabelmode','auto');
         xlabel('Repetition');
         ylabel('SVV slope - SVV slope first rep. (deg)');
+    end
+    
+    if ( i==3)
+        text(3.5, 0, 'Right ear down','Rotation',-90,'HorizontalAlignment','center','fontsize',14)
+    end
+end
+
+%% variability
+
+
+options.ylim = [0 8];
+options.ytick = 0:1:8;
+
+figure('color','w','position',[100 100 800 500])
+for i=1:3
+    subplot(2,3,i);
+    set(gca,options);
+    
+    head = 'upright';
+    for isubj=1:length(subjects)
+        subs = ds(ds.Subject == subjects{isubj} & ds.HeadPosition == head & ds.Experiment == experiments{i} ,:);
+        plot(subs.SVVTrialToTrialVariability,'o-','MarkerFaceColor','w','color',colors_array(isubj,:),'linewidth',2)
+    end
+    title(experiments{i})
+    
+    if ( i==3)
+        text(3.5, 0, 'Upright','Rotation',-90,'HorizontalAlignment','center','fontsize',14)
+    end
+    
+    subplot(2,3,3+i)
+    set(gca,options);
+    head = 'RED';
+    for isubj=1:length(subjects)
+        subs = ds(ds.Subject == subjects{isubj} & ds.HeadPosition == head & ds.Experiment == experiments{i} ,:);
+        plot(subs.SVVTrialToTrialVariability,'o-','MarkerFaceColor','w','color',colors_array(isubj,:),'linewidth',2)
+    end
+    
+    if ( i==1)
+        set(gca,'xticklabelmode','auto', 'yticklabelmode','auto');
+        xlabel('Repetition');
+        ylabel('SVV trial to trial variability (deg)');
+    end
+    
+    if ( i==3)
+        text(3.5, 0, 'Right ear down','Rotation',-90,'HorizontalAlignment','center','fontsize',14)
+    end
+end
+
+
+
+
+options.ylim = [0 8];
+options.ytick = 0:1:8;
+
+figure('color','w','position',[100 100 800 500])
+for i=1:3
+    subplot(2,3,i);
+    set(gca,options);
+    
+    head = 'upright';
+    for isubj=1:length(subjects)
+        subs = ds(ds.Subject == subjects{isubj} & ds.HeadPosition == head & ds.Experiment == experiments{i} ,:);
+        plot(subs.SVVVariability,'o-','MarkerFaceColor','w','color',colors_array(isubj,:),'linewidth',2)
+    end
+    title(experiments{i})
+    
+    if ( i==3)
+        text(3.5, 0, 'Upright','Rotation',-90,'HorizontalAlignment','center','fontsize',14)
+    end
+    
+    subplot(2,3,3+i)
+    set(gca,options);
+    head = 'RED';
+    for isubj=1:length(subjects)
+        subs = ds(ds.Subject == subjects{isubj} & ds.HeadPosition == head & ds.Experiment == experiments{i} ,:);
+        plot(subs.SVVVariability,'o-','MarkerFaceColor','w','color',colors_array(isubj,:),'linewidth',2)
+    end
+    
+    if ( i==1)
+        set(gca,'xticklabelmode','auto', 'yticklabelmode','auto');
+        xlabel('Repetition');
+        ylabel('SVV variability (deg)');
+    end
+    
+    if ( i==3)
+        text(3.5, 0, 'Right ear down','Rotation',-90,'HorizontalAlignment','center','fontsize',14)
+    end
+end
+
+%%
+
+
+
+options.ylim = [0 8];
+options.ytick = 0:1:8;
+
+figure('color','w','position',[100 100 800 500])
+for i=1:3
+    subplot(2,3,i);
+    set(gca,options);
+    
+    head = 'upright';
+    for isubj=1:length(subjects)
+        subs = ds(ds.Subject == subjects{isubj} & ds.HeadPosition == head & ds.Experiment == experiments{i} ,:);
+        plot(subs.SVVVariability./abs(subs.SVV),'o-','MarkerFaceColor','w','color',colors_array(isubj,:),'linewidth',2)
+    end
+    title(experiments{i})
+    
+    if ( i==3)
+        text(3.5, 0, 'Upright','Rotation',-90,'HorizontalAlignment','center','fontsize',14)
+    end
+    
+    subplot(2,3,3+i)
+    set(gca,options);
+    head = 'RED';
+    for isubj=1:length(subjects)
+        subs = ds(ds.Subject == subjects{isubj} & ds.HeadPosition == head & ds.Experiment == experiments{i} ,:);
+        plot(subs.SVVVariability./abs(subs.SVV),'o-','MarkerFaceColor','w','color',colors_array(isubj,:),'linewidth',2)
+    end
+    
+    if ( i==1)
+        set(gca,'xticklabelmode','auto', 'yticklabelmode','auto');
+        xlabel('Repetition');
+        ylabel('SVV fano factor');
     end
     
     if ( i==3)
