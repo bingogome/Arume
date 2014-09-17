@@ -1,12 +1,10 @@
-classdef SVVCWCCW < ArumeCore.ExperimentDesign
-    
+classdef SVVCWCCW < ArumeExperimentDesigns.SVV2AFC
     
     properties
         
         lastResponse = '';
         
         eyeTracker = [];
-        
         
         fixRad = 20;
         fixColor = [255 0 0];
@@ -220,7 +218,6 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
             
         end
         
-        
         function trialOutput = runPostTrial(this)
             trialOutput = [];
             trialOutput.Response = this.lastResponse;
@@ -231,52 +228,81 @@ classdef SVVCWCCW < ArumeCore.ExperimentDesign
     % Data Analysis methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
-        function analysisResults = Plot_Sigmoid(this)
-             analysisResults = 0;
+        
+        % Function that gets the angles of each trial with 0 meaning 
+        % upright, positive tilted CW and negative CCW.
+        function angles = GetAngles( this )
+            ds = this.Session.trialDataSet;
+            angles = ds.Angle;
+            angles(streq(ds.Direction,'CCW')) = -angles(streq(ds.Direction,'CCW'));
+            
+            if ( isfield( this.ExperimentOptions, 'offset') )
+                angles = angles + this.ExperimentOptions.offset;
+            end
+        end
+        
+        % Function that gets the left and right responses with 1 meaning 
+        % right and 0 meaning left.
+        function responses = GetLeftRightResponses( this )
+            responses = 2-this.Session.trialDataSet.Response;
+            responses(responses<0) = 0;
+        end
+        
+        
+        function plotResults = Plot_ExperimentTimeCourse(this)
+            analysisResults = 0;
             
             ds = this.Session.trialDataSet;
             ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0 | ds.Response>2,:) = [];
-
-            subds = ds(:,:);
-            subds.Response = subds.Response-1;
-%              subds.Response(streq(ds.Direction,'CCW')) = 1-subds.Response(streq(ds.Direction,'CCW')) ;
-            subds.Angle(streq(ds.Direction,'CCW')) = -subds.Angle(streq(ds.Direction,'CCW'));
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVVdotsAdaptFixed.FitAngleResponses( subds.Angle+this.ExperimentOptions.offset, subds.Response);
+            ds(ds.Response<0,:) = [];
             
+            ds.Response = 2-ds.Response;
+            ds.Angle(streq(ds.Direction,'CCW')) = -ds.Angle(streq(ds.Direction,'CCW'));
+            
+            
+            NtrialPerBlock = 10;
+            %             figure
+            %             set(gca,'nextplot','add')
+            %             colors = jet(length(ds)/NtrialPerBlock);
+            
+            Nblocks = ceil(length(ds)/NtrialPerBlock/2)*2;
+         
+            figure('position',[400 200 700 400],'color','w','name',this.Session.name)
+            axes('nextplot','add');
+            plot(ds(ds.Response==0,'TrialNumber'), ds(ds.Response==0 ,'Angle'),'o','MarkerEdgeColor',[0.3 0.3 0.3],'linewidth',2);
+            plot(ds(ds.Response==1,'TrialNumber'), ds(ds.Response==1 ,'Angle'),'o','MarkerEdgeColor','r','linewidth',2);
+            
+            
+            SVV = nan(1,length(ds.Response));
+            
+            if ( length(ds.Response) > 272 )
+                N = 18;
+            else
+                N = 17;
+            end
+            
+            for i=1:(length(ds.Response)/N)
+                idx = (-1:N+2) + (i-1)*N;
+                idx(idx<1) = [];
+                idx(idx>length(ds.Response)) = [];
+                ang = ds.Angle(idx);
+                res = ds.Response(idx);
                 
-           
-            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-            subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
+                [SVV1, a, p, allAngles, allResponses,trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( ang, res);
+                SVV(idx) = SVV1;
+            end
             
-            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
-            plot(a,p, 'color', 'k','linewidth',2);
-            line([SVV, SVV], [0 100], 'color','k','linewidth',2);
+            plot(SVV,'linewidth',2,'color',[.5 .8 .3]);
             
-               
-            
-            
-            %xlabel('Angle (deg)', 'fontsize',16);
-            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
-            
-            set(gca,'xlim',[-30 30],'ylim',[-10 110])
-            set(gca,'xgrid','on')
+            legend({'Ansered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
+            legend('boxoff')
+            set(gca,'xlim',[-3 length(ds.Response)+3],'ylim',[-50 50])
+            ylabel('Angle (deg)', 'fontsize',16);
+            xlabel('Trial number', 'fontsize',16);
+            set(gca,'ygrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xticklabel',[])
-            
-            
-            subplot(3,1,[3],'nextplot','add', 'fontsize',12);
-            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
-                
-            set(gca,'xlim',[-30 30],'ylim',[0 15])
-            xlabel('Angle (deg)', 'fontsize',16);
-            ylabel('Number of trials', 'fontsize',16);
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca, 'YAxisLocation','right')
-            %%
         end
+        
     end
     
     % ---------------------------------------------------------------------

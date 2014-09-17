@@ -1,4 +1,4 @@
-classdef SVVForcedChoice < ArumeCore.ExperimentDesign
+classdef RodFrame < ArumeCore.ExperimentDesign
     %SVVdotsAdaptFixed Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -22,11 +22,11 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Static = true )
         function dlg = GetOptionsStructDlg( this )
-            dlg.UseGamePad = { {'0','{1}'} };
-            dlg.UseLine = { {'0','{1}'} };
+            dlg.UseLine = { {'{0}','1'} };
+            dlg.FrameAngle ={ 20 '* (deg)' [-90 90] };
             dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
             dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
-            dlg.targetDistance = { 300 '* (pix)' [10 500] };
+            dlg.targetDistance = { 125 '* (pix)' [10 500] };
             dlg.fixationDuration = { 1000 '* (ms)' [100 3000] };
             dlg.targetDuration = { 300 '* (ms)' [100 30000] };
             dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
@@ -52,13 +52,10 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
             this.numberOfTimesRepeatBlockSequence = 5;
             this.blocksToRun = 1;
-            this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 34, 'trialsToRun', 34) ];
+            this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 17, 'trialsToRun', 17) ];
         end
         
         function initBeforeRunning( this )
-            if ( this.ExperimentOptions.UseGamePad )
-                ArumeHardware.GamePad.Open
-            end
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -68,10 +65,6 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
             i = i+1;
             conditionVars(i).name   = 'Angle';
             conditionVars(i).values = [-16:2:16];
-            
-            i = i+1;
-            conditionVars(i).name   = 'Position';
-            conditionVars(i).values = {'Up' 'Down'};
         end
         
         function trialResult = runPreTrial(this, variables )
@@ -123,37 +116,19 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
                         fixRect = [0 0 this.ExperimentOptions.FixationDiameter this.ExperimentOptions.FixationDiameter];
                         fixRect = CenterRectOnPointd( fixRect, mx, my );
                         Screen('FillOval', graph.window, this.fixColor, fixRect);
+                        
+                        
+                        drawFrame(graph, 20, [255 0 0]);
                     end
                     
                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
-                        switch(this.ExperimentOptions.UseLine )
-                            case 0
-                                %-- Draw target
-                                targetRect = [0 0 this.ExperimentOptions.TargetDiameter this.ExperimentOptions.TargetDiameter];
-                                
-                                targetDist = this.ExperimentOptions.targetDistance;
-                                switch(variables.Position)
-                                    case 'Up'
-                                        targetRect = CenterRectOnPointd( targetRect, mx + targetDist*sin(this.currentAngle/180*pi), my - targetDist*cos(this.currentAngle/180*pi) );
-                                    case 'Down'
-                                        targetRect = CenterRectOnPointd( targetRect, mx - targetDist*sin(this.currentAngle/180*pi), my + targetDist*cos(this.currentAngle/180*pi) );
-                                end
-                                Screen('FillOval', graph.window, this.targetColor, targetRect);
-                            case 1
-                                switch(variables.Position)
-                                    case 'Up'
-                                        fromH = mx;
-                                        fromV = my;
-                                        toH = mx + this.ExperimentOptions.targetDistance*sin(this.currentAngle/180*pi);
-                                        toV = my - this.ExperimentOptions.targetDistance*cos(this.currentAngle/180*pi);
-                                    case 'Down'
-                                        fromH = mx;
-                                        fromV = my;
-                                        toH = mx - this.ExperimentOptions.targetDistance*sin(this.currentAngle/180*pi);
-                                        toV = my + this.ExperimentOptions.targetDistance*cos(this.currentAngle/180*pi);
-                                end
-                                Screen('DrawLine', graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
-                        end
+                        
+                        fromH = mx - this.ExperimentOptions.targetDistance*sin(this.currentAngle/180*pi);
+                        fromV = my + this.ExperimentOptions.targetDistance*cos(this.currentAngle/180*pi);
+                        toH = mx + this.ExperimentOptions.targetDistance*sin(this.currentAngle/180*pi);
+                        toV = my - this.ExperimentOptions.targetDistance*cos(this.currentAngle/180*pi);
+                        
+                        Screen('DrawLine', graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
                     end
                     
                     % -----------------------------------------------------------------
@@ -198,24 +173,6 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
                     
                     if ( secondsElapsed > t1  )
                         
-                        if ( this.ExperimentOptions.UseGamePad )
-                            [d, l, r] = ArumeHardware.GamePad.Query;
-                            if ( l == 1)
-                                switch(variables.Position)
-                                    case 'Up'
-                                        this.lastResponse = 1;
-                                    case 'Down'
-                                        this.lastResponse = 0;
-                                end
-                            elseif( r == 1)
-                                switch(variables.Position)
-                                    case 'Up'
-                                        this.lastResponse = 0;
-                                    case 'Down'
-                                        this.lastResponse = 1;
-                                end
-                            end
-                        else
                             [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
                             if ( keyIsDown )
                                 keys = find(keyCode);
@@ -223,23 +180,12 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
                                     KbName(keys(i))
                                     switch(KbName(keys(i)))
                                         case 'RightArrow'
-                                            switch(variables.Position)
-                                                case 'Up'
-                                                    this.lastResponse = 1;
-                                                case 'Down'
-                                                    this.lastResponse = 0;
-                                            end
+                                            this.lastResponse = 1;
                                         case 'LeftArrow'
-                                            switch(variables.Position)
-                                                case 'Up'
-                                                    this.lastResponse = 0;
-                                                case 'Down'
-                                                    this.lastResponse = 1;
-                                            end
+                                            this.lastResponse = 0;
                                     end
                                 end
                             end
-                        end
                     end
                     if ( this.lastResponse >= 0 )
                         this.reactionTime = secondsElapsed-1;
@@ -350,7 +296,7 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
                 
            
             figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-            subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
+            subplot(1,1,1,'nextplot','add', 'fontsize',12);
             
             plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
             plot(a,p, 'color', 'k','linewidth',2);
@@ -369,145 +315,114 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
             set(gca,'xticklabel',[])
             
             
-            subplot(3,1,[3],'nextplot','add', 'fontsize',12);
-            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
-                
-            set(gca,'xlim',[-30 30],'ylim',[0 15])
-            xlabel('Angle (deg)', 'fontsize',16);
-            ylabel('Number of trials', 'fontsize',16);
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca, 'YAxisLocation','right')
       end
+    
         
-      function plotResults = Plot_SigmoidUpDown(this)
-            analysisResults = 0;
-            
-            ds = this.Session.trialDataSet;
-            ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
-
-            figure('position',[400 100 1000 600],'color','w','name',this.Session.name)
-            subds = ds(strcmp(ds.Position,'Up'),:);
-            subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];          
-            
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-
-            subplot(6,1,[1:2],'nextplot','add', 'fontsize',12);
-            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
-            plot(a,p, 'color', 'k','linewidth',2);
-            line([SVV,SVV], [0 100], 'color','k','linewidth',2);
-            
-            
-            %xlabel('Angle (deg)', 'fontsize',16);
-            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
-            
-            set(gca,'xlim',[-30 30],'ylim',[-10 110])
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xticklabel',[])
-            
-            
-            subplot(6,1,[3],'nextplot','add', 'fontsize',12);
-            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
-                
-            set(gca,'xlim',[-30 30],'ylim',[0 15])
-            xlabel('Angle (deg)', 'fontsize',16);
-            ylabel('Number of trials', 'fontsize',16);
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca, 'YAxisLocation','right')
-            
-            
-            
-            subds = ds(strcmp(ds.Position,'Down'),:);
-            subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
-          
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-            
-            subplot(6,1,[4:5],'nextplot','add', 'fontsize',12);
-            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
-            plot(a,p, 'color', 'k','linewidth',2);
-            line([SVV, SVV], [0 100], 'color','k','linewidth',2);
-            
-            %xlabel('Angle (deg)', 'fontsize',16);
-            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
-            
-            set(gca,'xlim',[-30 30],'ylim',[-10 110])
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xticklabel',[])
-            
-            
-            subplot(6,1,[6],'nextplot','add', 'fontsize',12);
-            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
-                
-            set(gca,'xlim',[-30 30],'ylim',[0 15])
-            xlabel('Angle (deg)', 'fontsize',16);
-            ylabel('Number of trials', 'fontsize',16);
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca, 'YAxisLocation','right')
-      end
-      
-      function plotResults = Plot_ReactionTimes(this)
-            analysisResults = 0;
-            
-            ds = this.Session.trialDataSet;
-            ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
-            
-            angles = ds.Angle;
-            times = ds.ReactionTime;
-            
-            binAngles = [-90:5:90];
-            
-            binMiddles = binAngles(1:end-1) + diff(binAngles)/2;
-            timeAvg = zeros(size(binMiddles));
-            for i=1:length(binMiddles)
-                timeAvg(i) = median(times(angles>binAngles(i) & angles<binAngles(i+1)));
-            end
-            
-            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-            axes( 'fontsize',12);
-            plot(angles,times*1000,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
-            hold
-            plot(binMiddles, timeAvg*1000, 'color', 'k','linewidth',2);
-            set(gca,'xlim',[-30 30],'ylim',[0 1500])
-            xlabel('Angle (deg)','fontsize',16);
-            ylabel('Reaction time (ms)','fontsize',16);
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xgrid','on')
-            
-            %%
-      end
-      
-      function plotResults = Plot_AmirTest(this)
-            analysisResults = 0;
-            
-            ds = this.Session.trialDataSet;
-            
-            ds
-      end
-        
-      function plotResults = PlotAggregate_SigmoidCombined(this, sessions)
-          
-            ds = this.Session.trialDataSet;
-            ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
-
-            subds = ds(:,:);
-            
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-      end
     end
     
     % ---------------------------------------------------------------------
     % Utility methods
     % ---------------------------------------------------------------------
     methods ( Static = true )
+        
+        function [SVV, a, p, allAngles, allResponses, trialCounts] = FitAngleResponses( angles, responses)
+            ds = dataset;
+            ds.Response = responses;
+            ds.Angle = angles;
+
+            outliers = find((ds.Response==0 & ds.Angle<-50) | (ds.Response==1 & ds.Angle>50));
+
+            ds(outliers,:) = [];
+
+            modelspec = 'Response ~ Angle';
+            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
+
+            ds(mdl.Diagnostics.CooksDistance>0.3,:) = [];
+            modelspec = 'Response ~ Angle';
+            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
+
+            angles = ds.Angle;
+            responses = ds.Response;
+
+            a = min(angles):0.1:max(angles);
+            p = predict(mdl,a')*100;
+
+            [svvr svvidx] = min(abs( p-50));
+
+            SVV = a(svvidx);
+            
+            allAngles = -90:90;
+            allResponses = nan(size(allAngles));
+            trialCounts = nan(size(allAngles));
+            for ia=1:length(allAngles)
+                allResponses(ia) = mean(responses(angles==allAngles(ia))*100);
+                trialCounts(ia) = sum(angles==allAngles(ia));
+            end
+            
+        end
     end
 end
 
+function drawFrame( graph, angle, color)
+
+lineLength = 250;
+[mx, my] = RectCenter(graph.wRect);
+
+centerLeft = mx;
+
+width = 10;
+
+fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+toH = +cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+toV = sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+
+fromH = -cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+fromV = -sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+
+
+fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+toH = -cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+toV = -sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+
+fromH = +cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+fromV = sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+
+lineLength = 150;
+
+fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+toH = +cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+toV = sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+
+fromH = -cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+fromV = -sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+
+
+fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+toH = -cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+toV = -sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+
+fromH = +cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+fromV = sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+
+
+end
