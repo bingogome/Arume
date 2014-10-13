@@ -13,16 +13,30 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
         fixColor
     end
     
+    % ---------------------------------------------------------------------
+    % Options to set at runtime
+    % ---------------------------------------------------------------------
+    methods ( Static = true )
+        function dlg = GetOptionsStructDlg( this )
+            dlg.UseEyeTracker = { {'{0}' '1'} };
+            dlg.TrialDuration = { 20 '* (seconds)' [1 100] };
+        end
+    end
+    
     methods ( Access = protected )
         
         
         function initExperimentDesign( this  )
             
-            this.trialDuration = 20; %seconds
+            if ( ~isfield( this.ExperimentOptions, 'TrialDuration') )
+                this.trialDuration = 20; %seconds
+            else
+                this.trialDuration = this.ExperimentOptions.TrialDuration; %seconds
+            end
             
             % default parameters of any experiment
-            this.trialSequence = 'Random';      % Sequential, Random, Random with repetition, ...
-            this.trialAbortAction = 'Delay';    % Repeat, Delay, Drop
+            this.trialSequence = 'Sequential';      % Sequential, Random, Random with repetition, ...
+            this.trialAbortAction = 'Repeat';    % Repeat, Delay, Drop
             this.trialsPerSession = 8;
             
             %%-- Blocking
@@ -38,6 +52,7 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
             this.fixRad   = 20;
             this.fixColor = [255 0 0];
             
+            this.HitKeyBeforeTrial =1;
         end
         
         %% run initialization before the first trial is run
@@ -83,21 +98,25 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
             
             this.checkerBoardTexture = Screen('MakeTexture', this.Graph.window, this.checkerBoardImg, 1);
             
-            
-
-            
-%             asm = NET.addAssembly('C:\secure\Code\EyeTracker\EyeTrackerGui\bin\x64\Debug\EyeTrackerLib.dll');
-            %this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('localhost',9000);
+            if ( this.ExperimentOptions.UseEyeTracker )
+                asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+                %this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('10.17.101.13',9000);
+                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('localhost',9000);
+                this.eyeTracker.SetDataFileName(this.Session.name);
+            end
             
             trialResult =  Enum.trialResult.CORRECT;
         end
         
         function trialResult = runTrial( this, variables )
-           
+            
             try
                 
-           % this.eyeTracker.StartRecording();
-            
+                if ( ~this.eyeTracker.recording )
+                    this.eyeTracker.StartRecording();
+                    pause(1);
+                end
+                
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
             
@@ -139,11 +158,7 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
                 else
                     turnangle = 0;
                 end
-                imageRect = CenterRectOnPointd( [0 0 1200 1200], mx, my )
-                imageRect1 = [0 0 graph.wRect(3)/2 graph.wRect(3)/2];
-                imageRect1 = CenterRectOnPointd( imageRect1, mx-graph.wRect(3)/4, my )
-                imageRect2 = [0 0 graph.wRect(3)/2 graph.wRect(3)/2];
-                imageRect2 = CenterRectOnPointd( imageRect2, mx+graph.wRect(3)/4, my )
+                imageRect = CenterRectOnPointd( [0 0 1200 1200], mx, my );
                 Screen('DrawTexture', graph.window, this.checkerBoardTexture, [], imageRect, turnangle);
 %                 Screen('DrawTexture', graph.window, this.checkerBoardTexture, [], imageRect2, turnangle);
                 
@@ -154,7 +169,7 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
                 
                 %-- Draw fixation spot
                 fixRect = [0 0 5 5];
-                fixRect = CenterRectOnPointd( fixRect, mx-graph.wRect(3)/4, my );
+                fixRect = CenterRectOnPointd( fixRect, mx, my );
                 Screen('FillOval', graph.window, this.fixColor, fixRect);
                 
                 
@@ -178,15 +193,21 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
                 % -----------------------------------------------------------------
                 % --- END Collecting responses  -----------------------------------
                 % -----------------------------------------------------------------
-                
+            
             end
             catch ex
-              %  this.eyeTracker.StopRecording();
+                if ( this.eyeTracker.recording )
+                    this.eyeTracker.StopRecording();
+                    pause(1);
+                end
                 rethrow(ex)
             end
             
+            if ( this.eyeTracker.recording )
+                this.eyeTracker.StopRecording();
+                pause(1);
+            end
             
-           % this.eyeTracker.StopRecording();
             
         end
         

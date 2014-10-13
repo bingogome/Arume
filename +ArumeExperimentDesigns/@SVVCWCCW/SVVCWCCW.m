@@ -239,13 +239,16 @@ classdef SVVCWCCW < ArumeExperimentDesigns.SVV2AFC
             if ( isfield( this.ExperimentOptions, 'offset') )
                 angles = angles + this.ExperimentOptions.offset;
             end
+            
+            responses = this.Session.trialDataSet.Response-1;
+            angles = angles(responses >= 0 & responses < 2);
         end
         
         % Function that gets the left and right responses with 1 meaning 
         % right and 0 meaning left.
         function responses = GetLeftRightResponses( this )
-            responses = 2-this.Session.trialDataSet.Response;
-            responses(responses<0) = 0;
+            responses = this.Session.trialDataSet.Response-1;
+            responses = responses(responses >= 0 & responses < 2);
         end
         
         

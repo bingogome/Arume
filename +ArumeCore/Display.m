@@ -48,6 +48,7 @@ classdef Display < handle
         function Init( graph, exper)
             
             Screen('Preference', 'SkipSyncTests', 1);
+            Screen('Preference', 'VisualDebugLevel', 0);
             
             %-- screens
             

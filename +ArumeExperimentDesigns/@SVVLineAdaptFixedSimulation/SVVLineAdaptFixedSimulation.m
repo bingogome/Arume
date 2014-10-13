@@ -1,6 +1,7 @@
 classdef SVVLineAdaptFixedSimulation < ArumeExperimentDesigns.SVVdotsAdaptFixed
     
     properties
+        previousSVV =0;
     end
     
     % ---------------------------------------------------------------------
@@ -16,12 +17,19 @@ classdef SVVLineAdaptFixedSimulation < ArumeExperimentDesigns.SVVdotsAdaptFixed
             dlg.fixationDuration = { 1000 '* (ms)' [1 3000] };
             dlg.targetDuration = { 300 '* (ms)' [100 30000] };
             dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
+            dlg.offset = 0;
             dlg.SVV = 0;
             dlg.SVVstd = 1;
+            
+            dlg.Dynamics = 'None'; % Wave, RandomWalk
             
             dlg.SVVWaveFreq = 0;
             dlg.SVVWaveAmplitude = 0;
             dlg.SVVWavePhase = 0;
+            
+            dlg.SVVRandomWalkStartSVV = 0;
+            dlg.SVVRandomWalkMean = 0;
+            dlg.SVVRandomWalkStd = 0;
         end
     end
     
@@ -45,7 +53,20 @@ classdef SVVLineAdaptFixedSimulation < ArumeExperimentDesigns.SVVdotsAdaptFixed
                 this.currentAngle;
                 
                 ntrials = size(this.Session.CurrentRun.pastConditions,1);
-                SVV = this.ExperimentOptions.SVV + this.ExperimentOptions.SVVWaveAmplitude*sin(ntrials*this.ExperimentOptions.SVVWaveFreq*2*pi + this.ExperimentOptions.SVVWavePhase);
+                
+                switch( this.ExperimentOptions.Dynamics)
+                    case 'None'
+                        SVV = this.ExperimentOptions.SVV;
+                    case 'Wave'
+                        SVV = this.ExperimentOptions.SVV + this.ExperimentOptions.SVVWaveAmplitude*sin(ntrials*this.ExperimentOptions.SVVWaveFreq*2*pi + this.ExperimentOptions.SVVWavePhase);
+                    case 'RandomWalk'
+                        if ( ntrials==0)
+                            this.previousSVV = this.ExperimentOptions.SVVRandomWalkStartSVV;
+                        end
+                        SVV = this.ExperimentOptions.SVV+(this.previousSVV(end)-this.ExperimentOptions.SVV) + randn(1)*this.ExperimentOptions.SVVRandomWalkStd+this.ExperimentOptions.SVVRandomWalkMean;
+                        this.previousSVV(end+1) = SVV;
+                end
+                
                 
                 t = 1./(1+exp(-(this.currentAngle-SVV)/this.ExperimentOptions.SVVstd));
                 

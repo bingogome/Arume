@@ -58,6 +58,8 @@ SVV = [];
 SVVTrialToTrialVariability = [];
 SVVVariability= [];
 SVVth = [];
+SVVfromLeft = [];
+SVVfromRight = [];
 
 n=0;
 for isubj=1:length(subjects)
@@ -85,6 +87,22 @@ for isubj=1:length(subjects)
                 % fit the responses to get the SVV
                 [SVV1, a, p, allAngles, allResponses,trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
                 
+                
+                dangles = diff(angles);
+                
+                aangles = angles(2:end);
+                angles1 = aangles(dangles>0);
+                angles2 = aangles(dangles<0);
+                
+                rresponses = responses(2:end);
+                responses1 = rresponses(dangles>0);
+                responses2 = rresponses(dangles<0);
+                
+                
+                [SVVfromLeft1, a, p, allAngles, allResponses,trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles1, responses1);
+                [SVVfromRight1, a, p, allAngles, allResponses,trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles2, responses2);
+                
+                
                 % collect all the SVVs
                 n=n+1;
                 Subject{n} = subjects{isubj};
@@ -95,7 +113,11 @@ for isubj=1:length(subjects)
                 SVV(n) = SVV1;
                 SVVth(n) = SVVth1;
                 
+                SVVfromLeft(n) = SVVfromLeft1;
+                SVVfromRight(n) = SVVfromRight1;
                 
+                
+                if ( 0 )
                 switch(session.experiment.Name)
                     case 'SVVCWCCWRandom'
                         SVVtime = zeros(1,16);
@@ -125,17 +147,21 @@ for isubj=1:length(subjects)
                         SVVTrialToTrialVariability(n) = mean(abs(diff(SVVtime)));
                         SVVVariability(n) = std(SVVtime);
                 end
+                end
             end
         end
     end
 end
 
 % build the dataset
-ds = dataset(Subject', Experiment', HeadPosition', Repetition', SVV', SVVth', SVVTrialToTrialVariability', SVVVariability');
-ds.Properties.VarNames = {'Subject' 'Experiment' 'HeadPosition' 'Repetition' 'SVV' 'SVVth' 'SVVTrialToTrialVariability' 'SVVVariability'};
+% ds = dataset(Subject', Experiment', HeadPosition', Repetition', SVV', SVVth', SVVTrialToTrialVariability', SVVVariability');
+% ds.Properties.VarNames = {'Subject' 'Experiment' 'HeadPosition' 'Repetition' 'SVV' 'SVVth' 'SVVTrialToTrialVariability' 'SVVVariability'};
+ds = dataset(Subject', Experiment', HeadPosition', Repetition', SVV', SVVth', SVVfromLeft', SVVfromRight');
+ds.Properties.VarNames = {'Subject' 'Experiment' 'HeadPosition' 'Repetition' 'SVV' 'SVVth', 'SVVfromLeft', 'SVVfromRight'};
 ds.Subject = nominal(ds.Subject,  unique(ds.Subject));
 ds.HeadPosition = nominal(ds.HeadPosition,  unique(ds.HeadPosition));
 ds.Experiment = nominal(ds.Experiment,  unique(ds.Experiment));
+
 return
 %% SVV PLOTS
 experiments = {'SVVCWCCW' 'SVVCWCCWRandom' 'SVVLineAdaptFixed'};

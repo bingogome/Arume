@@ -1,4 +1,4 @@
-classdef SVVForcedChoice < ArumeCore.ExperimentDesign
+classdef SVVForcedChoice < ArumeExperimentDesigns.SVV2AFC
     %SVVdotsAdaptFixed Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -114,7 +114,7 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
                     
                     %-- Find the center of the screen
                     [mx, my] = RectCenter(graph.wRect);
-
+                    
                     t1 = this.ExperimentOptions.fixationDuration/1000;
                     t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
                     
@@ -161,29 +161,29 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
                     % -----------------------------------------------------------------
                     
                     
-                % -----------------------------------------------------------------
-                % DEBUG
-                % -----------------------------------------------------------------
-                if (0)
-                    % TODO: it would be nice to have some call back system here
-                    Screen('DrawText', graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.white);
-                    currentline = 50 + 25;
-                    vNames = fieldnames(variables);
-                    for iVar = 1:length(vNames)
-                        if ( ischar(variables.(vNames{iVar})) )
-                            s = sprintf( '%s = %s',vNames{iVar},variables.(vNames{iVar}) );
-                        else
-                            s = sprintf( '%s = %s',vNames{iVar},num2str(variables.(vNames{iVar})) );
+                    % -----------------------------------------------------------------
+                    % DEBUG
+                    % -----------------------------------------------------------------
+                    if (0)
+                        % TODO: it would be nice to have some call back system here
+                        Screen('DrawText', graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.white);
+                        currentline = 50 + 25;
+                        vNames = fieldnames(variables);
+                        for iVar = 1:length(vNames)
+                            if ( ischar(variables.(vNames{iVar})) )
+                                s = sprintf( '%s = %s',vNames{iVar},variables.(vNames{iVar}) );
+                            else
+                                s = sprintf( '%s = %s',vNames{iVar},num2str(variables.(vNames{iVar})) );
+                            end
+                            Screen('DrawText', graph.window, s, 20, currentline, graph.white);
+                            
+                            currentline = currentline + 25;
                         end
-                        Screen('DrawText', graph.window, s, 20, currentline, graph.white);
-                        
-                        currentline = currentline + 25;
                     end
-                end
-                % -----------------------------------------------------------------
-                % END DEBUG
-                % -----------------------------------------------------------------
-                
+                    % -----------------------------------------------------------------
+                    % END DEBUG
+                    % -----------------------------------------------------------------
+                    
                     
                     % -----------------------------------------------------------------
                     % -- Flip buffers to refresh screen -------------------------------
@@ -280,45 +280,60 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-      function plotResults = Plot_ExperimentTimeCourse(this)
+        % Function that gets the angles of each trial with 0 meaning
+        % upright, positive tilted CW and negative CCW.
+        function angles = GetAngles( this )
+            angles = this.Session.trialDataSet.Angle;
+            responses = 1-this.Session.trialDataSet.Response;
+            angles = angles(responses<2);
+        end
+        
+        % Function that gets the left and right responses with 1 meaning
+        % right and 0 meaning left.
+        function responses = GetLeftRightResponses( this )
+            responses = 1-this.Session.trialDataSet.Response;
+            responses = responses(responses<2);
+        end
+        
+        function plotResults = Plot_ExperimentTimeCourse(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
             ds(ds.TrialResult>0,:) = [];
             ds(ds.Response<0,:) = [];
             NtrialPerBlock = 10;
-%             figure
-%             set(gca,'nextplot','add')
-%             colors = jet(length(ds)/NtrialPerBlock);
+            %             figure
+            %             set(gca,'nextplot','add')
+            %             colors = jet(length(ds)/NtrialPerBlock);
             
             Nblocks = ceil(length(ds)/NtrialPerBlock/2)*2;
             
-%             for i=NtrialPerBlock:NtrialPerBlock:length(ds)
-%                 nplot = ceil(i/NtrialPerBlock);
-%                 subplot(ceil(length(colors)/2),2,mod(((nplot*2)-1+floor((nplot-1)/(Nblocks/2)))-1,Nblocks)+1,'nextplot','add')
-%                 modelspec = 'Response ~ Angle';
-%                 subds = ds(1:i,:);
-%                 subds((subds.Response==1 & subds.Angle<-50) | (subds.Response==0 & subds.Angle>50),:) = [];
-%                 
-%                 [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-%                 
-%                 plot(a,p, 'color', colors(nplot,:),'linewidth',2);
-%                 xlabel('Angle (deg)');
-%                 ylabel('Percent answered right');
-%                 
-%                 [svvr svvidx] = min(abs( p-50));
-%                 line([a(svvidx),a(svvidx)], [0 100], 'color', colors(nplot,:),'linewidth',2);
-%                 set(gca,'xlim',[-20 20])
-%                 
-%                 allAngles = -90:90;
-%                 allResponses = nan(size(allAngles));
-%                 for ia=1:length(allAngles)
-%                     allResponses(ia) = mean(responses(angles==allAngles(ia))*100);
-%                 end
-%                 
-%                 plot( allAngles,allResponses,'o')
-%                 text(3, 40, sprintf('SVV: %0.2f',a(svvidx)));
-%             end
+            %             for i=NtrialPerBlock:NtrialPerBlock:length(ds)
+            %                 nplot = ceil(i/NtrialPerBlock);
+            %                 subplot(ceil(length(colors)/2),2,mod(((nplot*2)-1+floor((nplot-1)/(Nblocks/2)))-1,Nblocks)+1,'nextplot','add')
+            %                 modelspec = 'Response ~ Angle';
+            %                 subds = ds(1:i,:);
+            %                 subds((subds.Response==1 & subds.Angle<-50) | (subds.Response==0 & subds.Angle>50),:) = [];
+            %
+            %                 [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
+            %
+            %                 plot(a,p, 'color', colors(nplot,:),'linewidth',2);
+            %                 xlabel('Angle (deg)');
+            %                 ylabel('Percent answered right');
+            %
+            %                 [svvr svvidx] = min(abs( p-50));
+            %                 line([a(svvidx),a(svvidx)], [0 100], 'color', colors(nplot,:),'linewidth',2);
+            %                 set(gca,'xlim',[-20 20])
+            %
+            %                 allAngles = -90:90;
+            %                 allResponses = nan(size(allAngles));
+            %                 for ia=1:length(allAngles)
+            %                     allResponses(ia) = mean(responses(angles==allAngles(ia))*100);
+            %                 end
+            %
+            %                 plot( allAngles,allResponses,'o')
+            %                 text(3, 40, sprintf('SVV: %0.2f',a(svvidx)));
+            %             end
             
             figure('position',[400 200 700 400],'color','w','name',this.Session.name)
             axes('nextplot','add');
@@ -334,65 +349,21 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
             xlabel('Trial number', 'fontsize',16);
             set(gca,'ygrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-      end
+        end
         
-      function plotResults = Plot_Sigmoid(this)
+        function plotResults = Plot_SigmoidUpDown(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
             ds(ds.TrialResult>0,:) = [];
             ds(ds.Response<0,:) = [];
-
-            subds = ds(:,:);
             
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-            
-                
-           
-            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-            subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
-            
-            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
-            plot(a,p, 'color', 'k','linewidth',2);
-            line([SVV, SVV], [0 100], 'color','k','linewidth',2);
-            
-               
-            
-            
-            %xlabel('Angle (deg)', 'fontsize',16);
-            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
-            
-            set(gca,'xlim',[-30 30],'ylim',[-10 110])
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xticklabel',[])
-            
-            
-            subplot(3,1,[3],'nextplot','add', 'fontsize',12);
-            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
-                
-            set(gca,'xlim',[-30 30],'ylim',[0 15])
-            xlabel('Angle (deg)', 'fontsize',16);
-            ylabel('Number of trials', 'fontsize',16);
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca, 'YAxisLocation','right')
-      end
-        
-      function plotResults = Plot_SigmoidUpDown(this)
-            analysisResults = 0;
-            
-            ds = this.Session.trialDataSet;
-            ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
-
             figure('position',[400 100 1000 600],'color','w','name',this.Session.name)
             subds = ds(strcmp(ds.Position,'Up'),:);
-            subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];          
+            subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
             
             [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-
+            
             subplot(6,1,[1:2],'nextplot','add', 'fontsize',12);
             plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
             plot(a,p, 'color', 'k','linewidth',2);
@@ -411,7 +382,7 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
             
             subplot(6,1,[3],'nextplot','add', 'fontsize',12);
             bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
-                
+            
             set(gca,'xlim',[-30 30],'ylim',[0 15])
             xlabel('Angle (deg)', 'fontsize',16);
             ylabel('Number of trials', 'fontsize',16);
@@ -423,7 +394,7 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
             
             subds = ds(strcmp(ds.Position,'Down'),:);
             subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
-          
+            
             [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
             
             subplot(6,1,[4:5],'nextplot','add', 'fontsize',12);
@@ -443,65 +414,15 @@ classdef SVVForcedChoice < ArumeCore.ExperimentDesign
             
             subplot(6,1,[6],'nextplot','add', 'fontsize',12);
             bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
-                
+            
             set(gca,'xlim',[-30 30],'ylim',[0 15])
             xlabel('Angle (deg)', 'fontsize',16);
             ylabel('Number of trials', 'fontsize',16);
             set(gca,'xgrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
             set(gca, 'YAxisLocation','right')
-      end
-      
-      function plotResults = Plot_ReactionTimes(this)
-            analysisResults = 0;
-            
-            ds = this.Session.trialDataSet;
-            ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
-            
-            angles = ds.Angle;
-            times = ds.ReactionTime;
-            
-            binAngles = [-90:5:90];
-            
-            binMiddles = binAngles(1:end-1) + diff(binAngles)/2;
-            timeAvg = zeros(size(binMiddles));
-            for i=1:length(binMiddles)
-                timeAvg(i) = median(times(angles>binAngles(i) & angles<binAngles(i+1)));
-            end
-            
-            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-            axes( 'fontsize',12);
-            plot(angles,times*1000,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
-            hold
-            plot(binMiddles, timeAvg*1000, 'color', 'k','linewidth',2);
-            set(gca,'xlim',[-30 30],'ylim',[0 1500])
-            xlabel('Angle (deg)','fontsize',16);
-            ylabel('Reaction time (ms)','fontsize',16);
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xgrid','on')
-            
-            %%
-      end
-      
-      function plotResults = Plot_AmirTest(this)
-            analysisResults = 0;
-            
-            ds = this.Session.trialDataSet;
-            
-            ds
-      end
+        end
         
-      function plotResults = PlotAggregate_SigmoidCombined(this, sessions)
-          
-            ds = this.Session.trialDataSet;
-            ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
-
-            subds = ds(:,:);
-            
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-      end
     end
     
     % ---------------------------------------------------------------------

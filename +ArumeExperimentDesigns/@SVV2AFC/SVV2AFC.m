@@ -25,6 +25,18 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
+        function trialDataSet = PrepareTrialDataSet( this, ds)
+            % Every class inheriting from SVV2AFC should override this
+            % method and add the proper PresentedAngle and
+            % LeftRightResponse variables
+            
+            trialDataSet = this.PrepareTrialDataSet@ArumeCore.ExperimentDesign(ds);
+            
+            trialDataSet.PresentedAngle = trialDataSet.Angle;
+            trialDataSet.LeftRightResponse = trialDataSet.Response;
+        end
+            
+        
         % Function that gets the angles of each trial with 0 meaning 
         % upright, positive tilted CW and negative CCW.
         function angles = GetAngles( this )
@@ -35,6 +47,55 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         % right and 0 meaning left.
         function responses = GetLeftRightResponses( this )
             responses = this.Session.trialDataSet.Response;
+        end
+        
+        
+        function plotResults = Plot_Sigmoid_Tilt_Aftereffect(this)
+            angles = this.GetAngles();
+            
+            dangles = diff(angles);
+            
+            angles = angles(2:end);
+            angles1 = angles(dangles>0);
+            angles2 = angles(dangles<0);
+            
+            respones = this.GetLeftRightResponses();
+            respones = respones(2:end);
+            respones1 = respones(dangles>0);
+            respones2 = respones(dangles<0);
+            
+            
+            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
+            ax1=axes('nextplot','add', 'fontsize',12);
+            
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles1, respones1);
+            plot( allAngles, allResponses,'o', 'color', [1 0 0], 'markersize',10,'linewidth',2,'markerfacecolor',[1 0.7 0.7])
+            plot(a,p, 'color', [1 0 0],'linewidth',2);
+            line([SVV, SVV], [0 100], 'color',[1 0 0],'linewidth',2);
+            
+            %xlabel('Angle (deg)', 'fontsize',16);
+            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
+            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
+            
+            set(gca,'xlim',[-30 30],'ylim',[-10 110])
+            set(gca,'xgrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+            set(gca,'xticklabel',[])
+            
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles2, respones2);
+            plot( allAngles, allResponses,'o', 'color', [0 0 1], 'markersize',10,'linewidth',2,'markerfacecolor',[0.7 0.7 1])
+            plot(a,p, 'color', [0 0 1],'linewidth',2);
+            line([SVV, SVV], [0 100], 'color',[0 0 1],'linewidth',2);
+            
+            %xlabel('Angle (deg)', 'fontsize',16);
+            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
+            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
+            
+            set(gca,'xlim',[-30 30],'ylim',[-10 110])
+            set(gca,'xgrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+            set(gca,'xticklabel',[])
+            
         end
         
         function plotResults = Plot_Sigmoid(this)
@@ -51,9 +112,9 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
             ax1=subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
             
-            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
-            plot(a,p, 'color', 'k','linewidth',2);
-            line([SVV, SVV], [0 100], 'color','k','linewidth',2);
+            plot( allAngles, allResponses,'o', 'color', [0.4 0.4 0.4], 'markersize',10,'linewidth',2, 'markerfacecolor', [0.7 0.7 0.7])
+            plot(a,p, 'color', 'k','linewidth',3);
+            line([SVV, SVV], [0 100], 'color','k','linewidth',3);
             
             
             
@@ -109,7 +170,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
 %             if ( length(ds.Responses) > 20 )
                 modelspec = 'Response ~ Angle';
                 mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
-                ds(mdl.Diagnostics.CooksDistance > 4/length(mdl.Diagnostics.CooksDistance),:) = [];
+                ds(mdl.Diagnostics.CooksDistance > 10/length(mdl.Diagnostics.CooksDistance),:) = [];
 %             end
             
             if ( sum(ds.Response==0) == 0 )

@@ -354,12 +354,15 @@ classdef SVVdotsAdaptFixed < ArumeExperimentDesigns.SVV2AFC
         % upright, positive tilted CW and negative CCW.
         function angles = GetAngles( this )
             angles = this.Session.trialDataSet.Angle;
+            responses = 1-this.Session.trialDataSet.Response;
+            angles = angles(responses<2);
         end
         
         % Function that gets the left and right responses with 1 meaning
         % right and 0 meaning left.
         function responses = GetLeftRightResponses( this )
             responses = 1-this.Session.trialDataSet.Response;
+            responses = responses(responses<2);
         end
         
         function plotResults = Plot_ExperimentTimeCourse(this)
