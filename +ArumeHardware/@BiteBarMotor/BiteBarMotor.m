@@ -15,11 +15,11 @@ classdef BiteBarMotor
             if ( isempty(ss) )
                 serialInfo = instrhwinfo('serial');
                 
-                if ( length(serialInfo.SerialPorts) < 1 )
+                if ( length(serialInfo.AvailableSerialPorts) < 1 )
                     error('No serial ports detected');
                 end
                 
-                this.port = serialInfo.SerialPorts{end};
+                this.port = serialInfo.AvailableSerialPorts{1};
                 
                 
                 delete(instrfindall);

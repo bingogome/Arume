@@ -1,4 +1,4 @@
-classdef Fixation < ArumeCore.ExperimentDesign
+classdef FixLightONOFF < ArumeCore.ExperimentDesign
     %OPTOKINETICTORSION Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -15,7 +15,7 @@ classdef Fixation < ArumeCore.ExperimentDesign
     methods ( Static = true )
         function dlg = GetOptionsStructDlg( this )
             dlg.UseEyeTracker = { {'{0}' '1'} };
-            dlg.TrialDuration = { 30 '* (seconds)' [1 100] };
+            dlg.FixationDuration = { 2 '* (seconds)' [1 100] };
             dlg.NumberOfTrials = { 1 '* (N)' [1 100] };
         end
     end
@@ -28,18 +28,18 @@ classdef Fixation < ArumeCore.ExperimentDesign
             
             this.HitKeyBeforeTrial = 1;
             
-            this.trialDuration = this.ExperimentOptions.TrialDuration; %seconds
+            this.trialDuration = this.ExperimentOptions.FixationDuration*2*8+2; %seconds
             
             % default parameters of any experiment
             this.trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
             this.trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
             this.trialsPerSession = this.ExperimentOptions.NumberOfTrials;
             
-                %%-- Blocking
-                this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-                this.numberOfTimesRepeatBlockSequence = 1;
-                this.blocksToRun = 1;
-                this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', this.ExperimentOptions.NumberOfTrials ) ];
+            %%-- Blocking
+            this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
+            this.numberOfTimesRepeatBlockSequence = 1;
+            this.blocksToRun = 1;
+            this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 2, 'trialsToRun', this.ExperimentOptions.NumberOfTrials ) ];
         end
         
         function initBeforeRunning( this )
@@ -60,6 +60,9 @@ classdef Fixation < ArumeCore.ExperimentDesign
             i = i+1;
             conditionVars(i).name   = 'Fixation';
             conditionVars(i).values = {'Center'};
+            
+            conditionVars(i).name   = 'Direction';
+            conditionVars(i).values = {'CW' 'CCW'};
         end
         
         function [ randomVars] = getRandomVariables( this )
@@ -107,10 +110,25 @@ classdef Fixation < ArumeCore.ExperimentDesign
                 
                 startLoopTime = lastFlipTime;
                 
+                timeLastTarget = 0;
+                secondsInTarget = 0;
+                OnOrOff = 0;
+                                
                 while secondsRemaining > 0
                     
                     secondsElapsed      = GetSecs - startLoopTime;
                     secondsRemaining    = this.trialDuration - secondsElapsed;
+                    
+                    secondsInTarget = secondsElapsed - timeLastTarget;
+                    if ( secondsInTarget > 2 )
+                        if ( OnOrOff == 0 )
+                            OnOrOff = 1;
+                        else
+                            OnOrOff = 0;
+                        end
+                        timeLastTarget = secondsElapsed;
+                    end
+                    
                     
                     % -----------------------------------------------------------------
                     % --- Drawing of stimulus -----------------------------------------
@@ -119,10 +137,15 @@ classdef Fixation < ArumeCore.ExperimentDesign
                     %-- Find the center of the screen
                     [mx, my] = RectCenter(graph.wRect);
                     
-                    %-- Draw fixation spot
-                    fixRect = [0 0 5 5];
-                    fixRect = CenterRectOnPointd( fixRect, mx, my );
-                    Screen('FillOval', graph.window, this.fixColor, fixRect);
+                    if ( OnOrOff == 0 )
+                        Screen('FillRect', graph.window, 0);
+                    else
+                        Screen('FillRect', graph.window, 128);
+                    end
+                        %-- Draw fixation spot
+                        fixRect = [0 0 5 5];
+                        fixRect = CenterRectOnPointd( fixRect, mx, my );
+                        Screen('FillOval', graph.window, this.fixColor, fixRect);
                     
                     % -----------------------------------------------------------------
                     % --- END Drawing of stimulus -------------------------------------

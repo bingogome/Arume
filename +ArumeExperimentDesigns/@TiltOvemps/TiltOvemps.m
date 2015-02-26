@@ -77,10 +77,10 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
         end
         
         function initBeforeRunning( this )
-            asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
-            this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('localhost',9000);
+             asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+             this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('localhost',9000);
             this.bitebar = ArumeHardware.BiteBarMotor();
-            this.eyeTracker.SetDataFileName(this.Session.name);
+             this.eyeTracker.SetDataFileName(this.Session.name);
         end
         
         function [conditionVars] = getConditionVariables( this )

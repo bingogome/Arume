@@ -66,8 +66,13 @@ classdef SVVdotsAdaptFixed < ArumeExperimentDesigns.SVV2AFC
             end
             
             if ( this.ExperimentOptions.UseEyeTracker )
-                asm = NET.addAssembly('D:\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
-                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('10.17.101.13',9000);
+                if ( exist('C:\secure\Code\EyeTracker\bin\Debug','file') )
+                    asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('127.0.0.1',9000);
+                else
+                    asm = NET.addAssembly('D:\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('10.17.101.19',9000);
+                end
                 this.eyeTracker.SetDataFileName(this.Session.name);
             end
         end

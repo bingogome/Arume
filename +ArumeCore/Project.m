@@ -89,7 +89,9 @@ classdef Project < handle
             [filePath, projectName] = fileparts(file);
             
             % clean the temp folder
-            rmdir(tempPath,'s');
+            if(  exist(tempPath,'dir') )
+                rmdir(tempPath,'s');
+            end
             mkdir(tempPath);
             
             % uncompress project file into temp folder
@@ -164,6 +166,26 @@ classdef Project < handle
             % if not found
             session = [];
         end
+        
+        function mergeProject(this, projectFile)
+            tempPath2 = fullfile(this.path, 'TEMPMERGE');
+            p2 = ArumeCore.Project.LoadProject(projectFile, tempPath2);
+            
+            for session = p2.sessions
+                repeated = false;
+                for session1 = this.sessions
+                    if ( strcmp( session.name, session1.name) )
+                        repeated = true;
+                    end
+                end
+                
+                if ( ~repeated)
+                    d = session.save();
+                    ArumeCore.Session.LoadSession(this,d)
+                end
+            end
+        
+        end
     end
     
     
@@ -189,10 +211,10 @@ classdef Project < handle
             project.initNew( projectFilePath, projectName, tempPath, defaultExperiment );
         end
         
-        function this = LoadProject( projectFile, tempPath )
+        function project = LoadProject( projectFile, tempPath )
             % read project info
-            this = ArumeCore.Project();
-            this.initExisting( projectFile, tempPath );
+            project = ArumeCore.Project();
+            project.initExisting( projectFile, tempPath );
         end
         
         %
