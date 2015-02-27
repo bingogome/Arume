@@ -1,8 +1,50 @@
-classdef VOG
+classdef VOG  < handle
     %VOG Summary of this class goes here
     %   Detailed explanation goes here
     
     properties
+        eyeTracker
+    end
+    
+    methods
+        
+        function Connect(this, ip, port)
+            if ( exist('C:\secure\Code\EyeTracker\bin\Debug','file') )
+                asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClientMatlab('127.0.0.1', 9000);
+            else
+                asm = NET.addAssembly('D:\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClientMatlab('10.17.101.19', 9000);
+            end
+        end
+        
+        function result = IsRecording(this)
+            status = this.eyeTracker.Status;
+            result = status.Recording;
+        end
+        
+        function SetSessionName(this, sessionName)
+            if ( ~isempty( this.eyeTracker) )
+                this.eyeTracker.ChangeSetting('SessionName',sessionName);
+            end
+        end
+        function StartRecording(this)
+            if ( ~isempty( this.eyeTracker) )
+                this.eyeTracker.StartRecording();
+            end
+        end
+        
+        function StopRecording(this)
+            if ( ~isempty( this.eyeTracker) )
+                this.eyeTracker.StopRecording();
+            end
+        end
+        
+        function RecordEvent(this, message)
+            if ( ~isempty( this.eyeTracker) )
+                this.eyeTracker.RecordEvent([num2str(GetSecs) ' ' message]);
+            end
+        end
     end
     
     methods(Static = true)

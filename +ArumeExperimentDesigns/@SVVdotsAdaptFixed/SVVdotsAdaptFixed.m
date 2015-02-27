@@ -68,12 +68,15 @@ classdef SVVdotsAdaptFixed < ArumeExperimentDesigns.SVV2AFC
             if ( this.ExperimentOptions.UseEyeTracker )
                 if ( exist('C:\secure\Code\EyeTracker\bin\Debug','file') )
                     asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
-                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('127.0.0.1',9000);
+                    this.eyeTracker = ArumeHardware.VOG();
+                    this.eyeTracker.Connect('127.0.0.1',9000);
                 else
                     asm = NET.addAssembly('D:\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
-                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('10.17.101.19',9000);
+                    this.eyeTracker = ArumeHardware.VOG();
+                    this.eyeTracker.Connect('127.0.0.1',9000);
                 end
-                this.eyeTracker.SetDataFileName(this.Session.name);
+                
+                this.eyeTracker.SetSessionName(this.Session.name);
             end
         end
         
@@ -154,19 +157,18 @@ classdef SVVdotsAdaptFixed < ArumeExperimentDesigns.SVV2AFC
             
             disp(['CURRENT: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(N) ' SVV : ' num2str(this.currentCenterRange) ' RANGE: ' num2str(this.currentRange)]);
             
+            if ( ~isempty(this.eyeTracker) )
+                if ( ~this.eyeTracker.IsRecording())
+                    this.eyeTracker.StartRecording();
+                    pause(1);
+                end
+                this.eyeTracker.RecordEvent(num2str(size(this.Session.CurrentRun.pastConditions,1)));
+            end
+            
             trialResult =  Enum.trialResult.CORRECT;
         end
         
         function trialResult = runTrial( this, variables )
-            
-            if ( ~isempty(this.eyeTracker) )
-                this.eyeTracker.SetDataFileName(this.Session.name);
-                if ( ~this.eyeTracker.recording )
-                    this.eyeTracker.StartRecording();
-                    pause(1);
-                end
-                this.eyeTracker.SaveEvent(size(this.Session.CurrentRun.pastConditions,1));
-            end
             
             try
                 this.lastResponse = -1;
@@ -331,6 +333,11 @@ classdef SVVdotsAdaptFixed < ArumeExperimentDesigns.SVV2AFC
                 trialResult =  Enum.trialResult.ABORT;
             end
             
+        end
+        
+        function trialOutput = runPostTrial(this)
+            
+            
             if ( ~isempty( this.eyeTracker ) )
                 
                 if ( length(this.Session.CurrentRun.futureConditions) == 0 )
@@ -338,9 +345,6 @@ classdef SVVdotsAdaptFixed < ArumeExperimentDesigns.SVV2AFC
                 end
             end
             
-        end
-        
-        function trialOutput = runPostTrial(this)
             trialOutput = [];
             trialOutput.Response = this.lastResponse;
             trialOutput.ReactionTime = this.reactionTime;

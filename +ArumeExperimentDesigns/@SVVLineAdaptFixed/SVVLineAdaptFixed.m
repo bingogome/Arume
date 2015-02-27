@@ -16,16 +16,7 @@ classdef SVVLineAdaptFixed < ArumeExperimentDesigns.SVVdotsAdaptFixed
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         function trialResult = runTrial( this, variables )
-            
-            if ( ~isempty(this.eyeTracker) )
-                this.eyeTracker.SetDataFileName(this.Session.name);
-                if ( ~this.eyeTracker.recording )
-                    this.eyeTracker.StartRecording();
-                    pause(1);
-                end
-                this.eyeTracker.SaveEvent(size(this.Session.CurrentRun.pastConditions,1));
-            end
-            
+                        
             try
                 this.lastResponse = -1;
                 this.reactionTime = -1;
@@ -213,7 +204,7 @@ classdef SVVLineAdaptFixed < ArumeExperimentDesigns.SVVdotsAdaptFixed
                 if ( ~isempty( this.eyeTracker ) )
                     this.eyeTracker.StopRecording();
                 end
-                %  this.eyeTracker.StopRecording();
+                
                 rethrow(ex)
             end
             
@@ -221,15 +212,7 @@ classdef SVVLineAdaptFixed < ArumeExperimentDesigns.SVVdotsAdaptFixed
             if ( this.lastResponse < 0)
                 trialResult =  Enum.trialResult.ABORT;
             end
-            
-            if ( ~isempty( this.eyeTracker ) )
-                
-                if ( length(this.Session.CurrentRun.futureConditions) == 0 )
-                    this.eyeTracker.StopRecording();
-                end
-            end
-            
-            % this.eyeTracker.StopRecording();
+                        
             
         end
     end

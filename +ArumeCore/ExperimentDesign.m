@@ -334,7 +334,7 @@ classdef ExperimentDesign < handle
                                 %------------------------------------------------------------
                                 
                                 %% make a sound for the end of the trial
-                               fs = 8000;
+                                fs = 8000;
                                 T = 0.1; % 2 seconds duration
                                 t = 0:(1/fs):T;
                                 if ( trialResult == Enum.trialResult.CORRECT )
