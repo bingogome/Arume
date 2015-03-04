@@ -1,8 +1,20 @@
 classdef SVV2AFC < ArumeCore.ExperimentDesign
     %SVV2AFC Parent experiment design for designs of SVV experiments
     % using 2AFC two alternative forced choice task
+    % all the experiments will have a variable called angle which is the
+    % angle tested relative to true vertical and a response variable that
+    % can 'R' or 'L'.
     
     properties
+        eyeTracker = [];
+        
+        lastResponse = '';
+        reactionTime = '';
+        
+        fixColor = [255 0 0];
+        
+        targetColor = [255 0 0];
+        
     end
     
     % ---------------------------------------------------------------------
@@ -10,6 +22,19 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Static = true )
         function dlg = GetOptionsStructDlg( this )
+            dlg.UseEyeTracker = { {'{0}','1'} };
+            dlg.UseGamePad = { {'0','{1}'} };
+                        
+            dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
+            
+            dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
+            dlg.targetDistance = { 125 '* (pix)' [10 500] };
+            
+            dlg.fixationDuration = { 1000 '* (ms)' [1 3000] };
+            dlg.targetDuration = { 300 '* (ms)' [100 30000] };
+            dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
+            
+            dlg.offset = {0 '* (deg)' [-20 20] };
         end
     end
     
@@ -18,6 +43,63 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         
+        function initBeforeRunning( this )
+            if ( this.ExperimentOptions.UseGamePad )
+                ArumeHardware.GamePad.Open
+            end
+            
+            if ( this.ExperimentOptions.UseEyeTracker )
+                if ( exist('C:\secure\Code\EyeTracker\bin\Debug','file') )
+                    asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+                    this.eyeTracker = ArumeHardware.VOG();
+                    this.eyeTracker.Connect('127.0.0.1',9000);
+                else
+                    asm = NET.addAssembly('D:\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+                    this.eyeTracker = ArumeHardware.VOG();
+                    this.eyeTracker.Connect('127.0.0.1',9000);
+                end
+                
+                this.eyeTracker.SetSessionName(this.Session.name);
+            end
+        end
+        
+        function response = CollectLeftRightResponse(this, reverse)
+            response = [];
+            
+            if ( this.ExperimentOptions.UseGamePad )
+                [d, l, r] = ArumeHardware.GamePad.Query;
+                if ( l == 1)
+                    response = 'L';
+                elseif( r == 1)
+                    response = 'R'
+                end
+            else
+                [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
+                if ( keyIsDown )
+                    keys = find(keyCode);
+                    for i=1:length(keys)
+                        KbName(keys(i))
+                        switch(KbName(keys(i)))
+                            case 'RightArrow'
+                                response = 'R';
+                            case 'LeftArrow'
+                                response = 'L';
+                        end
+                    end
+                end
+            end
+            
+            if ( ~isempty( response) )
+                if ( reverse )
+                    switch(response)
+                        case 'L'
+                            response = 'R';
+                        case 'R'
+                            response = 'L';
+                    end
+                end
+            end
+        end
     end
     
     % ---------------------------------------------------------------------
@@ -35,20 +117,18 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             trialDataSet.PresentedAngle = trialDataSet.Angle;
             trialDataSet.LeftRightResponse = trialDataSet.Response;
         end
-            
         
-        % Function that gets the angles of each trial with 0 meaning 
+        % Function that gets the angles of each trial with 0 meaning
         % upright, positive tilted CW and negative CCW.
         function angles = GetAngles( this )
             angles = this.Session.trialDataSet.Angle;
         end
         
-        % Function that gets the left and right responses with 1 meaning 
+        % Function that gets the left and right responses with 1 meaning
         % right and 0 meaning left.
         function responses = GetLeftRightResponses( this )
             responses = this.Session.trialDataSet.Response;
         end
-        
         
         function plotResults = Plot_Sigmoid_Tilt_Aftereffect(this)
             angles = this.GetAngles();
@@ -116,9 +196,6 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             plot(a,p, 'color', 'k','linewidth',3);
             line([SVV, SVV], [0 100], 'color','k','linewidth',3);
             
-            
-            
-            
             %xlabel('Angle (deg)', 'fontsize',16);
             ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
             text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
@@ -148,30 +225,28 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     % Utility methods
     % ---------------------------------------------------------------------
     methods ( Static = true )
-        
         function [SVV, a, p, allAngles, allResponses, trialCounts, SVVth] = FitAngleResponses( angles, responses)
             
             % add values in the extremes to "support" the logistic fit
-%             angles(end+1) = -90;
-%             angles(end+1) = 90;
-%             
-%             responses(end+1) = 1;
-%             responses(end+1) = 0;
-
+            %             angles(end+1) = -90;
+            %             angles(end+1) = 90;
+            %
+            %             responses(end+1) = 1;
+            %             responses(end+1) = 0;
             
             ds = dataset;
-            ds.Response = responses;
+            ds.Response = responses=='L';
             ds.Angle = angles;
             
             outliers = find((ds.Response==0 & ds.Angle<-50) | (ds.Response==1 & ds.Angle>50));
             
             ds(outliers,:) = [];
             
-%             if ( length(ds.Responses) > 20 )
-                modelspec = 'Response ~ Angle';
-                mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
-                ds(mdl.Diagnostics.CooksDistance > 10/length(mdl.Diagnostics.CooksDistance),:) = [];
-%             end
+            %             if ( length(ds.Responses) > 20 )
+            modelspec = 'Response ~ Angle';
+            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
+            ds(mdl.Diagnostics.CooksDistance > 10/length(mdl.Diagnostics.CooksDistance),:) = [];
+            %             end
             
             if ( sum(ds.Response==0) == 0 )
                 ds.Response(end+1) = 0;

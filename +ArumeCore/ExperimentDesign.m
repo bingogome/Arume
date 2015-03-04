@@ -59,8 +59,13 @@ classdef ExperimentDesign < handle
     end
     
     % 
-    % Options to set at runtime
-    % 
+    % Options to set at runtime, this options will appear as a dialog
+    % when creating a new session. If one experiment inherits from another
+    % one it is a good idea to first call GetExperimentDesignOptions from
+    % the parent class to get the options and then add new ones.
+    %
+    % It needs to be static because it is called before the experimental
+    % session and the experiment design is created
     methods ( Static=true)
         function dlg = GetExperimentDesignOptions( experimentName )
             % TODO: maybe add iteratio trough parent classes?
@@ -95,13 +100,19 @@ classdef ExperimentDesign < handle
     % 
     methods (Access=protected, Abstract)
         
-        %% getParameters must be overriden by new experiments
+        %% run initialization when the session is created.
+        % Use this to set parameters of the trial sequence, etc.
+        % This is executed at the time of creating a session
         initExperimentDesign( this );
         
         %% run initialization before the first trial is run
+        % Use this function to initialize things that need to be
+        % initialized before running but don't need to be initialized for
+        % every single trial
         initBeforeRunning( this );
         
         %% runPreTrial
+        % use this to prepare things before the trial starts
         runPreTrial(this, variables );
         
         %% runTrial
