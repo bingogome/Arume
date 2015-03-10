@@ -13,8 +13,8 @@ classdef VOG  < handle
                 asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
                 this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClientMatlab('127.0.0.1', 9000);
             else
-                asm = NET.addAssembly('D:\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
-                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClientMatlab('10.17.101.19', 9000);
+                asm = NET.addAssembly('D:\Code\Debug\EyeTrackerRemoteClient.dll');
+                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClientMatlab('10.17.101.57', 9000);
             end
         end
         

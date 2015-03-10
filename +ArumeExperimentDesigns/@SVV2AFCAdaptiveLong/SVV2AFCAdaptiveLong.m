@@ -83,9 +83,16 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                     subds = ds;
                     
                     SVV = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-
-                    this.currentCenterRange = SVV + this.ExperimentOptions.offset;           q 
-
+                    this.currentCenterRange = SVV + this.ExperimentOptions.offset;
+                    
+                    % Limit the center of the new range to the extremes of
+                    % the past range of angles
+                    if ( SVV > max(ds.Angle) )
+                        SVV = max(ds.Angle);
+                    elseif( SVV < min(ds.Angle))
+                        SVV = min(ds.Angle);
+                    end
+                    
                     this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
                 end
             else
@@ -148,7 +155,8 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                     
                     lineLength = 300;
                     
-                    if ( secondsElapsed > t1 && secondsElapsed < t2 )
+%                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
+                    if ( secondsElapsed > t1)
                         %-- Draw target
                         
                         switch(variables.Position)
@@ -168,16 +176,13 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                         
                     end
                     
-                    if (secondsElapsed < t2)
+%                     if (secondsElapsed < t2)
 %                         % black patch to block part of the line
-%                         fixRect = [0 0 150 150];
-%                         fixRect = CenterRectOnPointd( fixRect, mx, my );
-%                         Screen('FillOval', graph.window,  [0 0 0] , fixRect);
                         
                         fixRect = [0 0 10 10];
                         fixRect = CenterRectOnPointd( fixRect, mx, my );
                         Screen('FillOval', graph.window,  this.targetColor, fixRect);
-                    end
+%                     end
                     % -----------------------------------------------------------------
                     % --- END Drawing of stimulus -------------------------------------
                     % -----------------------------------------------------------------
@@ -186,7 +191,7 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                 % -----------------------------------------------------------------
                 % DEBUG
                 % -----------------------------------------------------------------
-                if (1)
+                if (0)
                     % TODO: it would be nice to have some call back system here
                     Screen('DrawText', graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.white);
                     currentline = 50 + 25;

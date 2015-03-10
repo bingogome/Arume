@@ -52,11 +52,11 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                 if ( exist('C:\secure\Code\EyeTracker\bin\Debug','file') )
                     asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
                     this.eyeTracker = ArumeHardware.VOG();
-                    this.eyeTracker.Connect('127.0.0.1',9000);
+                    this.eyeTracker.Connect('127.0.0.1', 9000);
                 else
-                    asm = NET.addAssembly('D:\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+                    asm = NET.addAssembly('D:\Code\Debug\EyeTrackerRemoteClient.dll');
                     this.eyeTracker = ArumeHardware.VOG();
-                    this.eyeTracker.Connect('127.0.0.1',9000);
+                    this.eyeTracker.Connect('10.17.101.57', 9000);
                 end
                 
                 this.eyeTracker.SetSessionName(this.Session.name);
@@ -235,7 +235,11 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             %             responses(end+1) = 0;
             
             ds = dataset;
-            ds.Response = responses=='L';
+            if ( max(responses)>10)
+                ds.Response = responses=='L';
+            else
+                ds.Response = responses;
+            end
             ds.Angle = angles;
             
             outliers = find((ds.Response==0 & ds.Angle<-50) | (ds.Response==1 & ds.Angle>50));
@@ -245,7 +249,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             %             if ( length(ds.Responses) > 20 )
             modelspec = 'Response ~ Angle';
             mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
-            ds(mdl.Diagnostics.CooksDistance > 10/length(mdl.Diagnostics.CooksDistance),:) = [];
+%             ds(mdl.Diagnostics.CooksDistance > 400/length(mdl.Diagnostics.CooksDistance),:) = [];
             %             end
             
             if ( sum(ds.Response==0) == 0 )

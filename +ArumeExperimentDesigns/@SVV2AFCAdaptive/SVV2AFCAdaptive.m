@@ -101,6 +101,14 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     
                     SVV = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
 
+                    % Limit the center of the new range to the extremes of
+                    % the past range of angles
+                    if ( SVV > max(ds.Angle) )
+                        SVV = max(ds.Angle);
+                    elseif( SVV < min(ds.Angle))
+                        SVV = min(ds.Angle);
+                    end
+                    
                     this.currentCenterRange = SVV + this.ExperimentOptions.offset;            
 
                     this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
@@ -159,31 +167,40 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     
                     %-- Find the center of the screen
                     [mx, my] = RectCenter(graph.wRect);
-                    
+
                     t1 = this.ExperimentOptions.fixationDuration/1000;
                     t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
                     
-                    if (secondsElapsed < t2)
-                        %-- Draw fixation spot
-                        fixRect = [0 0 this.ExperimentOptions.FixationDiameter this.ExperimentOptions.FixationDiameter];
-                        fixRect = CenterRectOnPointd( fixRect, mx, my );
-                        Screen('FillOval', graph.window, this.fixColor, fixRect);
-                    end
+                    lineLength = 300;
                     
-                    if ( secondsElapsed > t1 && secondsElapsed < t2 )
+%                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
+                    if ( secondsElapsed > t1)
                         %-- Draw target
-                        targetRect = [0 0 this.ExperimentOptions.TargetDiameter this.ExperimentOptions.TargetDiameter];
                         
-                        targetDist = this.ExperimentOptions.targetDistance;
                         switch(variables.Position)
                             case 'Up'
-                                targetRect = CenterRectOnPointd( targetRect, mx + targetDist*sin(this.currentAngle/180*pi), my - targetDist*cos(this.currentAngle/180*pi) );
+                                fromH = mx;
+                                fromV = my;
+                                toH = mx + lineLength*sin(this.currentAngle/180*pi);
+                                toV = my - lineLength*cos(this.currentAngle/180*pi);
                             case 'Down'
-                                targetRect = CenterRectOnPointd( targetRect, mx - targetDist*sin(this.currentAngle/180*pi), my + targetDist*cos(this.currentAngle/180*pi) );
+                                fromH = mx;
+                                fromV = my;
+                                toH = mx - lineLength*sin(this.currentAngle/180*pi);
+                                toV = my + lineLength*cos(this.currentAngle/180*pi);
                         end
-                        Screen('FillOval', graph.window, this.targetColor, targetRect);
+                        
+                        Screen('DrawLine', graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
+                        
                     end
                     
+%                     if (secondsElapsed < t2)
+%                         % black patch to block part of the line
+                        
+                        fixRect = [0 0 10 10];
+                        fixRect = CenterRectOnPointd( fixRect, mx, my );
+                        Screen('FillOval', graph.window,  this.targetColor, fixRect);
+%                     end
                     % -----------------------------------------------------------------
                     % --- END Drawing of stimulus -------------------------------------
                     % -----------------------------------------------------------------
@@ -225,50 +242,13 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     % -----------------------------------------------------------------
                     
                     if ( secondsElapsed > max(t1,0.200)  )
-                        
-                        if ( this.ExperimentOptions.UseGamePad )
-                            [d, l, r] = ArumeHardware.GamePad.Query;
-                            if ( l == 1)
-                                switch(variables.Position)
-                                    case 'Up'
-                                        this.lastResponse = 1;
-                                    case 'Down'
-                                        this.lastResponse = 0;
-                                end
-                            elseif( r == 1)
-                                switch(variables.Position)
-                                    case 'Up'
-                                        this.lastResponse = 0;
-                                    case 'Down'
-                                        this.lastResponse = 1;
-                                end
-                            end
-                        else
-                            [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
-                            if ( keyIsDown )
-                                keys = find(keyCode);
-                                for i=1:length(keys)
-                                    KbName(keys(i))
-                                    switch(KbName(keys(i)))
-                                        case 'RightArrow'
-                                            switch(variables.Position)
-                                                case 'Up'
-                                                    this.lastResponse = 1;
-                                                case 'Down'
-                                                    this.lastResponse = 0;
-                                            end
-                                        case 'LeftArrow'
-                                            switch(variables.Position)
-                                                case 'Up'
-                                                    this.lastResponse = 0;
-                                                case 'Down'
-                                                    this.lastResponse = 1;
-                                            end
-                                    end
-                                end
-                            end
+                        reverse = isequal(variables.Position,'Down');
+                        response = this.CollectLeftRightResponse(reverse);
+                        if ( ~isempty( response) )
+                            this.lastResponse = response;
                         end
                     end
+                    
                     if ( this.lastResponse >= 0 )
                         this.reactionTime = secondsElapsed-1;
                         disp(num2str(this.lastResponse));
@@ -323,6 +303,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             analysisResults = 0;
             
             ds = this.Session.trialDataSet;
+            ds.Response = ds.Response == 'L';
             ds(ds.TrialResult>0,:) = [];
             ds(ds.Response<0,:) = [];
             NtrialPerBlock = 10;
@@ -367,9 +348,9 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             plot(ds(ds.Response==1 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor','r','linewidth',2);
             
             
-            SVV = nan(1,100);
+            SVV = nan(1,600);
             
-            for i=1:10
+            for i=1:60
                 idx = (1:10) + (i-1)*10;
                 ang = ds.Angle(idx);
                 res = ds.Response(idx);
@@ -382,7 +363,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             
             legend({'Ansered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
             legend('boxoff')
-            set(gca,'xlim',[-3 103],'ylim',[-90 90])
+            set(gca,'xlim',[-3 603],'ylim',[-90 90])
             ylabel('Angle (deg)', 'fontsize',16);
             xlabel('Trial number', 'fontsize',16);
             set(gca,'ygrid','on')
