@@ -123,6 +123,17 @@ classdef ArumeController < handle
             
             this.currentProject = ArumeCore.Project.NewProject( projectFilePath, projectName, this.configuration.tempFolder, defaultExperiment);
             this.selectedSessions = [];
+            
+            if ( ~isfield(this.configuration, 'recentProjects' ) )
+                this.configuration.recentProjects = {};
+            end
+            
+            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile)));
+            
+            this.configuration.recentProjects = [this.currentProject.projectFile this.configuration.recentProjects];
+            conf = this.configuration;
+            [folder, name, ext] = fileparts(which('Arume'));
+            save(fullfile(folder,'arumeconf.mat'), 'conf'); 
         end
         
         function loadProject( this, file )
@@ -139,8 +150,9 @@ classdef ArumeController < handle
                 this.configuration.recentProjects = {};
             end
             
-            this.configuration.recentProjects{end+1} = file;
-            this.configuration.recentProjects = unique(this.configuration.recentProjects);
+            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, file)));
+            
+            this.configuration.recentProjects = [file this.configuration.recentProjects];
             conf = this.configuration;
             [folder, name, ext] = fileparts(which('Arume'));
             save(fullfile(folder,'arumeconf.mat'), 'conf'); 
@@ -168,7 +180,7 @@ classdef ArumeController < handle
             end
         end
         
-        function session = newSession( this, experiment, subjectCode, sessionCode, experimentOptions )
+        function session = newSession( this, experiment, subjectCode, sessionCode )
             % Crates a new session to start the experiment and collect data
             
             % check if session already exists with that subjectCode and
@@ -179,7 +191,7 @@ classdef ArumeController < handle
                 end
             end
             
-            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subjectCode, sessionCode, experimentOptions );
+            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subjectCode, sessionCode );
             this.selectedSessions = session;
             this.currentProject.save();
         end

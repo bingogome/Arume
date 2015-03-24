@@ -6,7 +6,6 @@ classdef ExperimentDesign < handle
         Project = [];
         Session = [];
         
-        EyeTracker  = [];
         Graph       = [];
         SysInfo     = [];
         
@@ -18,17 +17,23 @@ classdef ExperimentDesign < handle
         RandomVars = [];
         StaircaseVars = [];
         
-        ConditionMatrix
-        
+        ConditionMatrix 
     end
     
     properties ( Dependent = true )
         Name
+        
+        NumberOfConditions
     end
     
     methods
         function name = get.Name(this)
-            name = strrep(class(this), 'ArumeExperimentDesigns.','');
+            className = class(this);
+            name = className(find(className=='.',1, 'last')+1:end);
+        end
+        
+        function number = get.NumberOfConditions(this)
+            number = size(this.ConditionMatrix,1);
         end
     end
     
@@ -59,25 +64,6 @@ classdef ExperimentDesign < handle
     end
     
     % 
-    % Options to set at runtime, this options will appear as a dialog
-    % when creating a new session. If one experiment inherits from another
-    % one it is a good idea to first call GetExperimentDesignOptions from
-    % the parent class to get the options and then add new ones.
-    %
-    % It needs to be static because it is called before the experimental
-    % session and the experiment design is created
-    methods ( Static=true)
-        function dlg = GetExperimentDesignOptions( experimentName )
-            % TODO: maybe add iteratio trough parent classes?
-            if ( ismethod( ArumeExperimentDesigns.(experimentName), 'GetOptionsStructDlg') )
-                dlg = ArumeExperimentDesigns.(experimentName).GetOptionsStructDlg();
-            else
-                dlg = [];
-            end
-        end
-    end
-    
-    % 
     % Protected abstract methods, to be implemented by the Experiments
     % 
     methods (Access=protected)
@@ -98,12 +84,24 @@ classdef ExperimentDesign < handle
     % 
     % Protected abstract methods, to be implemented by the Experiments 
     % 
+    methods (Access=public, Abstract)
+        %
+        % Options to set at runtime, this options will appear as a dialog
+        % when creating a new session. If one experiment inherits from another
+        % one it is a good idea to first call GetExperimentDesignOptions from
+        % the parent class to get the options and then add new ones.
+        %
+        % It needs to be static because it is called before the experimental
+        % session and the experiment design is created
+        dlg = GetOptionsDialog( this );
+    end
+    
     methods (Access=protected, Abstract)
         
         %% run initialization when the session is created.
         % Use this to set parameters of the trial sequence, etc.
         % This is executed at the time of creating a session
-        initExperimentDesign( this );
+        initNewCreatedSession( this );
         
         %% run initialization before the first trial is run
         % Use this function to initialize things that need to be
@@ -121,6 +119,11 @@ classdef ExperimentDesign < handle
         %% runPostTrial
         [trialOutput] = runPostTrial(this);
         
+        %% run cleaning up after the session is completed or interrupted
+        cleanAfterRunning(this);
+        
+        %% runs after the session is completed
+        runAfterSessionCompleted(this);
     end
     
     methods( Access = public)
@@ -138,10 +141,9 @@ classdef ExperimentDesign < handle
     % --------------------------------------------------------------------
     methods
         
-        function init(this, session, experimentOptions)
+        function init(this, session)
             this.Project            = session.project;
             this.Session            = session;
-            this.ExperimentOptions  = experimentOptions;
             
             % load variables
             this.initVariables();
@@ -189,18 +191,6 @@ classdef ExperimentDesign < handle
                     this.Graph = [];
                 end
                 
-                % -- EYELINK
-                if ( this.Config.UsingEyeTracking )
-                    try
-                        this.EyeTracker = EyeTrackers.EyeTrackerAbstract.Initialize( 'EyeLink', this );
-                    catch
-                        disp( 'PSYCORTEX: EyeTracker set up failed ');
-                        this.EyeTracker = [];
-                    end
-                else
-                    this.EyeTracker = [];
-                end
-                
             catch
                 % If any error during the start up
                 
@@ -230,9 +220,9 @@ classdef ExperimentDesign < handle
                 IDLE = 0;
                 RUNNING = 1;
                 SESSIONFINISHED = 5;
-                FINISHED = 6;
                 SAVEDATA = 7;
                 BREAK = 8;
+                INTERRUPTED = 9;
                 
                 status = RUNNING;
                 
@@ -256,10 +246,14 @@ classdef ExperimentDesign < handle
                                 case {'q' 0}
                                     dlgResult = this.Graph.DlgYesNo( 'Are you sure you want to exit?',[],[],20,20);
                                     if( dlgResult )
-                                        status = SAVEDATA;
+                                        status = INTERRUPTED;
                                     end
                             end
                             
+                        %% ++ INTERRUPTED -------------------------------------------------------
+                        case INTERRUPTED
+                            
+                            status = SAVEDATA;
                             
                             %% ++ BREAK -------------------------------------------------------
                         case BREAK
@@ -309,16 +303,6 @@ classdef ExperimentDesign < handle
                                 %------------------------------------------------------------
                                 fprintf('\nTRIAL START: N=%d Cond=%d ...', trialnumber , currentCondition );
                                 
-                                %%-- Start Recording eye movements
-                                if ( ~isempty(this.EyeTracker) )
-                                    [result, messageString] = Eyelink('CalMessage');
-                                    
-                                    this.EyeTracker.SendMessage('CALIB: result=%d message=%s', result, messageString);
-                                    this.EyeTracker.StartRecording();
-                                    this.SaveEvent( Enum.Events.EYELINK_START_RECORDING);
-                                    this.EyeTracker.SendMessage('TRIAL_START: N=%d Cond=%d t=%d', trialnumber, currentCondition, round(GetSecs*1000));
-                                    this.EyeTracker.ChangeStatusMessage('TRIAL N=%d Cond=%d NtoBreak=%d', trialnumber, currentCondition, this.trialsBeforeBreak-trialsSinceBreak);
-                                end
                                 %%-- Run the trial
                                 this.SaveEvent( Enum.Events.TRIAL_START);
                                 
@@ -332,13 +316,6 @@ classdef ExperimentDesign < handle
                                 
                                 fprintf(' TRIAL END: slow flips: %d\n\n', sum(this.Graph.flips_hist) - max(this.Graph.flips_hist));
                                 fprintf(' TRIAL END: avg flip time: %d\n\n', mean(diff(this.Graph.fliptimes{end})));
-                                
-                                %%-- Stop Recording eye movements
-                                if ( ~isempty(this.EyeTracker) )
-                                    this.SaveEvent( Enum.Events.EYELINK_STOP_RECORDING);
-                                    this.EyeTracker.SendMessage( 'TRIAL_STOP: N=%d Cond=%d t=%d',trialnumber, currentCondition, round(GetSecs*1000));
-                                    this.EyeTracker.StopRecording();
-                                end
                                 
                                 %------------------------------------------------------------
                                 %% -- POST TRIAL ----------------------------------------------
@@ -437,7 +414,7 @@ classdef ExperimentDesign < handle
                             % -- Experiment or session finished ?
                             stats = this.Session.CurrentRun.GetStats();
                             if ( stats.trialsToFinishExperiment == 0 )
-                                status = FINISHED;
+                                status = SESSIONFINISHED;
                             elseif ( stats.trialsToFinishSession == 0 )
                                 status = SESSIONFINISHED;
                             elseif ( trialsSinceBreak >= this.trialsBeforeBreak )
@@ -445,7 +422,7 @@ classdef ExperimentDesign < handle
                             end
                             
                             %% ++ FINISHED -------------------------------------------------------
-                        case {FINISHED,SESSIONFINISHED}
+                        case {SESSIONFINISHED}
                             if ( this.Session.CurrentRun.CurrentSession < this.Session.CurrentRun.SessionsToRun)
                                 % -- session finished
                                 this.Session.CurrentRun.CurrentSession = this.Session.CurrentRun.CurrentSession + 1;
@@ -484,11 +461,7 @@ classdef ExperimentDesign < handle
             ListenChar(0);
             Priority(0);
             commandwindow;
-            
-            if ( ~isempty( this.EyeTracker ) )
-                this.EyeTracker.Close();
-            end
-            
+                        
             Screen('CloseAll');
             % --------------------------------------------------------------------
             %% -------------------- END FREE RESOURCES ----------------------------
@@ -900,7 +873,7 @@ classdef ExperimentDesign < handle
             %%-- Check if all the options are there, if not add the default
             %%values. This is important to mantain past compatibility if
             %%options are added in the future.
-            optionsDlg = ArumeCore.ExperimentDesign.GetExperimentDesignOptions( this.Name );
+            optionsDlg = this.GetOptionsDialog( );
             if ( ~isempty( optionsDlg ) )
                 options = StructDlg(optionsDlg,'',[],[],'off');
                 fields = fieldnames(options);
@@ -912,7 +885,7 @@ classdef ExperimentDesign < handle
             end
             
             %-- init the parameters of this specific experiment
-            this.initExperimentDesign( );
+            this.initNewCreatedSession( );
         end
         
         
@@ -962,7 +935,7 @@ classdef ExperimentDesign < handle
             end
         end
         
-        function experiment = Create(session, experimentName, experimentOptions)
+        function experiment = Create(session, experimentName)
             
             if ( exist( ['ArumeExperimentDesigns.' experimentName],  'class') )
                 % Create the experiment design object
@@ -973,7 +946,7 @@ classdef ExperimentDesign < handle
             end
             
             % Initialize the experiment design
-            experiment.init(session, experimentOptions);
+            experiment.init(session);
         end
         
         function Enum = getEnum()

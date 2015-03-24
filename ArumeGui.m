@@ -416,21 +416,47 @@ classdef ArumeGui < handle
         
         function newSession( this, source, eventdata ) 
             
-            sessionDlg.Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
+            experiments = ArumeCore.ExperimentDesign.GetExperimentList;
+            defaultExperimentIndex = find(strcmp(experiments,this.arumeController.currentProject.defaultExperiment));
             
-            % Set the default experiment
-            defaultExperimentIndex = strcmp(sessionDlg.Experiment{1},this.arumeController.currentProject.defaultExperiment);
-            sessionDlg.Experiment{1}{defaultExperimentIndex} = ['{'  sessionDlg.Experiment{1}{defaultExperimentIndex} '}'];
-            sessionDlg.Subject_Code = '000';
-            sessionDlg.Session_Code = 'Z';
+            session.Experiment = experiments{defaultExperimentIndex};
+            session.Subject_Code = '000';
+            session.Session_Code = 'Z';
             
-            session = StructDlg(sessionDlg);
-            if ( isempty( session ) )
-                return
+            while(1) 
+                sessionDlg.Experiment = {experiments};
+                sessionDlg.Experiment{1}{defaultExperimentIndex} = ['{'  experiments{find(strcmp(experiments,session.Experiment))} '}'];
+                
+                sessionDlg.Subject_Code = session.Subject_Code;
+                sessionDlg.Session_Code = session.Session_Code;
+                
+                session = StructDlg(sessionDlg);
+                if ( isempty( session ) )
+                    return
+                end
+                
+                if ( isempty(regexp(session.Subject_Code,'^[_a-zA-Z0-9]+$','ONCE') ))
+                    uiwait(msgbox('The subject code is not valid', 'Error', 'Modal'));
+                    continue;
+                end
+                
+                if ( isempty(regexp(session.Session_Code,'^[_a-zA-Z0-9]+$','ONCE') ))
+                    uiwait(msgbox('The session code is not valid', 'Error', 'Modal'));
+                    continue;
+                end
+                
+                % Check if session already exists
+                if ( isempty(this.arumeController.currentProject.findSession( session.Experiment, session.Subject_Code, session.Session_Code)))
+                    break;
+                else
+                    uiwait(msgbox('There is already a session with this name/code', 'Error', 'Modal'));
+                end
             end
             
+            session = this.arumeController.newSession( session.Experiment, session.Subject_Code, session.Session_Code );
+            
             % Show the dialog for experiment options if necessary
-            optionsDlg = ArumeCore.ExperimentDesign.GetExperimentDesignOptions( session.Experiment );
+            optionsDlg = session.experiment.GetOptionsDialog( );
             if ( ~isempty( optionsDlg) )
                 options = StructDlg(optionsDlg);
                 if ( isempty( options ) )
@@ -440,7 +466,7 @@ classdef ArumeGui < handle
                 options = [];
             end
             
-            this.arumeController.newSession( session.Experiment, session.Subject_Code, session.Session_Code, options );
+            session.experiment.ExperimentOptions = options;
             
             this.updateGui();
         end
@@ -749,6 +775,7 @@ classdef ArumeGui < handle
     %%  Utility functions 
     methods
         function result = closeProjectQuestdlg( this )
+            result = 0;
             if ( isempty( this.arumeController.currentProject) )
                 result = 1;
                 return

@@ -1,6 +1,6 @@
 classdef Project < handle
     %PROJECT Class handingling Arume projects
-    %   Detailed explanation goes here
+    %   
     
     properties( SetAccess = private)
         name        % Name of the project
@@ -8,7 +8,6 @@ classdef Project < handle
         path        % Working path of the uncompressed project (typically the temp folder)
         
         defaultExperiment % default experiment for this project
-        enabledExperiments % experiments that are enabled for this project. To facilitate selections
                 
         sessions    % Sessions that belong to this project
         
@@ -90,7 +89,11 @@ classdef Project < handle
             
             % clean the temp folder
             if(  exist(tempPath,'dir') )
-                rmdir(tempPath,'s');
+                try
+                    rmdir(tempPath,'s');
+                catch(error)
+                    disp('ERRO: temp folder could not be removed');
+                end
             end
             mkdir(tempPath);
             
@@ -136,6 +139,11 @@ classdef Project < handle
             % compress project file and keep temp folder
             tar(this.projectFile , this.path);
             movefile([this.projectFile '.tar'], this.projectFile);
+            
+            % send session variables to workspace
+            for session = this.sessions
+                assignin ('base',[session.name '_trialDataSet'],session.trialDataSet);
+            end
         end
         
         %
@@ -155,14 +163,17 @@ classdef Project < handle
             this.sessions(sessidx) = [];
         end
         
-        function session = findSession( this, subjectCode, sessionCode)
+        function session = findSession( this, experimentName, subjectCode, sessionCode)
+            
             for i=1:length(this.sessions)
-                if ( strcmp(upper(this.sessions(i).subjectCode), upper(subjectCode)) &&  ...
+                if ( strcmp(upper(this.sessions(i).experiment.Name), upper(experimentName)) &&  ...
+                    strcmp(upper(this.sessions(i).subjectCode), upper(subjectCode)) &&  ...
                        strcmp(upper(this.sessions(i).sessionCode), upper(sessionCode)))
                    session = this.sessions(i);
                    return;
                 end
             end
+            
             % if not found
             session = [];
         end

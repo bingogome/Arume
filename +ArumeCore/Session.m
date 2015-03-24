@@ -1,6 +1,7 @@
 classdef Session < ArumeCore.DataDB
-    %SESSION Summary of this class goes here
-    %   Detailed explanation goes here
+    %SESSION Encapsulates an experimental session
+    %  links to the corresponding experiment design and contains all the
+    %  data obtained when running the experiment or analyzing it.
     
     properties( SetAccess = private)
         project
@@ -10,14 +11,15 @@ classdef Session < ArumeCore.DataDB
         sessionCode = 'Z';
         comment = '';
         
-        CurrentRun  = [];
-        PastRuns    = [];
+        currentRun  = [];
+        pastRuns    = [];
     end
     
     %% dependent properties... see the related get.property method
     properties ( Dependent = true )
         
         name
+        
         isStarted
         isFinished
         
@@ -62,7 +64,7 @@ classdef Session < ArumeCore.DataDB
     methods
         
         function name = get.name(this)
-            name = [this.subjectCode this.sessionCode];
+            name = [this.experiment.Name '_' this.subjectCode this.sessionCode];
         end
         
         function name = get.dataRawPath(this)
@@ -74,7 +76,7 @@ classdef Session < ArumeCore.DataDB
         end
         
         function result = get.isStarted(this)
-            if ( isempty( this.CurrentRun ) || isempty(this.CurrentRun.pastConditions) )
+            if ( isempty( this.currentRun ) || isempty(this.currentRun.pastConditions) )
                 result = 0;
             else
                 result = 1;
@@ -82,7 +84,7 @@ classdef Session < ArumeCore.DataDB
         end
         
         function result = get.isFinished(this)
-            if ( ~isempty( this.CurrentRun ) && isempty(this.CurrentRun.futureConditions) )
+            if ( ~isempty( this.currentRun ) && isempty(this.currentRun.futureConditions) )
                 result = 1;
             else
                 result = 0;
@@ -111,40 +113,61 @@ classdef Session < ArumeCore.DataDB
         %
         % INIT METHODS
         %
-        function init( this, project, experimentName, subjectCode, sessionCode, experimentOptions )
+        function init( this, project, experimentName, subjectCode, sessionCode )
+            
             this.project        = project;
-            this.experiment     = ArumeCore.ExperimentDesign.Create( this, experimentName, experimentOptions );
+            this.experiment     = ArumeCore.ExperimentDesign.Create( this, experimentName );
             this.subjectCode    = subjectCode;
             this.sessionCode    = sessionCode;
             
             % to create stand alone sessions that do not belong to a
             % project and don't save data
             if ( ~isempty( project) ) 
+                
+                % Analysis folders
+                
+                if ( ~exist(fullfile(this.project.dataAnalysisPath,this.name), 'dir') )
+                    
+                    % fix for backwards compatibility, convert session
+                    % folders to full name including experiment
+                    oldStyleFolder = fullfile(this.project.dataAnalysisPath,strrep(this.name, [this.experiment.Name '_'],''));
+                    newStyleFolder = fullfile(this.project.dataAnalysisPath,this.name);
+                    if ( exist(oldStyleFolder, 'dir') )
+                        movefile(oldStyleFolder, newStyleFolder);
+                    end
+                end
+                
                 this.InitDB( this.project.dataAnalysisPath, this.name );
+                
+                % Raw data folders
+                
+                if ( ~exist(fullfile(this.project.dataRawPath,this.name), 'dir') )
+                    
+                    % fix for backwards compatibility, convert session
+                    % folders to full name including experiment
+                    oldStyleFolder = fullfile(this.project.dataRawPath,strrep(this.name, [this.experiment.Name '_'],''));
+                    newStyleFolder = fullfile(this.project.dataRawPath,this.name);
+                    if ( exist(oldStyleFolder, 'dir') )
+                        movefile(oldStyleFolder, newStyleFolder);
+                    else
+                        mkdir( project.dataRawPath, this.name );
+                    end
+                end
                 this.project.addSession(this);
-            end
-        end
-        
-        function initNew( this, project, experimentName, subjectCode, sessionCode, experimentOptions )
-            
-            this.init( project, experimentName, subjectCode, sessionCode, experimentOptions );
-            
-            % create the new folders
-            if ( ~isempty( project) ) 
-                mkdir( project.dataRawPath, this.name );
             end
         end
         
         function initExisting( this, project, data )
              
-            this.init( project, data.experimentName, data.subjectCode, data.sessionCode, data.experimentOptions  );
+            this.init( project, data.experimentName, data.subjectCode, data.sessionCode );
+            this.experiment.ExperimentOptions = data.experimentOptions ;
             
-            if (isfield(data, 'CurrentRun') && ~isempty( data.CurrentRun ))
-                this.CurrentRun  = ArumeCore.ExperimentRun.LoadRunData( data.CurrentRun, this.experiment );
+            if (isfield(data, 'currentRun') && ~isempty( data.currentRun ))
+                this.currentRun  = ArumeCore.ExperimentRun.LoadRunData( data.currentRun, this.experiment );
             end
             
-            if (isfield(data, 'PastRuns') && ~isempty( data.PastRuns ))
-                this.PastRuns  = ArumeCore.ExperimentRun.LoadRunDataArray( data.PastRuns, this.experiment );
+            if (isfield(data, 'pastRuns') && ~isempty( data.pastRuns ))
+                this.pastRuns  = ArumeCore.ExperimentRun.LoadRunDataArray( data.pastRuns, this.experiment );
             end
             
             if (isfield(data, 'comment') && ~isempty( data.comment ))
@@ -182,12 +205,12 @@ classdef Session < ArumeCore.DataDB
             data.comment        = this.comment;
             data.experimentOptions  = this.experiment.ExperimentOptions;
             
-            if (~isempty( this.CurrentRun ))
-                data.CurrentRun = ArumeCore.ExperimentRun.SaveRunData(this.CurrentRun);
-                data.PastRuns = ArumeCore.ExperimentRun.SaveRunDataArray(this.PastRuns);
+            if (~isempty( this.currentRun ))
+                data.currentRun = ArumeCore.ExperimentRun.SaveRunData(this.currentRun);
+                data.pastRuns = ArumeCore.ExperimentRun.SaveRunDataArray(this.pastRuns);
             else
-                data.CurrentRun = [];
-                data.PastRuns = [];
+                data.currentRun = [];
+                data.pastRuns = [];
             end
         end
         
@@ -204,7 +227,7 @@ classdef Session < ArumeCore.DataDB
             end
             
             % Set up the new run: trial sequence, etc ...
-            this.CurrentRun = ArumeCore.ExperimentRun.SetUpNewRun( this.experiment );
+            this.currentRun = ArumeCore.ExperimentRun.SetUpNewRun( this.experiment );
             
             % Start the experiment
             this.experiment.run();
@@ -213,7 +236,7 @@ classdef Session < ArumeCore.DataDB
         function simulate( this )
             
             % Set up the new run: trial sequence, etc ...
-            this.CurrentRun = ArumeCore.ExperimentRun.SetUpNewRun( this.experiment );
+            this.currentRun = ArumeCore.ExperimentRun.SetUpNewRun( this.experiment );
             
             % Start the experiment
             this.experiment.runSimulation();
@@ -227,10 +250,10 @@ classdef Session < ArumeCore.DataDB
             
             % Save the status of the current run in  the past runs, useful
             % to restart from a past point
-            if ( isempty( this.PastRuns) )
-                this.PastRuns = this.CurrentRun.Copy();
+            if ( isempty( this.pastRuns) )
+                this.pastRuns = this.currentRun.Copy();
             else
-                this.PastRuns( length(this.PastRuns) + 1 ) = this.CurrentRun;
+                this.pastRuns( length(this.pastRuns) + 1 ) = this.currentRun;
             end
             
             % Start the experiment
@@ -245,14 +268,14 @@ classdef Session < ArumeCore.DataDB
             
             % Save the status of the current run in  the past runs, useful
             % to restart from a past point
-            if ( isempty( this.PastRuns) )
-                this.PastRuns    = this.CurrentRun.Copy();
+            if ( isempty( this.pastRuns) )
+                this.pastRuns    = this.currentRun.Copy();
             else
-                this.PastRuns( length(this.PastRuns) + 1 ) = this.CurrentRun;
+                this.pastRuns( length(this.pastRuns) + 1 ) = this.currentRun;
             end
             
             % Set up the new run: trial sequence, etc ...
-            this.CurrentRun = ArumeCore.ExperimentRun.SetUpNewRun( this.experiment );
+            this.currentRun = ArumeCore.ExperimentRun.SetUpNewRun( this.experiment );
             
             % Start the experiment
             this.experiment.run();
@@ -265,40 +288,37 @@ classdef Session < ArumeCore.DataDB
             
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
-%             trialConditionVars = this.experiment.ConditionMatrix( this.CurrentRun.pastConditions(:,1),:);
+            if ( isempty( this.currentRun) )
+                return;
+            end
             
             ds = dataset;
-            ds.TrialNumber = (1:length(this.CurrentRun.pastConditions(:,1)))';
-            ds.ConditionNumber = this.CurrentRun.pastConditions(:,Enum.pastConditions.condition);
-            ds.TrialResult = this.CurrentRun.pastConditions(:,Enum.pastConditions.trialResult);
-            ds.BlockNumber = this.CurrentRun.pastConditions(:,Enum.pastConditions.blocknumber);
-            ds.BlockID = this.CurrentRun.pastConditions(:,Enum.pastConditions.blockid);
-            ds.Session = this.CurrentRun.pastConditions(:,Enum.pastConditions.session);
+            ds.TrialNumber = (1:length(this.currentRun.pastConditions(:,1)))';
+            ds.ConditionNumber = this.currentRun.pastConditions(:,Enum.pastConditions.condition);
+            ds.TrialResult = this.currentRun.pastConditions(:,Enum.pastConditions.trialResult);
+            ds.BlockNumber = this.currentRun.pastConditions(:,Enum.pastConditions.blocknumber);
+            ds.BlockID = this.currentRun.pastConditions(:,Enum.pastConditions.blockid);
+            ds.Session = this.currentRun.pastConditions(:,Enum.pastConditions.session);
 
-%             for i=1:length(this.experiment.ConditionVars)
-%                ds.(this.experiment.ConditionVars(i).name)  = this.experiment.ConditionVars(i).values(trialConditionVars(:,i))';
-%             end
-            
             % find all the possible output variables
             outputVars = {};
-            for i=1:length(this.CurrentRun.Data)
-                if ( isfield( this.CurrentRun.Data{i}, 'trialOutput' ) && ~isempty( this.CurrentRun.Data{i}.trialOutput ) )
-                    fields = fieldnames(this.CurrentRun.Data{i}.trialOutput);
+            for i=1:length(this.currentRun.Data)
+                if ( isfield( this.currentRun.Data{i}, 'trialOutput' ) && ~isempty( this.currentRun.Data{i}.trialOutput ) )
+                    fields = fieldnames(this.currentRun.Data{i}.trialOutput);
                     outputVars = union(outputVars,fields);
                 end
             end
             
-            
             % collect the actual values
             output = [];
-            for i=1:length(this.CurrentRun.Data)
+            for i=1:length(this.currentRun.Data)
                 for j=1:length(outputVars)
                     field = outputVars{j};
-                    if ( isfield( this.CurrentRun.Data{i}, 'trialOutput' ) && isfield( this.CurrentRun.Data{i}.trialOutput, field))
+                    if ( isfield( this.currentRun.Data{i}, 'trialOutput' ) && isfield( this.currentRun.Data{i}.trialOutput, field))
                         if ( isempty(output) || ~isfield(output, field) )
-                            output.(field) = this.CurrentRun.Data{i}.trialOutput.(field);
+                            output.(field) = this.currentRun.Data{i}.trialOutput.(field);
                         else
-                            output.(field)(i) = this.CurrentRun.Data{i}.trialOutput.(field);
+                            output.(field)(i) = this.currentRun.Data{i}.trialOutput.(field);
                         end
                     end
                 end
@@ -315,9 +335,9 @@ classdef Session < ArumeCore.DataDB
             
             
             trialVars = {};
-            for i=1:length(this.CurrentRun.Data)
-                if ( ~isempty( this.CurrentRun.Data{i}.variables ) )
-                    fields = fieldnames(this.CurrentRun.Data{i}.variables);
+            for i=1:length(this.currentRun.Data)
+                if ( ~isempty( this.currentRun.Data{i}.variables ) )
+                    fields = fieldnames(this.currentRun.Data{i}.variables);
                     trialVars = union(trialVars,fields);
                 end
             end
@@ -325,14 +345,14 @@ classdef Session < ArumeCore.DataDB
             
             % collect the actual values
             var = [];
-            for i=1:length(this.CurrentRun.Data)
+            for i=1:length(this.currentRun.Data)
                 for j=1:length(trialVars)
                     field = trialVars{j};
-                    if isfield( this.CurrentRun.Data{i}.variables, field)
+                    if isfield( this.currentRun.Data{i}.variables, field)
                         if ( isempty(var) || ~isfield(var, field) )
-                            var.(field) = {this.CurrentRun.Data{i}.variables.(field)};
+                            var.(field) = {this.currentRun.Data{i}.variables.(field)};
                         else
-                            var.(field){i} = this.CurrentRun.Data{i}.variables.(field);
+                            var.(field){i} = this.currentRun.Data{i}.variables.(field);
                         end
                     end
                 end
@@ -366,10 +386,10 @@ classdef Session < ArumeCore.DataDB
         %
         % Factory methods
         %
-        function session = NewSession( project, experimentName, subjectCode, sessionCode, experimentOptions )
+        function session = NewSession( project, experimentName, subjectCode, sessionCode )
             % TODO add factory for multiple types of experimentNames
             session = ArumeCore.Session();
-            session.initNew( project, experimentName, subjectCode, sessionCode, experimentOptions );
+            session.init( project, experimentName, subjectCode, sessionCode );
         end
         
         function session = LoadSession( project, data )
