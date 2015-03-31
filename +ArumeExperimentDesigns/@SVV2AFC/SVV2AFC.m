@@ -7,6 +7,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     
     properties
         eyeTracker = [];
+        gamePad = [];
+        biteBarMotor = [];
         
         lastResponse = '';
         reactionTime = '';
@@ -18,12 +20,15 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     end
     
     % ---------------------------------------------------------------------
-    % Options to set at runtime
+    % Experiment design methods
     % ---------------------------------------------------------------------
-    methods ( Static = true )
-        function dlg = GetOptionsStructDlg( this )
+    methods ( Access = protected )
+        
+        function dlg = GetOptionsDialog( this )
             dlg.UseEyeTracker = { {'{0}','1'} };
             dlg.UseGamePad = { {'0','{1}'} };
+            
+            dlg.HeadTilt = { 0 '* (deg +CW -CCW)' [-40 40] };
                         
             dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
             
@@ -36,30 +41,50 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             dlg.offset = {0 '* (deg)' [-20 20] };
         end
-    end
-    
-    % ---------------------------------------------------------------------
-    % Experiment design methods
-    % ---------------------------------------------------------------------
-    methods ( Access = protected )
         
         function initBeforeRunning( this )
+            
+            % Initialize gamepad
             if ( this.ExperimentOptions.UseGamePad )
-                ArumeHardware.GamePad.Open
+            
+                this.gamePad = ArumeHardware.GamePad();
+                
             end
             
+            % Initialize eyetracker
             if ( this.ExperimentOptions.UseEyeTracker )
-                if ( exist('C:\secure\Code\EyeTracker\bin\Debug','file') )
-                    asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
-                    this.eyeTracker = ArumeHardware.VOG();
-                    this.eyeTracker.Connect('127.0.0.1', 9000);
-                else
-                    asm = NET.addAssembly('D:\Code\Debug\EyeTrackerRemoteClient.dll');
-                    this.eyeTracker = ArumeHardware.VOG();
-                    this.eyeTracker.Connect('10.17.101.57', 9000);
-                end
+               
+                this.eyeTracker = ArumeHardware.VOG();
+                this.eyeTracker.Connect();
                 
                 this.eyeTracker.SetSessionName(this.Session.name);
+                this.eyeTracker.StartRecording();
+            end
+            
+            % Initialize bitebar 
+            if ( this.ExperimentOptions.HeadTilt ~= 0 )
+                this.biteBarMotor = ArumeHardware.BiteBarMotor();
+                this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadTilt);
+            end
+        end
+        
+        function cleanAfterRunning(this)
+             
+            % ose gamepad
+            if ( this.ExperimentOptions.UseGamePad )
+            end
+            
+            % Close eyetracker
+            if ( this.ExperimentOptions.UseEyeTracker )
+               if ( this.eyeTracker.IsRecording)
+                   this.eyeTracker.StopRecording();
+               end
+            end
+            
+            % Close bitebar 
+            if ( this.ExperimentOptions.HeadTilt ~= 0 )
+                this.biteBarMotor.SetTiltAngle(0);
+                this.biteBarMotor.Close();
             end
         end
         
@@ -67,11 +92,11 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             response = [];
             
             if ( this.ExperimentOptions.UseGamePad )
-                [d, l, r] = ArumeHardware.GamePad.Query;
+                [d, l, r] = this.gamePad.Query();
                 if ( l == 1)
                     response = 'L';
                 elseif( r == 1)
-                    response = 'R'
+                    response = 'R';
                 end
             else
                 [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();

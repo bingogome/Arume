@@ -90,8 +90,6 @@ function butLED20_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-handles.bitebar.GoUpright();
-pause(3)
 handles.bitebar.TiltLeft(20);
 
 % --- Executes on button press in butRED20.
@@ -100,8 +98,6 @@ function butRED20_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-handles.bitebar.GoUpright();
-pause(3)
 handles.bitebar.TiltRight(20);
 
 % --- Executes on button press in butHome.
@@ -118,9 +114,7 @@ function butLED30_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-handles.bitebar.GoUpright();
-pause(3)
-handles.bitebar.TiltLeft(40);
+handles.bitebar.TiltLeft(30);
 
 % --- Executes on button press in butRED30.
 function butRED30_Callback(hObject, eventdata, handles)
@@ -128,6 +122,4 @@ function butRED30_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-handles.bitebar.GoUpright();
-pause(3)
-handles.bitebar.TiltRight(40);
+handles.bitebar.TiltRight(30);

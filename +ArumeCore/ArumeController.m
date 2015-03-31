@@ -128,7 +128,7 @@ classdef ArumeController < handle
                 this.configuration.recentProjects = {};
             end
             
-            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile)));
+            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
             
             this.configuration.recentProjects = [this.currentProject.projectFile this.configuration.recentProjects];
             conf = this.configuration;
@@ -150,7 +150,7 @@ classdef ArumeController < handle
                 this.configuration.recentProjects = {};
             end
             
-            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, file)));
+            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
             
             this.configuration.recentProjects = [file this.configuration.recentProjects];
             conf = this.configuration;
@@ -180,7 +180,7 @@ classdef ArumeController < handle
             end
         end
         
-        function session = newSession( this, experiment, subjectCode, sessionCode )
+        function session = newSession( this, experiment, subjectCode, sessionCode, experimentOptions )
             % Crates a new session to start the experiment and collect data
             
             % check if session already exists with that subjectCode and
@@ -191,7 +191,7 @@ classdef ArumeController < handle
                 end
             end
             
-            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subjectCode, sessionCode );
+            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subjectCode, sessionCode, experimentOptions );
             this.selectedSessions = session;
             this.currentProject.save();
         end
@@ -213,6 +213,17 @@ classdef ArumeController < handle
             % Renames the current session
             
             this.currentSession.rename(subjectCode, sessionCode);
+            this.currentProject.save();
+        end
+        
+        function copySelectedSessions( this, newSubjectCodes, newSessionCodes);
+            
+            sessions = this.selectedSessions;
+            
+            for i =1:length(sessions)
+                newSession = ArumeCore.Session.CopySession( sessions(i), newSubjectCodes{i}, newSessionCodes{i});
+            end
+                        
             this.currentProject.save();
         end
         

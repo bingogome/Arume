@@ -54,6 +54,7 @@ classdef ArumeGui < handle
         sessionContextMenu
         sessionContextMenuRename
         sessionContextMenuDelete
+        sessionContextMenuCopy
         
         % Analysis Contextual menu
         analysisContextMenu
@@ -97,7 +98,7 @@ classdef ArumeGui < handle
             
             this.leftPanel = uipanel ( ...
                 'Parent'    , this.figureHandle,...
-                'Title'     ,  sprintf('%-14.14s %-8.8s %-12.12s', 'Experiment', 'Subject', 'Session code'),...
+                'Title'     ,  sprintf('%-19.19s %-8.8s %-12.12s', 'Experiment', 'Subject', 'Session code'),...
                 'FontName'	, 'consolas',...
                 'FontSize'	, 9,...
                 'Units'     , 'Pixels' );
@@ -164,7 +165,7 @@ classdef ArumeGui < handle
                 'FontName'	, 'consolas',...
                 'String'    , 'INFO:',...
                 'Units'     ,'normalized',...
-                'Position'  , [0.01 0.61 0.48 0.37], ...
+                'Position'  , [0.01 0.01 0.48 0.97], ...
                 'BackgroundColor'     , 'w', ...
                 'Callback'  , @this.sessionListBoxCallBack);
             
@@ -178,7 +179,7 @@ classdef ArumeGui < handle
                 'String'    , '',...
                 'Units'     ,'normalized',...
                 'Position'  , [0.5 0.61 0.48 0.37], ...
-                'BackgroundColor'     , 'w', ...
+                'BackgroundColor'     , [1 1 0.8], ...
                 'Callback'  , @this.commentsTextBoxCallBack);
             
             this.analysisListBox = uicontrol( ...
@@ -189,7 +190,7 @@ classdef ArumeGui < handle
                 'Max'       , 20, ...
                 'String'    , '',...
                 'Units'     ,'normalized',...
-                'Position'  , [0.01 0.01 0.48 0.59], ...
+                'Position'  , [0.5 0.01 0.48 0.17], ...
                 'BackgroundColor'     , 'w', ...
                 'Callback'  , @this.analysisListBoxCallBack);
             
@@ -201,7 +202,7 @@ classdef ArumeGui < handle
                 'Max'       , 20, ...
                 'String'    , '',...
                 'Units'     ,'normalized',...
-                'Position'  , [0.5 0.01 0.48 0.59], ...
+                'Position'  , [0.5 0.20 0.48 0.38], ...
                 'BackgroundColor'     , 'w', ...
                 'Callback'  , @this.plotsListBoxCallBack);
             
@@ -277,6 +278,9 @@ classdef ArumeGui < handle
             % session contextual menu
             % Define a context menu; it is not attached to anything
             this.sessionContextMenu = uicontextmenu;
+            this.sessionContextMenuCopy = uimenu(this.sessionContextMenu, ...
+                'Label'     , 'Copy session ...', ...
+                'Callback'  , @this.CopySessions);
             this.sessionContextMenuDelete = uimenu(this.sessionContextMenu, ...
                 'Label'     , 'Delete sessions ...', ...
                 'Callback'  , @this.DeleteSessions);
@@ -327,7 +331,7 @@ classdef ArumeGui < handle
             m = 5;      % margin between panels
             th = 60;    % top panel height
             bh = 60;    % bottom panel height
-            lw = 300;   % left panel width            
+            lw = 350;   % left panel width            
             
             set(this.topPanel, ...
                 'Position'  , [m (h-th-m) (w-m*2) th]);
@@ -453,10 +457,10 @@ classdef ArumeGui < handle
                 end
             end
             
-            session = this.arumeController.newSession( session.Experiment, session.Subject_Code, session.Session_Code );
             
             % Show the dialog for experiment options if necessary
-            optionsDlg = session.experiment.GetOptionsDialog( );
+            experiment = ArumeCore.ExperimentDesign.Create([], session.Experiment);
+            optionsDlg = experiment.GetExperimentOptionsDialog( );
             if ( ~isempty( optionsDlg) )
                 options = StructDlg(optionsDlg);
                 if ( isempty( options ) )
@@ -466,7 +470,7 @@ classdef ArumeGui < handle
                 options = [];
             end
             
-            session.experiment.ExperimentOptions = options;
+            session = this.arumeController.newSession( session.Experiment, session.Subject_Code, session.Session_Code, options );
             
             this.updateGui();
         end
@@ -491,6 +495,34 @@ classdef ArumeGui < handle
             
             this.updateGui();
         end 
+        
+        function CopySessions( this, source, eventdata )
+            
+            sessions = this.arumeController.selectedSessions;
+            
+            newNamesDlg = [];
+            for session=sessions
+                newNamesDlg.([session.name '_New_Subject_Code' ]) = session.subjectCode;
+                newNamesDlg.([session.name '_New_Session_Code' ]) = session.sessionCode;
+            end
+            
+            P = StructDlg(newNamesDlg);
+            if ( isempty( P ) )
+                return
+            end
+            
+            %Check that the names don't exist already
+            
+            newSubjectCodes = {};
+            newSessionCodes = {};
+            for session=sessions
+                newSubjectCodes{end+1} = P.([session.name '_New_Subject_Code' ]);
+                newSessionCodes{end+1} = P.([session.name '_New_Session_Code' ]);
+            end
+            
+             this.arumeController.copySelectedSessions(newSubjectCodes, newSessionCodes);
+             this.updateGui();
+        end
         
         function DeleteSessions( this, source, eventdata )
             choice = questdlg('Are you sure you want to delete the sessions?', ...
@@ -607,7 +639,7 @@ classdef ArumeGui < handle
                 % populate sessionlist
                 sessionNames = cell(length(this.arumeController.currentProject.sessions),1);
                 for i=1:length( this.arumeController.currentProject.sessions )
-                    sessionNames{i} = sprintf('%-15.15s %-8.8s %-10.10s', ...
+                    sessionNames{i} = sprintf('%-20.20s %-8.8s %-10.10s', ...
                         this.arumeController.currentProject.sessions(i).experiment.Name, ...
                         this.arumeController.currentProject.sessions(i).subjectCode, ...
                         this.arumeController.currentProject.sessions(i).sessionCode);
@@ -630,7 +662,9 @@ classdef ArumeGui < handle
             % update info box
             if ( ~isempty( this.arumeController.currentSession ) )
                 s = '';
-                s = [s sprintf('%-25s: %s\n', 'Experiment', this.arumeController.currentSession.experiment.Name)];
+                s = [s sprintf('== EXPERIMENT ======= \n\n')];
+                s = [s sprintf('%s\n\n', this.arumeController.currentSession.experiment.Name)];
+                s = [s sprintf('== EXPERIMENT OPTIONS ======= \n\n')];
                 %                 s = [s sprintf('%25s: %s\n', 'DataRawPath', this.arumeController.currentSession.dataRawPath)];
                 %                 s = [s sprintf('%25s: %s\n', 'DataAnalysisPath', this.arumeController.currentSession.dataAnalysisPath)];
                 if ( ~isempty( this.arumeController.currentSession.experiment.ExperimentOptions ) )
@@ -649,17 +683,18 @@ classdef ArumeGui < handle
                     end
                 end
                 
+                s = [s sprintf('\n== SESSION STATUS ======= \n\n')];
                 NoYes = {'No' 'Yes'};
                 s = [s sprintf('%-25s: %s\n', 'Started', NoYes{this.arumeController.currentSession.isStarted+1})];
                 s = [s sprintf('%-25s: %s\n', 'Finished', NoYes{this.arumeController.currentSession.isFinished+1})];
-                if ( ~isempty(this.arumeController.currentSession.CurrentRun) )
-                    stats = this.arumeController.currentSession.CurrentRun.GetStats();
+                if ( ~isempty(this.arumeController.currentSession.currentRun) )
+                    stats = this.arumeController.currentSession.currentRun.GetStats();
                     s = [s sprintf('%-25s: %s\n', 'Trials Good/Aborts/Left', sprintf('%d/%d/%d', stats.trialsCorrect, stats.trialsAbort, stats.totalTrials-stats.trialsCorrect))];
                 end
                 
-                if ( ~isempty(this.arumeController.currentSession.CurrentRun) && size(this.arumeController.currentSession.CurrentRun.Events,2) > 4)
-                    s = [s sprintf('%-25s: %s\n','Time first trial ', datestr(this.arumeController.currentSession.CurrentRun.Events(1,2)))];
-                    s = [s sprintf('%-25s: %s\n','Time last trial ',datestr(this.arumeController.currentSession.CurrentRun.Events(end,2)))];
+                if ( ~isempty(this.arumeController.currentSession.currentRun) && size(this.arumeController.currentSession.currentRun.Events,2) > 4)
+                    s = [s sprintf('%-25s: %s\n','Time first trial ', datestr(this.arumeController.currentSession.currentRun.Events(1,2)))];
+                    s = [s sprintf('%-25s: %s\n','Time last trial ',datestr(this.arumeController.currentSession.currentRun.Events(end,2)))];
                 end
                         
                 set(this.infoBox,'string', s);
@@ -667,8 +702,10 @@ classdef ArumeGui < handle
             
             % update comments text box
             if ( ~isempty( this.arumeController.currentSession ) )
+                set(this.commentsTextBox, 'Enable','on')
                 set(this.commentsTextBox,'string',this.arumeController.currentSession.comment);
             else
+                set(this.commentsTextBox, 'Enable','off')
                 set(this.commentsTextBox,'string','');
             end
             

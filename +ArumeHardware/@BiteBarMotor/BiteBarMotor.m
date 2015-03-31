@@ -2,10 +2,27 @@ classdef BiteBarMotor
     %BITEBARMOTOR Summary of this class goes here
     %   Detailed explanation goes here
     
-    properties
-        port = '';
+    properties (Constant)
         
+    end
+      
+    properties
         s;
+        
+        ID = 952;
+        degPerStep = 0.015;
+        
+        COMMMAND_Home = 1;
+        COMMMAND_MoveAbsolute = 20;
+        COMMMAND_Return_Device_Id = 50;
+        COMMMAND_Stop = 23;
+        
+        COMMAND_SetHoldCurrent = 39;
+        COMMAND_SetTargetSpeed = 42;
+        
+        COMMMAND_ReadMicrostepResolution = 37;
+        
+        HomeAngle = 90;
     end
     
     methods
@@ -13,62 +30,148 @@ classdef BiteBarMotor
             persistent ss;
             
             if ( isempty(ss) )
+                % close all serial ports
+                
+                disp('Closing all serial ports');
+                delete(instrfindall);
+                
+                disp('Querying available serial ports');
                 serialInfo = instrhwinfo('serial');
                 
                 if ( length(serialInfo.AvailableSerialPorts) < 1 )
                     error('No serial ports detected');
                 end
                 
-                this.port = serialInfo.AvailableSerialPorts{1};
-                
-                
-                delete(instrfindall);
-                ss =  serial(this.port,'BaudRate',9600);
-                
-                this.s = ss;
-                if ( ~isequal(this.s.Status,'open') )
-                    fopen(this.s);
+                disp('Testing available serial ports');
+                for i=1:length(serialInfo.AvailableSerialPorts)
+                    port = serialInfo.AvailableSerialPorts{i};
+                    
+                    ss =  serial(port,'BaudRate',9600);
+                    
+                    this.s = ss;
+                    
+                    if ( this.CheckID )
+                        this.Init();
+                        return;
+                    end
                 end
             else     
                 this.s = ss;
-                if ( ~isequal(this.s.Status,'open') )
-                    fopen(this.s);
-                end
             end
+        end
+        
+        
+        function Init(this)
+             disp('Setting target speed');
+             speed = 10; % deg per second
+             data =  speed/(9.375*(0.015/64));
+             id = this.SendCommand( this.COMMAND_SetTargetSpeed, data);
         end
         
         function Close(this)
             fclose(this.s);
         end
         
+        function result = CheckID(this)
+            
+            id = this.SendCommand( this.COMMMAND_Return_Device_Id, 0);
+            
+            if ( id == this.ID )
+                result = 1;
+            else
+                result = 0;
+            end
+        end
+        
         function GoHome(this)
-            homecmd = [1 1 0 0 0 0];
-            fwrite(this.s,homecmd);
+            out = this.SendCommand( this.COMMMAND_Home, 0);
         end
         
         function GoUpright(this)
-            bytes = ArumeHardware.BiteBarMotor.IntToBytes(380000);
-            homecmd = [1 20 bytes];
-            fwrite(this.s,homecmd);
+            
+            angle = this.GetAngleMotorRef(0);
+            microsteps = this.GetMicrosteps(angle);
+            out = this.SendCommand( this.COMMMAND_MoveAbsolute, microsteps);
         end
         
         function TiltLeft(this, angle)
-            bytes = ArumeHardware.BiteBarMotor.IntToBytes(angle/90*380000);
-            upcmd = [1 21 bytes];
-            fwrite(this.s,upcmd);
+            angle = this.GetAngleMotorRef(-abs(angle));
+            microsteps = this.GetMicrosteps(angle);
+            out = this.SendCommand( this.COMMMAND_MoveAbsolute, microsteps);
         end
         
         function TiltRight(this, angle)
-            bytes = ArumeHardware.BiteBarMotor.IntToBytes(-angle/90*380000);
-            downcmd = [1 21 bytes];
-            fwrite(this.s,downcmd);
+            angle = this.GetAngleMotorRef(abs(angle));
+            microsteps = this.GetMicrosteps(angle);
+            out = this.SendCommand( this.COMMMAND_MoveAbsolute, microsteps);
         end
         
-        function Stop1(this, angle)
-            downcmd = [1 23 0 0 0 0 ];
-            fwrite(this.s,downcmd);
+        function SetTiltAngle(this, angle)
+            angle = this.GetAngleMotorRef(angle);
+            microsteps = this.GetMicrosteps(angle);
+            out = this.SendCommand( this.COMMMAND_MoveAbsolute, microsteps);
+        end
+                
+    end
+    
+    methods(Access = private)
+        
+        function dataOut = SendCommand(this, command,  dataIn)
+            
+            if ( ~isequal(this.s.Status,'open') )
+                fopen(this.s);
+            end
+                    
+                    
+            bytes = this.IntToBytes(dataIn);
+            command = [1 command bytes];
+            
+            % clear the port
+            if ( this.s.BytesAvailable > 0 )
+                out = fread(this.s, this.s.BytesAvailable);
+            end
+            
+            fwrite(this.s,command);
+            
+            while(this.s.BytesAvailable < 6)
+                pause(0.001);
+            end
+            
+            out = fread(this.s, this.s.BytesAvailable);
+            
+            dataOut = this.BytesToInt(out(end-3:end));
+            
         end
         
+        function angleMotorRef = GetAngleMotorRef(this, angle)
+            angleMotorRef = -angle + this.HomeAngle;
+        end
+        
+        function microsteps =  GetMicrosteps(this, angleDeg)
+            microsteps = angleDeg/this.degPerStep*64;
+        end
+        
+        function bytes = IntToBytes(this, number)
+            if number < 0 
+                number = 256^4 + number; %Handles negative data
+            end
+            Cmd_Byte_6 = floor(number / 256^3);
+            number   = number - 256^3 * Cmd_Byte_6;
+            Cmd_Byte_5 = floor(number / 256^2);
+            number   = number - 256^2 * Cmd_Byte_5;
+            Cmd_Byte_4 = floor(number / 256);
+            number   = number - 256   * Cmd_Byte_4;
+            Cmd_Byte_3 = floor(number);
+            
+           bytes = [Cmd_Byte_3 Cmd_Byte_4 Cmd_Byte_5 Cmd_Byte_6];
+        end
+        
+        function number = BytesToInt(this, bytes)
+            number = 256^3 * bytes(4) + 256^2 * bytes(3) + 256 * bytes(2) + bytes(1);
+            if bytes(4) > 127 %       'Handles negative data
+                number = Reply_Data - 256^4;
+            end
+        end
     end
     
     methods (Static = true)
@@ -86,25 +189,11 @@ classdef BiteBarMotor
         
         function Stop()
             bitebar = ArumeHardware.BiteBarMotor;
-            bitebar.Stop1();
+            bitebar.SendCommand( this.COMMMAND_Stop, 0);
             bitebar.Close();
         end
         
         
-        function bytes = IntToBytes(number)
-            if number < 0 
-                number = 256^4 + number; %Handles negative data
-            end
-            Cmd_Byte_6 = floor(number / 256^3);
-            number   = number - 256^3 * Cmd_Byte_6;
-            Cmd_Byte_5 = floor(number / 256^2);
-            number   = number - 256^2 * Cmd_Byte_5;
-            Cmd_Byte_4 = floor(number / 256);
-            number   = number - 256   * Cmd_Byte_4;
-            Cmd_Byte_3 = floor(number);
-            
-           bytes = [Cmd_Byte_3 Cmd_Byte_4 Cmd_Byte_5 Cmd_Byte_6];
-        end
     end
 end
 

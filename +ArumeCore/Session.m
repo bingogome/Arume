@@ -2,7 +2,6 @@ classdef Session < ArumeCore.DataDB
     %SESSION Encapsulates an experimental session
     %  links to the corresponding experiment design and contains all the
     %  data obtained when running the experiment or analyzing it.
-    
     properties( SetAccess = private)
         project
         experiment
@@ -113,16 +112,18 @@ classdef Session < ArumeCore.DataDB
         %
         % INIT METHODS
         %
-        function init( this, project, experimentName, subjectCode, sessionCode )
+        function init( this, project, experimentName, subjectCode, sessionCode, experimentOptions )
             
             this.project        = project;
-            this.experiment     = ArumeCore.ExperimentDesign.Create( this, experimentName );
             this.subjectCode    = subjectCode;
             this.sessionCode    = sessionCode;
             
+            this.experiment = ArumeCore.ExperimentDesign.Create( this, experimentName );
+            this.experiment.init(this, experimentOptions);
+            
             % to create stand alone sessions that do not belong to a
             % project and don't save data
-            if ( ~isempty( project) ) 
+            if ( ~isempty( this.project) ) 
                 
                 % Analysis folders
                 
@@ -159,8 +160,7 @@ classdef Session < ArumeCore.DataDB
         
         function initExisting( this, project, data )
              
-            this.init( project, data.experimentName, data.subjectCode, data.sessionCode );
-            this.experiment.ExperimentOptions = data.experimentOptions ;
+            this.init( project, data.experimentName, data.subjectCode, data.sessionCode, data.experimentOptions );
             
             if (isfield(data, 'currentRun') && ~isempty( data.currentRun ))
                 this.currentRun  = ArumeCore.ExperimentRun.LoadRunData( data.currentRun, this.experiment );
@@ -386,10 +386,10 @@ classdef Session < ArumeCore.DataDB
         %
         % Factory methods
         %
-        function session = NewSession( project, experimentName, subjectCode, sessionCode )
+        function session = NewSession( project, experimentName, subjectCode, sessionCode, experimentOptions )
             % TODO add factory for multiple types of experimentNames
             session = ArumeCore.Session();
-            session.init( project, experimentName, subjectCode, sessionCode );
+            session.init(project, experimentName, subjectCode, sessionCode, experimentOptions);
         end
         
         function session = LoadSession( project, data )
@@ -398,6 +398,15 @@ classdef Session < ArumeCore.DataDB
             session = ArumeCore.Session();
             
             session.initExisting( project, data );
+        end
+        
+        function session = CopySession( sourceSession, newSubjectCode, newSessionCode)
+            data = sourceSession.save();
+            data.subjectCode = newSubjectCode;
+            data.sessionCode = newSessionCode;
+            
+            session = ArumeCore.Session();
+            session.initExisting( sourceSession.project, data );
         end
     end
     

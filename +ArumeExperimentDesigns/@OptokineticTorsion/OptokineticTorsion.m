@@ -19,16 +19,13 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
     methods ( Static = true )
     end
     
-    methods ( Access = public )
+    methods ( Access = protected )
         
         function dlg = GetOptionsDialog( this )
             dlg.UseEyeTracker = { {'{0}' '1'} };
             dlg.TrialDuration = { 30 '* (seconds)' [1 100] };
         end
-    end
 
-    methods ( Access = protected )
-        
         function initNewCreatedSession( this  )
             
             if ( ~isfield( this.ExperimentOptions, 'TrialDuration') )
