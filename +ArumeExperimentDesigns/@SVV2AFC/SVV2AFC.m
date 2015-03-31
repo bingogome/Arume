@@ -28,7 +28,6 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             dlg.UseEyeTracker = { {'{0}','1'} };
             dlg.UseGamePad = { {'0','{1}'} };
             
-            dlg.HeadTilt = { 0 '* (deg +CW -CCW)' [-40 40] };
                         
             dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
             
@@ -38,6 +37,9 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             dlg.fixationDuration = { 1000 '* (ms)' [1 3000] };
             dlg.targetDuration = { 300 '* (ms)' [100 30000] };
             dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
+            
+            dlg.UseBiteBarMotor = { {'0','{1}'} };
+            dlg.HeadAngle = { 0 '* (deg)' [-40 40] };
             
             dlg.offset = {0 '* (deg)' [-20 20] };
         end
