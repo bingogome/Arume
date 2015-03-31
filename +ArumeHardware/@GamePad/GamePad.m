@@ -5,12 +5,13 @@ classdef GamePad
     properties
     end
     
-    methods(Static = true)
+    methods
         
-        function Open()
+        function this = GamePad()
             ArumeHardware.joymex2('open', 0);
         end
-        function [ direction, left, right, a, b, x, y] = Query()
+        
+        function [ direction, left, right, a, b, x, y] = Query(this)
           
             gp = ArumeHardware.joymex2('query',0);
             
@@ -25,7 +26,7 @@ classdef GamePad
             y = gp.buttons(4);
         end
         
-        function Close()
+        function Close(this)
             ArumeHardware.joymex2('close', 0);
         end
     end

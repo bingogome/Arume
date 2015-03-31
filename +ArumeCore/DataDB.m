@@ -36,7 +36,7 @@ classdef DataDB < handle
             this.session = session;
             
             if ( ~exist(this.folder, 'dir') )
-                error('folder does not exist');
+                error('Data folder does not exist');
             end
             
             if ( ~exist(fullfile(this.folder, this.session),'dir') )

@@ -123,6 +123,17 @@ classdef ArumeController < handle
             
             this.currentProject = ArumeCore.Project.NewProject( projectFilePath, projectName, this.configuration.tempFolder, defaultExperiment);
             this.selectedSessions = [];
+            
+            if ( ~isfield(this.configuration, 'recentProjects' ) )
+                this.configuration.recentProjects = {};
+            end
+            
+            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
+            
+            this.configuration.recentProjects = [this.currentProject.projectFile this.configuration.recentProjects];
+            conf = this.configuration;
+            [folder, name, ext] = fileparts(which('Arume'));
+            save(fullfile(folder,'arumeconf.mat'), 'conf'); 
         end
         
         function loadProject( this, file )
@@ -139,8 +150,9 @@ classdef ArumeController < handle
                 this.configuration.recentProjects = {};
             end
             
-            this.configuration.recentProjects{end+1} = file;
-            this.configuration.recentProjects = unique(this.configuration.recentProjects);
+            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
+            
+            this.configuration.recentProjects = [file this.configuration.recentProjects];
             conf = this.configuration;
             [folder, name, ext] = fileparts(which('Arume'));
             save(fullfile(folder,'arumeconf.mat'), 'conf'); 
@@ -201,6 +213,17 @@ classdef ArumeController < handle
             % Renames the current session
             
             this.currentSession.rename(subjectCode, sessionCode);
+            this.currentProject.save();
+        end
+        
+        function copySelectedSessions( this, newSubjectCodes, newSessionCodes);
+            
+            sessions = this.selectedSessions;
+            
+            for i =1:length(sessions)
+                newSession = ArumeCore.Session.CopySession( sessions(i), newSubjectCodes{i}, newSessionCodes{i});
+            end
+                        
             this.currentProject.save();
         end
         

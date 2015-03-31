@@ -9,18 +9,13 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
     end
     
     % ---------------------------------------------------------------------
-    % Options to set at runtime
-    % ---------------------------------------------------------------------
-    methods ( Static = true )
-        function dlg = GetOptionsStructDlg( )
-            dlg = GetOptionsStructDlg@ArumeExperimentDesigns.SVV2AFC();
-        end
-    end
-    
-    % ---------------------------------------------------------------------
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods ( Access = protected )
+        
+        function dlg = GetOptionsDialog( this )
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFC(this);
+        end
         
         function initExperimentDesign( this  )
             
@@ -68,18 +63,18 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             Enum = ArumeCore.ExperimentDesign.getEnum();
             % Add stuff here
             
-            if ( ~isempty( this.Session.CurrentRun ) )
-                nCorrect = sum(this.Session.CurrentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
+            if ( ~isempty( this.Session.currentRun ) )
+                nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
                 
                 previousValues = zeros(nCorrect,1);
                 previousResponses = zeros(nCorrect,1);
                 
                 n = 1;
-                for i=1:length(this.Session.CurrentRun.pastConditions(:,1))
-                    if ( this.Session.CurrentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
-                        isdown = strcmp(this.Session.CurrentRun.Data{i}.variables.Position, 'Down');
-                        previousValues(n) = this.Session.CurrentRun.Data{i}.trialOutput.Angle;
-                        previousResponses(n) = this.Session.CurrentRun.Data{i}.trialOutput.Response;
+                for i=1:length(this.Session.currentRun.pastConditions(:,1))
+                    if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
+                        isdown = strcmp(this.Session.currentRun.Data{i}.variables.Position, 'Down');
+                        previousValues(n) = this.Session.currentRun.Data{i}.trialOutput.Angle;
+                        previousResponses(n) = this.Session.currentRun.Data{i}.trialOutput.Response;
                         n = n+1;
                     end
                 end
@@ -130,7 +125,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     this.eyeTracker.StartRecording();
                     pause(1);
                 end
-                this.eyeTracker.RecordEvent(num2str(size(this.Session.CurrentRun.pastConditions,1)));
+                this.eyeTracker.RecordEvent(num2str(size(this.Session.currentRun.pastConditions,1)));
             end
             
             trialResult =  Enum.trialResult.CORRECT;
@@ -280,7 +275,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             
             if ( ~isempty( this.eyeTracker ) )
                 
-                if ( length(this.Session.CurrentRun.futureConditions) == 0 )
+                if ( length(this.Session.currentRun.futureConditions) == 0 )
                     this.eyeTracker.StopRecording();
                 end
             end

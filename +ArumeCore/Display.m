@@ -70,6 +70,8 @@ classdef Display < handle
             graph.dlgBackgroundScreenColor = exper.BackgroundColor;
             
             
+            
+            
             %-- font
             Screen('TextSize', graph.window, 18);
             
@@ -109,6 +111,13 @@ classdef Display < handle
                     end
                 end
             end
+            
+            
+            % draw a fixation spot in the center;
+            [mx, my] = RectCenter(graph.wRect);
+            fixRect = [0 0 10 10];
+            fixRect = CenterRectOnPointd( fixRect, mx, my );
+            Screen('FillOval', graph.window,  255, fixRect);
         end
         
         function ResetBackground( this )
@@ -136,7 +145,7 @@ classdef Display < handle
             end
             
             this.NumFlips = this.NumFlips + 1;
-            this.fliptimes{end}(this.NumFlips) = fliptime;
+           % this.fliptimes{end}(this.NumFlips) = fliptime;
             %             this.fliptimes{end} = this.fliptimes{end} + histc(fliptime-this.lastfliptime,0:.005:.100);
             %             fliptime-this.lastfliptime
             %             this.lastfliptime = fliptime;
@@ -202,8 +211,6 @@ classdef Display < handle
             x = p(1);
             y = p(2);
         end
-        
-        
         
         %------------------------------------------------------------------
         %% Dialog Functions  ----------------------------------------------

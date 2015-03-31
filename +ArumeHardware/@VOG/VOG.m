@@ -9,13 +9,26 @@ classdef VOG  < handle
     methods
         
         function Connect(this, ip, port)
+           
+            if ( ~exist('port','var') )
+                port = 9000;
+            end
+            
             if ( exist('C:\secure\Code\EyeTracker\bin\Debug','file') )
                 asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
-                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClientMatlab('127.0.0.1', 9000);
+
+                if ( ~exist('ip','var') )
+                    ip = '127.0.0.1';
+                end
             else
                 asm = NET.addAssembly('D:\Code\Debug\EyeTrackerRemoteClient.dll');
-                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClientMatlab('10.17.101.57', 9000);
+                
+                if ( ~exist('ip','var') )
+                    ip = '10.17.101.57';
+                end
             end
+            
+            this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClientMatlab(ip, port);
         end
         
         function result = IsRecording(this)

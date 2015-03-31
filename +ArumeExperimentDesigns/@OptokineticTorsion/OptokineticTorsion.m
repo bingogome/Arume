@@ -17,16 +17,16 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
     % Options to set at runtime
     % ---------------------------------------------------------------------
     methods ( Static = true )
-        function dlg = GetOptionsStructDlg( this )
-            dlg.UseEyeTracker = { {'{0}' '1'} };
-            dlg.TrialDuration = { 20 '* (seconds)' [1 100] };
-        end
     end
     
     methods ( Access = protected )
         
-        
-        function initExperimentDesign( this  )
+        function dlg = GetOptionsDialog( this )
+            dlg.UseEyeTracker = { {'{0}' '1'} };
+            dlg.TrialDuration = { 30 '* (seconds)' [1 100] };
+        end
+
+        function initNewCreatedSession( this  )
             
             if ( ~isfield( this.ExperimentOptions, 'TrialDuration') )
                 this.trialDuration = 20; %seconds
@@ -37,18 +37,16 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
             % default parameters of any experiment
             this.trialSequence = 'Sequential';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction = 'Repeat';    % Repeat, Delay, Drop
-            this.trialsPerSession = 8;
+            this.trialsPerSession = this.NumberOfConditions;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
             this.numberOfTimesRepeatBlockSequence = 1;
             this.blocksToRun              = 1;
             this.blocks(1).fromCondition  = 1;
-            this.blocks(1).toCondition    = 8;
-            this.blocks(1).trialsToRun    = 8;
-            
-            
-            
+            this.blocks(1).toCondition    = this.NumberOfConditions;
+            this.blocks(1).trialsToRun    = this.NumberOfConditions;
+                        
             this.fixRad   = 20;
             this.fixColor = [255 0 0];
             
@@ -57,6 +55,21 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
         
         %% run initialization before the first trial is run
         function initBeforeRunning( this )
+            
+            if ( this.ExperimentOptions.UseEyeTracker )
+                if ( exist('C:\secure\Code\EyeTracker\bin\Debug','file') )
+                    asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+                    this.eyeTracker = ArumeHardware.VOG();
+                    this.eyeTracker.Connect('127.0.0.1', 9000);
+                else
+                    asm = NET.addAssembly('D:\Code\Debug\EyeTrackerRemoteClient.dll');
+                    this.eyeTracker = ArumeHardware.VOG();
+                    this.eyeTracker.Connect('10.17.101.57', 9000);
+                end
+                
+                this.eyeTracker.SetSessionName(this.Session.name);
+            end
+            
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -65,7 +78,7 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
             
             i = i+1;
             conditionVars(i).name   = 'Speed';
-            conditionVars(i).values = [0 10 20 30];
+            conditionVars(i).values = [30 30 20 10 0];
             
             i = i+1;
             conditionVars(i).name   = 'Direction';
@@ -95,15 +108,15 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
             end
             
             
+            if ( ~isempty(this.eyeTracker) )
+                if ( ~this.eyeTracker.IsRecording())
+                    this.eyeTracker.StartRecording();
+                    pause(1);
+                end
+                this.eyeTracker.RecordEvent(num2str(size(this.Session.CurrentRun.pastConditions,1)));
+            end
             
             this.checkerBoardTexture = Screen('MakeTexture', this.Graph.window, this.checkerBoardImg, 1);
-            
-            if ( this.ExperimentOptions.UseEyeTracker )
-                asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
-                %this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('10.17.101.13',9000);
-                this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClient('localhost',9000);
-                this.eyeTracker.SetDataFileName(this.Session.name);
-            end
             
             trialResult =  Enum.trialResult.CORRECT;
         end
@@ -111,11 +124,6 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
         function trialResult = runTrial( this, variables )
             
             try
-                
-                if ( ~this.eyeTracker.recording )
-                    this.eyeTracker.StartRecording();
-                    pause(1);
-                end
                 
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
@@ -185,7 +193,6 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
                 this.Graph.Flip();
                 % -----------------------------------------------------------------
                 
-                
                 % -----------------------------------------------------------------
                 % --- Collecting responses  ---------------------------------------
                 % -----------------------------------------------------------------
@@ -193,21 +200,19 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
                 % -----------------------------------------------------------------
                 % --- END Collecting responses  -----------------------------------
                 % -----------------------------------------------------------------
-            
+                
             end
             catch ex
-                if ( this.eyeTracker.recording )
+                if ( ~isempty( this.eyeTracker ) )
                     this.eyeTracker.StopRecording();
-                    pause(1);
                 end
+                
                 rethrow(ex)
             end
             
-            if ( this.eyeTracker.recording )
+            if ( ~isempty( this.eyeTracker ) )
                 this.eyeTracker.StopRecording();
-                pause(1);
             end
-            
             
         end
         
@@ -215,7 +220,11 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
             trialOutput = [];
         end
         
+        function runAfterSessionCompleted(this)
+        end
         
+        function cleanAfterRunning(this)
+        end
         
     end
     
