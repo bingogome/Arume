@@ -34,6 +34,9 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             dlg.targetDuration = { 300 '* (ms)' [100 30000] };
             dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
             
+            dlg.UseBiteBarMotor = { {'0','{1}'} };
+            dlg.HeadAngle = { 0 '* (deg)' [-40 40] };
+            
             dlg.offset = {0 '* (deg)' [-20 20] };
         end
     end
@@ -46,6 +49,26 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         function initBeforeRunning( this )
             if ( this.ExperimentOptions.UseGamePad )
                 ArumeHardware.GamePad.Open
+            end
+            
+            if ( this.ExperimentOptions.UseBiteBarMotor )
+                bitebar = ArumeHardware.BiteBarMotor;
+                switch( this.ExperimentOptions.HeadAngle)
+                    case 0
+                        bitebar.GoUpright();
+                        disp('WAITING AFTER BAR');
+                        pause(30);
+                    case 20
+                        bitebar.GoUpright();
+                        bitebar.TiltRight(20);
+                        disp('WAITING AFTER BAR');
+                        pause(30);
+                    case -20
+                        bitebar.GoUpright();
+                        bitebar.TiltRight(-20);
+                        disp('WAITING AFTER BAR');
+                        pause(30);
+                end
             end
             
             if ( this.ExperimentOptions.UseEyeTracker )
