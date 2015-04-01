@@ -133,8 +133,14 @@ classdef BiteBarMotor
             
             fwrite(this.s,command);
             
+            tic;
             while(this.s.BytesAvailable < 6)
                 pause(0.001);
+                t = toc;
+                if ( t > 30 )
+                    dataOut = -1;
+                    return;
+                end
             end
             
             out = fread(this.s, this.s.BytesAvailable);
