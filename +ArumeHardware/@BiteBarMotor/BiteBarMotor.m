@@ -44,7 +44,10 @@ classdef BiteBarMotor
                 
                 disp('Testing available serial ports');
                 for i=1:length(serialInfo.AvailableSerialPorts)
+                    
                     port = serialInfo.AvailableSerialPorts{i};
+                    
+                    disp(['Testing ' port]);
                     
                     ss =  serial(port,'BaudRate',9600);
                     
@@ -74,7 +77,7 @@ classdef BiteBarMotor
         
         function result = CheckID(this)
             
-            id = this.SendCommand( this.COMMMAND_Return_Device_Id, 0);
+            id = this.SendCommand( this.COMMMAND_Return_Device_Id, 0, 2);
             
             if ( id == this.ID )
                 result = 1;
@@ -116,7 +119,10 @@ classdef BiteBarMotor
     
     methods(Access = private)
         
-        function dataOut = SendCommand(this, command,  dataIn)
+        function dataOut = SendCommand(this, command,  dataIn, timeOut)
+            if ( ~exist('timeOut','var') )
+                timeOut = 30;
+            end
             
             if ( ~isequal(this.s.Status,'open') )
                 fopen(this.s);
@@ -137,8 +143,9 @@ classdef BiteBarMotor
             while(this.s.BytesAvailable < 6)
                 pause(0.001);
                 t = toc;
-                if ( t > 30 )
+                if ( t > timeOut )
                     dataOut = -1;
+                    disp('TIMEOUT');
                     return;
                 end
             end

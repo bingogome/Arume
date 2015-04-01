@@ -402,11 +402,16 @@ classdef Session < ArumeCore.DataDB
         
         function session = CopySession( sourceSession, newSubjectCode, newSessionCode)
             data = sourceSession.save();
-            data.subjectCode = newSubjectCode;
-            data.sessionCode = newSessionCode;
+            
+            newData = [];
+            
+            newData.subjectCode = newSubjectCode;
+            newData.sessionCode = newSessionCode;
+            newData.experimentName = data.experimentName;
+            newData.experimentOptions = data.experimentOptions;
             
             session = ArumeCore.Session();
-            session.initExisting( sourceSession.project, data );
+            session.initExisting( sourceSession.project, newData );
         end
     end
     

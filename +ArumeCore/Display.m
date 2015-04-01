@@ -251,9 +251,10 @@ classdef Display < handle
             while(1)
                 
                 try
-                    [ direction, left, right, a, b, x, y] = ArumeHardware.GamePad.Query;
+                    g = ArumeHardware.GamePad();
+                    [ direction, left, right, a, b, x, y] = g.Query;
 
-                    if ( a )
+                    if ( a | b | x | y)
                         result = char('a');
                         break;
                     end

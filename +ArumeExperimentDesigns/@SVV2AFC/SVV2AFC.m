@@ -67,6 +67,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             if ( this.ExperimentOptions.UseBiteBarMotor )
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
                 this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
+                pause(30);
             end
         end
         
@@ -86,7 +87,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             end
             
             % Close bitebar 
-            if ( this.ExperimentOptions.HeadTilt ~= 0 )
+            if ( this.ExperimentOptions.UseBiteBarMotor ~= 0 )
                 if ( ~isempty(this.biteBarMotor))
                     this.biteBarMotor.SetTiltAngle(0);
                     this.biteBarMotor.Close();
