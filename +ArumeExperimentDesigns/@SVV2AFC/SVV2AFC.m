@@ -64,9 +64,9 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             end
             
             % Initialize bitebar 
-            if ( this.ExperimentOptions.HeadTilt ~= 0 )
+            if ( this.ExperimentOptions.UseBiteBarMotor )
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
-                this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadTilt);
+                this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
             end
         end
         
@@ -78,15 +78,19 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             % Close eyetracker
             if ( this.ExperimentOptions.UseEyeTracker )
-               if ( this.eyeTracker.IsRecording)
-                   this.eyeTracker.StopRecording();
-               end
+                if ( ~isempty(this.eyeTracker))
+                   if ( this.eyeTracker.IsRecording)
+                       this.eyeTracker.StopRecording();
+                   end
+                end
             end
             
             % Close bitebar 
             if ( this.ExperimentOptions.HeadTilt ~= 0 )
-                this.biteBarMotor.SetTiltAngle(0);
-                this.biteBarMotor.Close();
+                if ( ~isempty(this.biteBarMotor))
+                    this.biteBarMotor.SetTiltAngle(0);
+                    this.biteBarMotor.Close();
+                end
             end
         end
         
