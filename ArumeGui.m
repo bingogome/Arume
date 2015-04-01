@@ -52,6 +52,7 @@ classdef ArumeGui < handle
         
         % Session Contextual menu
         sessionContextMenu
+        sessionContextMenuEditSettings
         sessionContextMenuRename
         sessionContextMenuDelete
         sessionContextMenuCopy
@@ -287,6 +288,9 @@ classdef ArumeGui < handle
             this.sessionContextMenuRename = uimenu(this.sessionContextMenu, ...
                 'Label'     , 'Rename session ...', ...
                 'Callback'  , @this.RenameSession);
+            this.sessionContextMenuEditSettings = uimenu(this.sessionContextMenu, ...
+                'Label'     , 'Edit settings ...', ...
+                'Callback'  , @this.EditSessionSettings);
             set(this.sessionListBox, 'uicontextmenu', this.sessionContextMenu)
             
             % session contextual menu
@@ -366,7 +370,7 @@ classdef ArumeGui < handle
 %                     sessionDlg.(ArumeCore.ExperimentDesign.GetExperimentList{i}) = { {'0','{1}'} };
 %                 end
                 
-                P = StructDlg(sDlg);
+                P = StructDlg(sDlg, 'New project');
                 if ( isempty( P ) )
                     return
                 end
@@ -434,7 +438,7 @@ classdef ArumeGui < handle
                 sessionDlg.Subject_Code = session.Subject_Code;
                 sessionDlg.Session_Code = session.Session_Code;
                 
-                session = StructDlg(sessionDlg);
+                session = StructDlg(sessionDlg, 'New Session');
                 if ( isempty( session ) )
                     return
                 end
@@ -462,7 +466,7 @@ classdef ArumeGui < handle
             experiment = ArumeCore.ExperimentDesign.Create([], session.Experiment);
             optionsDlg = experiment.GetExperimentOptionsDialog( );
             if ( ~isempty( optionsDlg) )
-                options = StructDlg(optionsDlg);
+                options = StructDlg(optionsDlg, 'Edit experiment options');
                 if ( isempty( options ) )
                     options = StructDlg(optionsDlg,'',[],[],'off');
                 end
@@ -487,7 +491,7 @@ classdef ArumeGui < handle
             
             sDlg.Subject_Code = '000';
             sDlg.Session_Code = 'Z';
-            P = StructDlg(sDlg);
+            P = StructDlg(sDlg, 'Import session');
             if ( isempty( P ) )
                 return
             end
@@ -500,25 +504,52 @@ classdef ArumeGui < handle
             
             sessions = this.arumeController.selectedSessions;
             
-            newNamesDlg = [];
-            for session=sessions
-                newNamesDlg.([session.name '_New_Subject_Code' ]) = session.subjectCode;
-                newNamesDlg.([session.name '_New_Session_Code' ]) = session.sessionCode;
-            end
-            
-            P = StructDlg(newNamesDlg);
-            if ( isempty( P ) )
-                return
-            end
-            
-            %Check that the names don't exist already
             
             newSubjectCodes = {};
             newSessionCodes = {};
             for session=sessions
-                newSubjectCodes{end+1} = P.([session.name '_New_Subject_Code' ]);
-                newSessionCodes{end+1} = P.([session.name '_New_Session_Code' ]);
+                newSubjectCodes{end+1} = session.subjectCode;
+                newSessionCodes{end+1} = session.sessionCode;
             end
+            
+            
+            while(1)
+                newNamesDlg = [];
+                for i=1:length(sessions)
+                    newNamesDlg.([session.name '_New_Subject_Code' ]) = newSubjectCodes{i};
+                    newNamesDlg.([session.name '_New_Session_Code' ]) = newSessionCodes{i};
+                end
+
+                P = StructDlg(newNamesDlg);
+                if ( isempty( P ) )
+                    return
+                end
+                
+                newSubjectCodes = {};
+                newSessionCodes = {};
+                for session=sessions
+                    newSubjectCodes{end+1} = P.([session.name '_New_Subject_Code' ]);
+                    newSessionCodes{end+1} = P.([session.name '_New_Session_Code' ]);
+                end
+                
+                allgood = 1;
+                for i=1:length(sessions)
+                    for session = sessions
+                        if ( streq(session.subjectCode, newSubjectCodes{i}) &&  streq(session.sessionCode, newSessionCodes{i}) )
+                            uiwait(msgbox('One of the names has not changed. The new session cannot have the codes of an existing session.', 'Error', 'Modal'));
+                            
+                            allgood = 0;
+                        end
+                    end
+                end
+                
+                if ( allgood)
+                    break;
+                end
+            end
+            
+            %Check that the names don't exist already
+            
             
              this.arumeController.copySelectedSessions(newSubjectCodes, newSessionCodes);
              this.updateGui();
@@ -552,6 +583,33 @@ classdef ArumeGui < handle
             this.arumeController.renameCurrentSession(P.Subject_Code, P.Session_Code);
             this.updateGui();
             
+        end
+        
+        function EditSessionSettings(this, source, eventdata )
+            
+            
+            session = this.arumeController.currentSession;
+            
+            if ( session.isStarted )
+                msgbox('This is session is already started, cannot change settings.');
+                return;
+            end
+            
+            % Show the dialog for experiment options if necessary
+            experiment = ArumeCore.ExperimentDesign.Create([], session.experiment.Name);
+            optionsDlg = experiment.GetExperimentOptionsDialog( );
+            if ( ~isempty( optionsDlg) )
+                options = StructDlg(optionsDlg,'Edit experiment options',session.experiment.ExperimentOptions);
+                if ( isempty( options ) )
+                    options = StructDlg(optionsDlg,'',session.experiment,[],'off');
+                end
+            else
+                options = [];
+            end
+            
+            session.updateExperimentOptions( options );
+            
+            this.updateGui();
         end
         
         function startSession( this, source, eventdata ) 

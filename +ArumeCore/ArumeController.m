@@ -192,6 +192,7 @@ classdef ArumeController < handle
             end
             
             session = ArumeCore.Session.NewSession( this.currentProject, experiment, subjectCode, sessionCode, experimentOptions );
+            this.currentProject.addSession(session);
             this.selectedSessions = session;
             this.currentProject.save();
         end
@@ -203,6 +204,7 @@ classdef ArumeController < handle
             session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code );
             
             [dsTrials, dsSamples] = session.experiment.ImportSession();
+            this.currentProject.addSession(session);
             session.importData(dsTrials, dsSamples);
             this.currentSession = session;
             this.selectedSessions = session;
@@ -222,6 +224,7 @@ classdef ArumeController < handle
             
             for i =1:length(sessions)
                 newSession = ArumeCore.Session.CopySession( sessions(i), newSubjectCodes{i}, newSessionCodes{i});
+                this.currentProject.addSession(newSession);
             end
                         
             this.currentProject.save();

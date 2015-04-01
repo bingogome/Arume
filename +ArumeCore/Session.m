@@ -154,7 +154,6 @@ classdef Session < ArumeCore.DataDB
                         mkdir( project.dataRawPath, this.name );
                     end
                 end
-                this.project.addSession(this);
             end
         end
         
@@ -216,6 +215,16 @@ classdef Session < ArumeCore.DataDB
         
         function updateComment( this, comment)
             this.comment = comment;
+        end
+        
+        function updateExperimentOptions( this, newExperimentOptions)
+            
+            if ( ~this.isStarted )
+                this.init( this.project, this.experiment.Name, this.subjectCode, this.sessionCode, newExperimentOptions );
+            else
+                error('This is session is already started, cannot change settings.');
+            end
+            
         end
         
         %

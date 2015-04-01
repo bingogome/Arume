@@ -112,7 +112,8 @@ classdef Project < handle
             
             % load sessions
             for session = data.sessions
-                ArumeCore.Session.LoadSession( this, session );
+                s = ArumeCore.Session.LoadSession( this, session );
+                this.addSession(s);
             end
         end
             
@@ -192,7 +193,8 @@ classdef Project < handle
                 
                 if ( ~repeated)
                     d = session.save();
-                    ArumeCore.Session.LoadSession(this,d)
+                    s = ArumeCore.Session.LoadSession(this,d);
+                    this.addSession(s);
                 end
             end
         

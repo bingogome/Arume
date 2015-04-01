@@ -3,12 +3,20 @@ classdef GamePad
     %   Detailed explanation goes here
     
     properties
+        
     end
     
     methods
         
         function this = GamePad()
-            ArumeHardware.joymex2('open', 0);
+            persistent active;
+            
+            if ( isempty(active) )
+                ArumeHardware.joymex2('open', 0);
+                active = 1;
+            else
+                return;
+            end
         end
         
         function [ direction, left, right, a, b, x, y] = Query(this)
