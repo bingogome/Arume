@@ -516,6 +516,7 @@ classdef ArumeGui < handle
             while(1)
                 newNamesDlg = [];
                 for i=1:length(sessions)
+                    session = sessions(i);
                     newNamesDlg.([session.name '_New_Subject_Code' ]) = newSubjectCodes{i};
                     newNamesDlg.([session.name '_New_Session_Code' ]) = newSessionCodes{i};
                 end
