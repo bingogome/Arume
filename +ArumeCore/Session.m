@@ -195,6 +195,10 @@ classdef Session < ArumeCore.DataDB
             this.WriteVariable(samplesDataSet,'samplesDataSet');
         end
         
+        function importSampleData(this, sampleDataSet)
+            this.WriteVariable(samplesDataSet,'samplesDataSet');
+        end
+        
         function data = save( this )
             data = [];
             
@@ -380,12 +384,16 @@ classdef Session < ArumeCore.DataDB
                 end
             end
             
-            % save the dataset
+            % save the datasets
             trialDataSet = this.experiment.PrepareTrialDataSet(ds);
-            this.WriteVariable(trialDataSet,'trialDataSet');
+            if ( ~isempty(trialDataSet) )
+                this.WriteVariable(trialDataSet,'trialDataSet');
+            end
             
             samplesDataSet = this.experiment.PrepareSamplesDataSet(trialDataSet);
-            this.WriteVariable(samplesDataSet,'samplesDataSet');
+            if ( ~isempty(samplesDataSet) )
+                this.WriteVariable(samplesDataSet,'samplesDataSet');
+            end
         end
         
     end
