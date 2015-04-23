@@ -270,7 +270,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             ds = dataset;
             if ( max(responses)>10)
-                ds.Response = responses=='L';
+                ds.Response = responses=='R';
             else
                 ds.Response = responses;
             end
