@@ -167,7 +167,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
                     
                     lineLength = 300;
-                    
+                                            
 %                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
                     if ( secondsElapsed > t1)
                         %-- Draw target
@@ -186,7 +186,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                         end
                         
                         Screen('DrawLine', graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
-                        
+                       
                     end
                     
 %                     if (secondsElapsed < t2)

@@ -106,7 +106,14 @@ function butHome_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-handles.bitebar.GoHome();
+choice = questdlg('Are you sure!!!!?', ...
+    'Tilting to Home', ...
+    'Yes','No','No');
+switch choice
+    case 'Yes'
+        handles.bitebar.GoHome();
+end
+
 
 % --- Executes on button press in butLED30.
 function butLED30_Callback(hObject, eventdata, handles)

@@ -28,7 +28,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             dlg.UseEyeTracker = { {'{0}','1'} };
             dlg.UseGamePad = { {'0','{1}'} };
             
-                        
+            
             dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
             
             dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
@@ -48,14 +48,14 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             % Initialize gamepad
             if ( this.ExperimentOptions.UseGamePad )
-            
+                
                 this.gamePad = ArumeHardware.GamePad();
                 
             end
             
             % Initialize eyetracker
             if ( this.ExperimentOptions.UseEyeTracker )
-               
+                
                 this.eyeTracker = ArumeHardware.VOG();
                 this.eyeTracker.Connect();
                 
@@ -63,7 +63,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                 this.eyeTracker.StartRecording();
             end
             
-            % Initialize bitebar 
+            % Initialize bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor )
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
                 this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
@@ -74,7 +74,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         end
         
         function cleanAfterRunning(this)
-             
+            
             % ose gamepad
             if ( this.ExperimentOptions.UseGamePad )
             end
@@ -82,16 +82,16 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             % Close eyetracker
             if ( this.ExperimentOptions.UseEyeTracker )
                 if ( ~isempty(this.eyeTracker))
-                   if ( this.eyeTracker.IsRecording)
-                       this.eyeTracker.StopRecording();
-                   end
+                    if ( this.eyeTracker.IsRecording)
+                        this.eyeTracker.StopRecording();
+                    end
                 end
             end
             
-            % Close bitebar 
+            % Close bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor ~= 0 )
                 if ( ~isempty(this.biteBarMotor))
-                    this.biteBarMotor.SetTiltAngle(0);
+                    % this.biteBarMotor.SetTiltAngle(0);
                     this.biteBarMotor.Close();
                 end
             end
@@ -283,7 +283,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             %             if ( length(ds.Responses) > 20 )
             modelspec = 'Response ~ Angle';
             mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
-%             ds(mdl.Diagnostics.CooksDistance > 400/length(mdl.Diagnostics.CooksDistance),:) = [];
+            %             ds(mdl.Diagnostics.CooksDistance > 400/length(mdl.Diagnostics.CooksDistance),:) = [];
             %             end
             
             if ( sum(ds.Response==0) == 0 )
@@ -321,6 +321,71 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                 allResponses(ia) = mean(responses(angles==allAngles(ia))*100);
                 trialCounts(ia) = sum(angles==allAngles(ia));
             end
+            
+        end
+        
+        
+        function drawFrame( graph, angle, color)
+            
+            lineLength = 350;
+            [mx, my] = RectCenter(graph.wRect);
+            
+            centerLeft = mx;
+            
+            width = 10;
+            
+            fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+            fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+            toH = +cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+            toV = sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+            Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+            
+            fromH = -cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+            fromV = -sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+            toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+            toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+            Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+            
+            
+            fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+            fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+            toH = -cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+            toV = -sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+            Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+            
+            fromH = +cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+            fromV = sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+            toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+            toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+            Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+            
+            lineLength = 150;
+            
+%             fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+%             fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+%             toH = +cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+%             toV = sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+%             Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+%             
+%             fromH = -cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+%             fromV = -sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+%             toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+%             toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+%             Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+%             
+%             
+%             fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+%             fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+%             toH = -cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+%             toV = -sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+%             Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+%             
+%             fromH = +cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+%             fromV = sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+%             toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+%             toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+%             Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+            
             
         end
     end
