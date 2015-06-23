@@ -167,7 +167,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
                     
                     lineLength = 300;
-                    
+                                            
 %                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
                     if ( secondsElapsed > t1)
                         %-- Draw target
@@ -186,7 +186,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                         end
                         
                         Screen('DrawLine', graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
-                        
+                       
                     end
                     
 %                     if (secondsElapsed < t2)
@@ -343,9 +343,9 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             plot(ds(ds.Response==1 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor','r','linewidth',2);
             
             
-            SVV = nan(1,600);
+            SVV = nan(1,500);
             
-            for i=1:60
+            for i=1:50
                 idx = (1:10) + (i-1)*10;
                 ang = ds.Angle(idx);
                 res = ds.Response(idx);
