@@ -222,11 +222,16 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             
             figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-            ax1=subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
+%             ax1=subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
+            ax1 = gca;
+            set(ax1,'nextplot','add', 'fontsize',12);
             
-            plot( allAngles, allResponses,'o', 'color', [0.4 0.4 0.4], 'markersize',10,'linewidth',2, 'markerfacecolor', [0.7 0.7 0.7])
+%             bar(allAngles, trialCounts/sum(trialCounts)*100, 'edgecolor','none','facecolor',[0.8 0.8 0.8])
+            
+            plot( allAngles, allResponses,'o', 'color', [0.4 0.4 0.4], 'markersize',15,'linewidth',2, 'markerfacecolor', [0.7 0.7 0.7])
             plot(a,p, 'color', 'k','linewidth',3);
-            line([SVV, SVV], [0 100], 'color','k','linewidth',3);
+            line([SVV, SVV], [-10 100], 'color','k','linewidth',3,'linestyle','-.');
+            line([-30, SVV], [50 50], 'color',[0.5 0.5 0.5],'linewidth',1,'linestyle','-.');
             
             %xlabel('Angle (deg)', 'fontsize',16);
             ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
@@ -235,20 +240,20 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xticklabel',[])
+            set(gca,'ytick',[0:25:100])
+%             set(gca,'xticklabel',[])
             
             
-            ax2=subplot(3,1,[3],'nextplot','add', 'fontsize',12);
-            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
+%             ax2=subplot(3,1,[3],'nextplot','add', 'fontsize',12);
             
-            set(gca,'xlim',[-30 30],'ylim',[0 15])
+%             set(gca,'xlim',[-30 30],'ylim',[0 15])
             xlabel('Angle (deg)', 'fontsize',16);
-            ylabel('Number of trials', 'fontsize',16);
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca, 'YAxisLocation','right')
+%             ylabel('Number of trials', 'fontsize',16);
+%             set(gca,'xgrid','on')
+%             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+%             set(gca, 'YAxisLocation','right')
             
-            linkaxes([ax1 ax2],'x');
+%             linkaxes([ax1 ax2],'x');
         end
         
     end
@@ -268,7 +273,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             ds = dataset;
             if ( max(responses)>10)
-                ds.Response = responses=='L';
+                ds.Response = responses=='R';
             else
                 ds.Response = responses;
             end

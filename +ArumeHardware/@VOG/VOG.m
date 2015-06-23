@@ -14,8 +14,8 @@ classdef VOG  < handle
                 port = 9000;
             end
             
-            if ( exist('C:\secure\Code\EyeTracker\bin\Debug','file') )
-                asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
+            if ( exist('C:\secure\Code\EyeTracker\bin\x64\Debug','file') )
+                asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\x64\Debug\EyeTrackerRemoteClient.dll');
 
                 if ( ~exist('ip','var') )
                     ip = '127.0.0.1';

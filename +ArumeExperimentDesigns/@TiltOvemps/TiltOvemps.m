@@ -9,7 +9,7 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
         fixRad = 20;
         fixColor = [255 0 0];
         
-        tiltTime = 60;
+        tiltTime = 20;
         tiltDuration = 60;
         tiltAngle = 30;
     end
@@ -17,10 +17,12 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     % Options to set at runtime
     % ---------------------------------------------------------------------
-    methods ( Static = true )
-        function dlg = GetOptionsStructDlg( this )
+    methods ( Access = protected )
+        
+        function dlg = GetOptionsDialog( this )
             dlg.FirstLeftEarDown = { {'0','{1}'} };
             dlg.Alternate = { {'{0}','1'} };
+            dlg.UseEyeTracker = { {'0','{1}'} };
         end
     end
     
@@ -80,15 +82,9 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             this.bitebar = ArumeHardware.BiteBarMotor();
                 
             if ( this.ExperimentOptions.UseEyeTracker )
-                if ( exist('C:\secure\Code\EyeTracker\bin\Debug','file') )
-                    asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
-                    this.eyeTracker = ArumeHardware.VOG();
-                    this.eyeTracker.Connect('127.0.0.1',9000);
-                else
-                    asm = NET.addAssembly('D:\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
-                    this.eyeTracker = ArumeHardware.VOG();
-                    this.eyeTracker.Connect('127.0.0.1',9000);
-                end
+               
+                this.eyeTracker = ArumeHardware.VOG();
+                this.eyeTracker.Connect();
                 
                 this.eyeTracker.SetSessionName(this.Session.name);
             end
@@ -125,7 +121,6 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
                     this.eyeTracker.StartRecording();
                     pause(1);
                 end
-                this.eyeTracker.RecordEvent(num2str(size(this.Session.CurrentRun.pastConditions,1)));
             end
         end
         
@@ -143,7 +138,7 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
                 %-- add here the trial code
                 
                 lastFlipTime        = GetSecs;
-                secondsRemaining    = this.trialDuration;
+                secondsRemaining    = 140;
                 
                 startLoopTime = lastFlipTime;
                 
@@ -152,7 +147,7 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
                 while secondsRemaining > 0
                     
                     secondsElapsed      = GetSecs - startLoopTime;
-                    secondsRemaining    = this.trialDuration - secondsElapsed;
+                    secondsRemaining    = 140 - secondsElapsed;
                     
                     % -----------------------------------------------------------------
                     % --- Drawing of stimulus -----------------------------------------

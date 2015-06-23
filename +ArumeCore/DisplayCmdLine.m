@@ -44,7 +44,6 @@ classdef DisplayCmdLine < ArumeCore.Display
             end
             
             this.NumFlips = this.NumFlips + 1;
-            this.fliptimes{end}(this.NumFlips) = fliptime;
             
             if ( this.NumFlips == 1) 
                 fprintf('\nRunning....');
