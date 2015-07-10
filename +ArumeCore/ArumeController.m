@@ -330,13 +330,56 @@ classdef ArumeController < handle
         end
         
         function generatePlots( this, plots, selection )
+            COMBINE_SESSIONS = 1;
+             
             if ( ~isempty( selection ) )
                 for i=1:length(selection)
                     if ( ismethod( this.currentSession.experiment, [this.PlotsMethodPrefix plots{selection(i)}] ) )
-                        % Single sessions plot
-                        for session = this.selectedSessions
-                            session.experiment.([this.PlotsMethodPrefix plots{selection(i)}])();
+                        if ( ~COMBINE_SESSIONS)
+                            % Single sessions plot
+                            for session = this.selectedSessions
+                                session.experiment.([this.PlotsMethodPrefix plots{selection(i)}])();
+                            end
+                        else 
+                            
+                            nplot1 = [1 2 1 2 3 3 2 2 3 2 4 4 4 4 4 5 5 5 5 5 5 5 5 5];
+                            nplot2 = [1 1 3 2 2 2 4 4 3 5 3 3 4 4 4 4 4 4 4 5 5 5 5 5];
+                            combinedFigures = [];
+                            nSessions = length(this.selectedSessions);
+                            p1 = nplot1(nSessions);
+                            p2 = nplot2(nSessions);
+                            iSession = 0;
+
+                            % Single sessions plot
+                            for session = this.selectedSessions
+                                iSession = iSession+1;
+                                handles = get(0,'children');
+                                session.experiment.([this.PlotsMethodPrefix plots{selection(i)}])();
+
+                                newhandles = get(0,'children');
+                                for iplot =1:(length(newhandles)-length(handles))
+
+                                    if ( length(combinedFigures) < i )
+                                        combinedFigures(iplot) = figure;
+                                    end
+
+                                    idx = length(handles)+1;
+                                    axorig = get(newhandles(1),'children');
+                                    theTitle = strrep(get(newhandles(1),'name'),'_',' ');
+                                    if ( iSession > 1 )
+                                        axcopy = copyobj(axorig(end), combinedFigures(iplot));
+                                    else
+                                        % copy all including legend
+                                        axcopy = copyobj(axorig(:), combinedFigures(iplot));
+                                    end
+                                    ax = subplot(p1,p2,iSession,axcopy(end))
+                                    title(ax,theTitle)
+                                end
+
+                                close(setdiff( newhandles,handles))
+                            end
                         end
+                        
                     elseif ( ismethod( this.currentSession.experiment, [this.PlotsAggregateMethodPrefix plots{selection(i)}] ) )
                         % Aggregate session plots
                         this.currentSession.experiment.([this.PlotsAggregateMethodPrefix plots{selection(i)}])( this.selectedSessions );

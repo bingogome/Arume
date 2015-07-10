@@ -164,6 +164,42 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             responses = this.Session.trialDataSet.Response;
         end
         
+        
+        function plotResults = Plot_Sigmoid(this)
+            
+            angles = this.GetAngles();
+            angles(this.Session.trialDataSet.TrialResult>0) = [];
+            
+            respones = this.GetLeftRightResponses();
+            respones(this.Session.trialDataSet.TrialResult>0) = [];
+            
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
+            
+            
+            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
+%             ax1=subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
+            ax1 = gca;
+            set(ax1,'nextplot','add', 'fontsize',12);
+            
+%             bar(allAngles, trialCounts/sum(trialCounts)*100, 'edgecolor','none','facecolor',[0.8 0.8 0.8])
+            
+            plot( allAngles, allResponses,'o', 'color', [0.4 0.4 0.4], 'markersize',15,'linewidth',2, 'markerfacecolor', [0.7 0.7 0.7])
+            plot(a,p, 'color', 'k','linewidth',3);
+            line([SVV, SVV], [-10 110], 'color','k','linewidth',3,'linestyle','-.');
+            line([0, 0], [-10 50], 'color','k','linewidth',2,'linestyle','-.');
+            line([0, SVV], [50 50], 'color','k','linewidth',2,'linestyle','-.');
+            
+            %xlabel('Angle (deg)', 'fontsize',16);
+            text(30, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
+            
+            set(gca,'xlim',[-30 30],'ylim',[-10 110])
+            set(gca,'xgrid','on')
+            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+            set(gca,'ytick',[0:25:100])
+            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
+            xlabel('Angle (deg)', 'fontsize',16);
+        end
+        
         function plotResults = Plot_Sigmoid_Tilt_Aftereffect(this)
             angles = this.GetAngles();
             
@@ -189,7 +225,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             %xlabel('Angle (deg)', 'fontsize',16);
             ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
+            text(30, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
             
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
@@ -203,7 +239,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             %xlabel('Angle (deg)', 'fontsize',16);
             ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
+            text(30, 60, sprintf('SVV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
             
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
@@ -212,51 +248,52 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
         end
         
-        function plotResults = Plot_Sigmoid(this)
+        function plotResults = Plot_SigmoidUpDown(this)
+            analysisResults = 0;
             
-            angles = this.GetAngles();
-            angles(this.Session.trialDataSet.TrialResult>0) = [];
+            ds = this.Session.trialDataSet;
+            ds(ds.TrialResult>0,:) = [];
+            ds(ds.Response<0,:) = [];
             
-            respones = this.GetLeftRightResponses();
-            respones(this.Session.trialDataSet.TrialResult>0) = [];
+            figure('position',[400 100 1000 600],'color','w','name',this.Session.name)
             
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
+            subds = ds(strcmp(ds.Position,'Up'),:);
+            subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
+            
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
+            
+            set(gca,'nextplot','add', 'fontsize',12);
+            
+            plot( allAngles, allResponses,'^', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
+            plot(a,p, 'color', 'k','linewidth',2);
+            line([SVV,SVV], [0 100], 'color','k','linewidth',2);
+            plot(SVV, 0,'^', 'markersize',10, 'markerfacecolor','k', 'color','k','linewidth',2);
             
             
-            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-%             ax1=subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
-            ax1 = gca;
-            set(ax1,'nextplot','add', 'fontsize',12);
+            text(30, 80, sprintf('SVV UP: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
+                      
             
-%             bar(allAngles, trialCounts/sum(trialCounts)*100, 'edgecolor','none','facecolor',[0.8 0.8 0.8])
+            subds = ds(strcmp(ds.Position,'Down'),:);
+            subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
             
-            plot( allAngles, allResponses,'o', 'color', [0.4 0.4 0.4], 'markersize',15,'linewidth',2, 'markerfacecolor', [0.7 0.7 0.7])
-            plot(a,p, 'color', 'k','linewidth',3);
-            line([SVV, SVV], [-10 100], 'color','k','linewidth',3,'linestyle','-.');
-            line([-30, SVV], [50 50], 'color',[0.5 0.5 0.5],'linewidth',1,'linestyle','-.');
+            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
             
-            %xlabel('Angle (deg)', 'fontsize',16);
+            plot( allAngles, allResponses,'v', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
+            plot(a,p, 'color', 'k','linewidth',2);
+            line([SVV, SVV], [0 100], 'color','k','linewidth',2);
+            plot(SVV, 100,'v', 'markersize',10, 'markerfacecolor','k', 'color','k','linewidth',2);
+            
+            text(30, 60, sprintf('SVV DOWN: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
+            
+            
+            xlabel('Angle (deg)', 'fontsize',16);
             ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
             
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'ytick',[0:25:100])
-%             set(gca,'xticklabel',[])
-            
-            
-%             ax2=subplot(3,1,[3],'nextplot','add', 'fontsize',12);
-            
-%             set(gca,'xlim',[-30 30],'ylim',[0 15])
-            xlabel('Angle (deg)', 'fontsize',16);
-%             ylabel('Number of trials', 'fontsize',16);
-%             set(gca,'xgrid','on')
-%             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-%             set(gca, 'YAxisLocation','right')
-            
-%             linkaxes([ax1 ax2],'x');
         end
+        
         
     end
     
@@ -267,21 +304,22 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         function [SVV, a, p, allAngles, allResponses, trialCounts, SVVth] = FitAngleResponses( angles, responses)
             
             % add values in the extremes to "support" the logistic fit
-            %             angles(end+1) = -90;
-            %             angles(end+1) = 90;
-            %
-            %             responses(end+1) = 1;
-            %             responses(end+1) = 0;
             
             ds = dataset;
             if ( max(responses)>10)
+                n = length(angles);
+                angles(end+1) = -90;
+                angles(end+1) = 90;
+                
+                responses(end+1) = 'L';
+                responses(end+1) = 'R';
                 ds.Response = responses=='R';
             else
                 ds.Response = responses;
             end
             ds.Angle = angles;
             
-            outliers = find((ds.Response==0 & ds.Angle<-50) | (ds.Response==1 & ds.Angle>50));
+            outliers = find((ds.Response==1 & ds.Angle<-50) | (ds.Response==0 & ds.Angle>50));
             
             ds(outliers,:) = [];
             

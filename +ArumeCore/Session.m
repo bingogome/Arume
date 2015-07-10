@@ -312,6 +312,9 @@ classdef Session < ArumeCore.DataDB
             ds.BlockNumber = this.currentRun.pastConditions(:,Enum.pastConditions.blocknumber);
             ds.BlockID = this.currentRun.pastConditions(:,Enum.pastConditions.blockid);
             ds.Session = this.currentRun.pastConditions(:,Enum.pastConditions.session);
+            
+            ds.TimeStartTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_START,1);
+            ds.TimeStopTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_STOP,1);
 
             % find all the possible output variables
             outputVars = {};
