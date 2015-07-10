@@ -262,11 +262,11 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         function [SVV, a, p, allAngles, allResponses, trialCounts, SVVth] = FitAngleResponses( angles, responses)
             
             % add values in the extremes to "support" the logistic fit
-            %             angles(end+1) = -90;
-            %             angles(end+1) = 90;
-            %
-            %             responses(end+1) = 1;
-            %             responses(end+1) = 0;
+            angles(end+1) = -90;
+            angles(end+1) = 90;
+            
+            responses(end+1) = 0;
+            responses(end+1) = 1;
             
             ds = dataset;
             if ( max(responses)>10)
@@ -276,7 +276,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             end
             ds.Angle = angles;
             
-            outliers = find((ds.Response==0 & ds.Angle<-50) | (ds.Response==1 & ds.Angle>50));
+            outliers = find((ds.Response==1 & ds.Angle<-50) | (ds.Response==0 & ds.Angle>50));
             
             ds(outliers,:) = [];
             

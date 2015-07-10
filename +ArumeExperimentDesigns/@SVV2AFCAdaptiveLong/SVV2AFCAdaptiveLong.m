@@ -79,7 +79,6 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                     subds = ds;
                     
                     SVV = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-                    this.currentCenterRange = SVV + this.ExperimentOptions.offset;
                     
                     % Limit the center of the new range to the extremes of
                     % the past range of angles
@@ -88,6 +87,8 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                     elseif( SVV < min(ds.Angle))
                         SVV = min(ds.Angle);
                     end
+                    
+                    this.currentCenterRange = SVV + this.ExperimentOptions.offset;
                     
                     this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
                 end
