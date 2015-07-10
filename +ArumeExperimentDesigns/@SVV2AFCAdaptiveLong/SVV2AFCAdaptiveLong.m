@@ -89,6 +89,7 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                     end
                     
                     this.currentCenterRange = SVV + this.ExperimentOptions.offset;
+                    
                     this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
                 end
             else
