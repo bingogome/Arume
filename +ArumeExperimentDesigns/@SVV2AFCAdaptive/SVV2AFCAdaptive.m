@@ -302,140 +302,32 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             ds(ds.TrialResult>0,:) = [];
             ds(ds.Response<0,:) = [];
             NtrialPerBlock = 10;
-            %             figure
-            %             set(gca,'nextplot','add')
-            %             colors = jet(length(ds)/NtrialPerBlock);
             
             Nblocks = ceil(length(ds)/NtrialPerBlock/2)*2;
             
-            %             for i=NtrialPerBlock:NtrialPerBlock:length(ds)
-            %                 nplot = ceil(i/NtrialPerBlock);
-            %                 subplot(ceil(length(colors)/2),2,mod(((nplot*2)-1+floor((nplot-1)/(Nblocks/2)))-1,Nblocks)+1,'nextplot','add')
-            %                 modelspec = 'Response ~ Angle';
-            %                 subds = ds(1:i,:);
-            %                 subds((subds.Response==1 & subds.Angle<-50) | (subds.Response==0 & subds.Angle>50),:) = [];
-            %
-            %                 [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-            %
-            %                 plot(a,p, 'color', colors(nplot,:),'linewidth',2);
-            %                 xlabel('Angle (deg)');
-            %                 ylabel('Percent answered right');
-            %
-            %                 [svvr svvidx] = min(abs( p-50));
-            %                 line([a(svvidx),a(svvidx)], [0 100], 'color', colors(nplot,:),'linewidth',2);
-            %                 set(gca,'xlim',[-20 20])
-            %
-            %                 allAngles = -90:90;
-            %                 allResponses = nan(size(allAngles));
-            %                 for ia=1:length(allAngles)
-            %                     allResponses(ia) = mean(responses(angles==allAngles(ia))*100);
-            %                 end
-            %
-            %                 plot( allAngles,allResponses,'o')
-            %                 text(3, 40, sprintf('SVV: %0.2f',a(svvidx)));
-            %             end
-            
             figure('position',[400 200 700 400],'color','w','name',this.Session.name)
             axes('nextplot','add');
-            plot(ds(ds.Response==0 & strcmp(ds.Position,'Up'),'TrialNumber'), ds(ds.Response==0 & strcmp(ds.Position,'Up'),'Angle'),'^','MarkerEdgeColor',[0.3 0.3 0.3],'linewidth',2);
-            plot(ds(ds.Response==1 & strcmp(ds.Position,'Up'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Up'),'Angle'),'^','MarkerEdgeColor','r','linewidth',2);
-            plot(ds(ds.Response==0 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==0 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor',[0.3 0.3 0.3],'linewidth',2);
-            plot(ds(ds.Response==1 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor','r','linewidth',2);
             
+            % Plot button presses
+            plot(ds(ds.Response==0 & strcmp(ds.Position,'Up'),'TrialNumber'), ds(ds.Response==0 & strcmp(ds.Position,'Up'),'Angle'),'^','MarkerEdgeColor',[0.3 0.3 0.3],'linewidth',1);
+            plot(ds(ds.Response==1 & strcmp(ds.Position,'Up'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Up'),'Angle'),'^','MarkerEdgeColor','r','linewidth',1);
+            plot(ds(ds.Response==0 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==0 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor',[0.3 0.3 0.3],'linewidth',1);
+            plot(ds(ds.Response==1 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor','r','linewidth',1);
             
-            SVV = nan(1,500);
-            
-            for i=1:50
-                idx = (1:10) + (i-1)*10;
-                ang = ds.Angle(idx);
-                res = ds.Response(idx);
-                
-                [SVV1, a, p, allAngles, allResponses,trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( ang, res);
-                SVV(idx) = SVV1;
-            end
-            
-            plot(SVV,'linewidth',2,'color',[.5 .8 .3]);
+            % Plot center of the range
+            plot(ds.TrialNumber, ds.RangeCenter,'linewidth',3,'color',[.5 .8 .3]);
+            plot(ds.TrialNumber, ds.RangeCenter-ds.Range,'linewidth',1,'color',[.5 .8 .3]);
+            plot(ds.TrialNumber, ds.RangeCenter+ds.Range,'linewidth',1,'color',[.5 .8 .3]);
             
             legend({'Ansered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
             legend('boxoff')
-            set(gca,'xlim',[-3 603],'ylim',[-90 90])
+            set(gca,'xlim',[-3 503],'ylim',[-90 90],'ylim',[-20 20])
             ylabel('Angle (deg)', 'fontsize',16);
             xlabel('Trial number', 'fontsize',16);
             set(gca,'ygrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
         end
         
-        function plotResults = Plot_SigmoidUpDown(this)
-            analysisResults = 0;
-            
-            ds = this.Session.trialDataSet;
-            ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
-            
-            figure('position',[400 100 1000 600],'color','w','name',this.Session.name)
-            subds = ds(strcmp(ds.Position,'Up'),:);
-            subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
-            
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-            
-            subplot(6,1,[1:2],'nextplot','add', 'fontsize',12);
-            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
-            plot(a,p, 'color', 'k','linewidth',2);
-            line([SVV,SVV], [0 100], 'color','k','linewidth',2);
-            
-            
-            %xlabel('Angle (deg)', 'fontsize',16);
-            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
-            
-            set(gca,'xlim',[-30 30],'ylim',[-10 110])
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xticklabel',[])
-            
-            
-            subplot(6,1,[3],'nextplot','add', 'fontsize',12);
-            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
-            
-            set(gca,'xlim',[-30 30],'ylim',[0 15])
-            xlabel('Angle (deg)', 'fontsize',16);
-            ylabel('Number of trials', 'fontsize',16);
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca, 'YAxisLocation','right')
-            
-            
-            
-            subds = ds(strcmp(ds.Position,'Down'),:);
-            subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
-            
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-            
-            subplot(6,1,[4:5],'nextplot','add', 'fontsize',12);
-            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
-            plot(a,p, 'color', 'k','linewidth',2);
-            line([SVV, SVV], [0 100], 'color','k','linewidth',2);
-            
-            %xlabel('Angle (deg)', 'fontsize',16);
-            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(20, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16);
-            
-            set(gca,'xlim',[-30 30],'ylim',[-10 110])
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xticklabel',[])
-            
-            
-            subplot(6,1,[6],'nextplot','add', 'fontsize',12);
-            bar(allAngles, trialCounts, 'edgecolor','none','facecolor',[0.5 0.5 0.5])
-            
-            set(gca,'xlim',[-30 30],'ylim',[0 15])
-            xlabel('Angle (deg)', 'fontsize',16);
-            ylabel('Number of trials', 'fontsize',16);
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca, 'YAxisLocation','right')
-        end
         
         function plotResults = Plot_ReactionTimes(this)
             analysisResults = 0;

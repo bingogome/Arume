@@ -384,10 +384,14 @@ classdef ArumeGui < handle
         end
         
         function loadProject(this, source, eventdata )
+            
+            h=waitbar(0,'Please wait..');
+            
             if ( this.closeProjectQuestdlg() )
                 if ( this.menuFileLoadProject == source ) 
                     [filename, pathname] = uigetfile([this.arumeController.defaultDataFolder '/*.aruprj'], 'Pick a project file');
                     if ( ~filename  )
+                        close(h)
                         return
                     end
                     if ( ~isempty(this.arumeController.currentProject) )
@@ -399,14 +403,19 @@ classdef ArumeGui < handle
                         [pathname, file, extension] = fileparts(fullname);
                         filename = [file extension];
                     else
+                        close(h)
                         msgbox('File does not exist');
                         return;
                     end
                 end
                 
+                waitbar(1/2)
                 this.arumeController.loadProject(fullfile(pathname, filename));
+                waitbar(2/2)
                 this.updateGui();
             end
+            
+            close(h)
         end
         
         function loadRecentProject(this, source, eventdata )
@@ -700,7 +709,7 @@ classdef ArumeGui < handle
                 for i=1:length( this.arumeController.currentProject.sessions )
                     sessionNames{i} = sprintf('%-20.20s %-8.8s %-10.10s', ...
                         this.arumeController.currentProject.sessions(i).experiment.Name, ...
-                        this.arumeController.currentProject.sessions(i).subjectCode, ...
+                        char(this.arumeController.currentProject.sessions(i).subjectCode-0), ...
                         this.arumeController.currentProject.sessions(i).sessionCode);
                 end
                 set(this.sessionListBox, 'String', sessionNames);
@@ -781,6 +790,9 @@ classdef ArumeGui < handle
             
             % update plots listbox
             if ( ~isempty( this.arumeController.currentSession ) && this.arumeController.currentSession.isReadyForAnalysis)
+                plots = get(this.plotsListBox,'string');
+                selection = get(this.plotsListBox,'value');
+            
                 plotsList = {};
                 for session = this.arumeController.selectedSessions
                     if ( isempty (plotsList) )
@@ -789,8 +801,15 @@ classdef ArumeGui < handle
                         plotsList =  intersect(plotsList, this.arumeController.GetPlotList());
                     end
                 end
+                
+                if ( ~isempty(selection) && selection(1) > 0 )
+                    [a newselection] = intersect(plotsList,plots(selection));
+                else
+                    newselection = min(1,length(plotsList));
+                end
+                
                 set(this.plotsListBox, 'String', plotsList);
-                set(this.plotsListBox, 'Value', min(1,length(plotsList)) )
+                set(this.plotsListBox, 'Value', newselection );
             else
                 set(this.plotsListBox, 'String', {});
                 set(this.plotsListBox, 'Value', 0 )

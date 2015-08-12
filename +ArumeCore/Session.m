@@ -195,6 +195,10 @@ classdef Session < ArumeCore.DataDB
             this.WriteVariable(samplesDataSet,'samplesDataSet');
         end
         
+        function importSampleData(this, sampleDataSet)
+            this.WriteVariable(samplesDataSet,'samplesDataSet');
+        end
+        
         function data = save( this )
             data = [];
             
@@ -308,6 +312,9 @@ classdef Session < ArumeCore.DataDB
             ds.BlockNumber = this.currentRun.pastConditions(:,Enum.pastConditions.blocknumber);
             ds.BlockID = this.currentRun.pastConditions(:,Enum.pastConditions.blockid);
             ds.Session = this.currentRun.pastConditions(:,Enum.pastConditions.session);
+            
+            ds.TimeStartTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_START,1);
+            ds.TimeStopTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_STOP,1);
 
             % find all the possible output variables
             outputVars = {};
@@ -380,12 +387,16 @@ classdef Session < ArumeCore.DataDB
                 end
             end
             
-            % save the dataset
+            % save the datasets
             trialDataSet = this.experiment.PrepareTrialDataSet(ds);
-            this.WriteVariable(trialDataSet,'trialDataSet');
+            if ( ~isempty(trialDataSet) )
+                this.WriteVariable(trialDataSet,'trialDataSet');
+            end
             
             samplesDataSet = this.experiment.PrepareSamplesDataSet(trialDataSet);
-            this.WriteVariable(samplesDataSet,'samplesDataSet');
+            if ( ~isempty(samplesDataSet) )
+                this.WriteVariable(samplesDataSet,'samplesDataSet');
+            end
         end
         
     end

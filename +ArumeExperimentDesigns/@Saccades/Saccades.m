@@ -19,7 +19,7 @@ classdef Saccades < ArumeCore.ExperimentDesign
             
             dlg.TargetDiameter = { 0.2 '* (deg)' [0.1 10] };
             
-            dlg.FixationDuration = { 2 '* (seconds)' [1 200] };
+            dlg.Trial_Duration =  { 2 '* (s)' [0 500] };
             
             dlg.ScreenDistance = { 124 '* (cm)' [1 200] };
             dlg.ScreenWidth = { 40 '* (cm)' [1 200] };
@@ -38,7 +38,7 @@ classdef Saccades < ArumeCore.ExperimentDesign
             this.HitKeyBeforeTrial = 0;
             this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness/100*255;
             
-            this.trialDuration = 2; %seconds
+            this.trialDuration = this.ExperimentOptions.Trial_Duration; %seconds
             
             % default parameters of any experiment
             if ( this.ExperimentOptions.Shuffle )
@@ -48,16 +48,16 @@ classdef Saccades < ArumeCore.ExperimentDesign
             end
             
             this.trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
-            this.trialsPerSession = this.NumberOfConditions+1;
+            this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 1;
+            this.numberOfTimesRepeatBlockSequence = this.ExperimentOptions.NumberOfRepetitions;
             this.blocksToRun = 3;
             this.blocks = [ ...
-                struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 2), ...
+                struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 1), ...
                 struct( 'fromCondition', 2, 'toCondition', this.NumberOfConditions, 'trialsToRun', this.NumberOfConditions - 1 ),...
-                struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 2)];
+                struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 1)];
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -69,9 +69,20 @@ classdef Saccades < ArumeCore.ExperimentDesign
             conditionVars(i).values = {[0,0]};
             switch(this.ExperimentOptions.Mode)
                 case 'Horizontal' 
+                    for x=(-this.ExperimentOptions.MaxEccentricity):this.ExperimentOptions.TargetSeparation:this.ExperimentOptions.MaxEccentricity
+                        conditionVars(i).values{end+1}   =  [x,0];
+                    end
                 case 'Vertical' 
+                    for y=(-this.ExperimentOptions.MaxEccentricity):this.ExperimentOptions.TargetSeparation:this.ExperimentOptions.MaxEccentricity
+                        conditionVars(i).values{end+1}   =  [0,y];
+                    end
                 case 'HVcross' 
-                case 'DiagonalCross' 
+                    for x=(-this.ExperimentOptions.MaxEccentricity):this.ExperimentOptions.TargetSeparation:this.ExperimentOptions.MaxEccentricity
+                        conditionVars(i).values{end+1}   =  [x,0];
+                    end
+                    for y=(-this.ExperimentOptions.MaxEccentricity):this.ExperimentOptions.TargetSeparation:this.ExperimentOptions.MaxEccentricity
+                        conditionVars(i).values{end+1}   =  [0,y];
+                    end
                 case 'Grid'
                     for x=(-this.ExperimentOptions.MaxEccentricity):this.ExperimentOptions.TargetSeparation:this.ExperimentOptions.MaxEccentricity
                         for y=(-this.ExperimentOptions.MaxEccentricity):this.ExperimentOptions.TargetSeparation:this.ExperimentOptions.MaxEccentricity
@@ -186,17 +197,66 @@ classdef Saccades < ArumeCore.ExperimentDesign
         
     end
     
-    % ---------------------------------------------------------------------
-    % Data Analysis methods
-    % ---------------------------------------------------------------------
-    methods ( Access = public )
+    % --------------------------------------------------------------------
+    %% Analysis methods --------------------------------------------------
+    % --------------------------------------------------------------------
+    methods
+        
+        function trialDataSet = PrepareTrialDataSet( this, ds)
+            trialDataSet = ds;
+        end
+            
+        function samplesDataSet = PrepareSamplesDataSet(this, trialDataSet, dataFile, calibrationFile)
+            if ( ~exist('dataFile','var') || ~exist('calibrationFile', 'var') )
+                res = questdlg('Do you want to import the eye data?', 'Import data', 'Yes', 'No', 'Yes');
+                if ( streq(res,'No'))
+                    return;
+                end
+            end
+            
+            S = [];
+            
+            if ( ~exist('dataFile', 'var') )
+                S.Data_File = { {'uigetfile(''*.txt'')'} };
+            end
+            
+            if ( ~exist('calibrationFile', 'var') )
+                S.Calibration_File = { {'uigetfile(''*.cal'')'} };
+            end
+            
+            S = StructDlg(S,'Select data file',[]);
+            if ( isempty(S) )
+                return;
+            end
+            
+            if ( ~exist('dataFile', 'var') )
+                dataFile = S.Data_File;
+            end
+            
+            if ( ~exist('calibrationFile', 'var') )
+                calibrationFile = S.Calibration_File;
+            end
+            
+            sessionVogDataFile = fullfile(this.Session.dataRawPath,[this.Session.name '_VOGData.txt']);
+            sessionVogCalibrationFile = fullfile(this.Session.dataRawPath,[this.Session.name '_VOGCalibration.cal']);
+            
+            copyfile(dataFile, sessionVogDataFile);
+            copyfile(calibrationFile, sessionVogCalibrationFile);
+            
+            dataset = GetCalibratedData(sessionVogDataFile, sessionVogCalibrationFile, 1);
+            
+            samplesDataSet = dataset;
+        end
     end
     
     % ---------------------------------------------------------------------
     % Plot  methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
-        
+        function plotResults = Plot_Traces(this)
+            figure
+            
+        end
     end
     
     % ---------------------------------------------------------------------
