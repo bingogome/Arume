@@ -1,16 +1,22 @@
 classdef ExperimentDesign < handle
-    %EXPERIMENTDESIGN Summary of this class goes here
-    %   Detailed explanation goes here
+    %EXPERIMENTDESIGN Base class for all experiment designs (paradigms).
+    % All experiment designs must inherit from this class and must override
+    % some of the methods.
+    %
+    % A experiment design contains the main trail flow but also a lot of
+    % options regarding configuration of the experiment, randomization,
+    % etc.
     
     properties( SetAccess = private)
-        Project = [];
-        Session = [];
+        Project = [];       % The project that this experiment design belongs to.
+        Session = [];       % The session that is current running this experiment design
         
-        Graph       = [];
-        SysInfo     = [];
+        Graph       = [];   % Display handle (psychtoolbox).
+        SysInfo     = [];   % Information regarding the system
         
-        Config      = [];
-        ExperimentOptions = [];
+        Config      = [];   % Configuration of the system.
+        
+        ExperimentOptions = [];  % Options of this specific experiment design
         
         % Experimental variables
         ConditionVars = [];
@@ -38,7 +44,7 @@ classdef ExperimentDesign < handle
     end
     
     %
-    % Experimental design parameters
+    % Options for every experimental paradigm
     %
     properties
         DisplayToUse = 'ptbScreen'; % 'ptbScreen' 'cmdline'
@@ -75,7 +81,6 @@ classdef ExperimentDesign < handle
         function dlg = GetOptionsDialog( this )
             dlg = [];
         end
-        
         
         function conditionVars = getConditionVariables( this )
             conditionVars = [];
