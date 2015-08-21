@@ -118,6 +118,7 @@ classdef Display < handle
             fixRect = [0 0 10 10];
             fixRect = CenterRectOnPointd( fixRect, mx, my );
             Screen('FillOval', graph.window,  255, fixRect);
+            fliptime = Screen('Flip', graph.window);
         end
         
         function ResetBackground( this )

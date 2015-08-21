@@ -643,7 +643,11 @@ classdef ArumeGui < handle
         end
         
         function RunAnalyses( this, source, eventdata ) 
-            this.arumeController.runAnalyses();
+            
+            analyses = get(this.analysisListBox,'string');
+            selection = get(this.analysisListBox,'value');
+            
+            this.arumeController.runAnalyses(analyses, selection);
             this.updateGui();
         end
         

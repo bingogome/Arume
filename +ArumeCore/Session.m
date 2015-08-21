@@ -105,6 +105,23 @@ classdef Session < ArumeCore.DataDB
         function samplesDataSet = get.samplesDataSet(this)
             samplesDataSet = this.ReadVariable('samplesDataSet');
         end
+        
+        function analysisResults = get.analysisResults(this)
+            analysisList = {};
+            methodList = meta.class.fromName(class(this.experiment)).MethodList;
+            for i=1:length(methodList)
+                if ( strfind( methodList(i).Name, 'Analysis_') )
+                    analysisList{end+1} = strrep( methodList(i).Name, 'Analysis_' ,'');
+                end
+            end
+            analysisResults = [];
+            for i=1:length(analysisList)
+                var = this.ReadVariable(analysisList{i});
+                if ( ~isempty(var) )
+                    analysisResults.(analysisList{i}) = var;
+                end
+            end
+        end
     end
     
     %% methods
@@ -399,6 +416,13 @@ classdef Session < ArumeCore.DataDB
             end
         end
         
+        function RunAnalyses( this, analysisSelection )
+            for i=1:length(analysisSelection)
+                analysis = analysisSelection{i};
+                data = this.experiment.(['Analysis_' analysisSelection{i}])();
+                this.WriteVariable(data, analysisSelection{i});
+            end
+        end
     end
     
     methods (Static = true )

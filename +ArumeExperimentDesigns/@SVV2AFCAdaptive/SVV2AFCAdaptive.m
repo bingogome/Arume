@@ -72,7 +72,6 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                 n = 1;
                 for i=1:length(this.Session.currentRun.pastConditions(:,1))
                     if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
-                        isdown = strcmp(this.Session.currentRun.Data{i}.variables.Position, 'Down');
                         previousValues(n) = this.Session.currentRun.Data{i}.trialOutput.Angle;
                         previousResponses(n) = this.Session.currentRun.Data{i}.trialOutput.Response;
                         n = n+1;
@@ -328,7 +327,6 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
         end
         
-        
         function plotResults = Plot_ReactionTimes(this)
             analysisResults = 0;
             
@@ -458,13 +456,51 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             line([SVV, SVV], [0 100], 'color','k','linewidth',2);
         end
         
-        function analysisResults = Analysis_SVV(this)
+        function analysisResults = Analysis_SVVbin(this)
+            data = this.Session.trialDataSet;
+            
+            binDataSVV = [];
+            binDataSVVth = [];
+            for j=1:floor(size(data,1)/100)
+                idx = (50:100) + (j-1)*100;
+                if ( max(idx) <= length(data.Angle) )
+                    angles = data.Angle(idx);
+                    responses = data.Response(idx);
+                    [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
+                    binDataSVV(j) = SVV1;
+                    binDataSVVth(j) = SVVth1;
+                end
+            end
+            
+            analysisResults.SVV = binDataSVV;
+            analysisResults.SVVth = binDataSVVth;
             
         end
         
-        function analysisResults = Analysis_SVVUpDown(this)
+        function analysisResults = Analysis_SVVSmooth(this)
+            
+            data = this.Session.trialDataSet;
+            
+            smoothDataSVV = [];
+            smoothDataSVVth = [];
+            
+            % Get SVVsmooth
+            for j=1:floor(size(data,1)/10)
+                idx1 = max(min((j)*10 -10,length(data.Angle)),1);
+                idx2 = max(min((j)*10 +19,length(data.Angle)),1);
+                idx = idx1:idx2;
+                if ( max(idx) <= length(data.Angle) && length(idx) >= 10)
+                    angles = data.Angle(idx);
+                    responses = data.Response(idx);
+                    [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
+                    smoothDataSVV(j) = SVV1;
+                    smoothDataSVVth(j) = SVVth1;
+                end
+            end
+            
+            analysisResults.SVV = smoothDataSVV;
+            analysisResults.SVVth = smoothDataSVVth;
         end
-        
     end
     
     % ---------------------------------------------------------------------

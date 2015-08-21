@@ -288,11 +288,27 @@ classdef ArumeController < handle
             this.currentProject.save();
         end
         
-        function runAnalyses( this ) 
+        function runAnalyses( this, analysis, selection )
             % Runs the selected analysis
             
-            for session = this.selectedSessions
-                session.RunAnalyses();
+            analysisSelection = {};
+            if ( ~isempty( selection ) )
+                for i=1:length(selection)
+                    if ( ismethod( this.currentSession.experiment, [this.AnalysisMethodPrefix analysis{selection(i)}] ))
+                        analysisSelection{end+1} = analysis{selection(i)};
+                    end
+                end
+                
+                h = waitbar(0,'Please wait...');
+                n = length(this.selectedSessions);
+                
+                % Single sessions plot
+                for session = this.selectedSessions
+                    session.RunAnalyses(analysisSelection);
+                    waitbar(i/n,h)
+                end
+                close(h);
+                this.currentProject.save();
             end
         end
         
@@ -305,13 +321,7 @@ classdef ArumeController < handle
                 end
             end
         end
-        
-        function RunAnalyses( this, analysisList )
-            for i=1:length(analysisList)
-                this.experiment.([this.AnalysisMethodPrefix analysisList{i}])();
-            end
-        end
-        
+                
         function exportAnalysesData(this)
             a=1;
         end

@@ -144,6 +144,7 @@ classdef Project < handle
             % send session variables to workspace
             for session = this.sessions
                 assignin ('base',[session.name '_trialDataSet'],session.trialDataSet);
+                assignin ('base',[session.name '_analysisResults'],session.analysisResults);
             end
         end
         

@@ -23,6 +23,7 @@ classdef BiteBarMotor
         COMMMAND_ReadMicrostepResolution = 37;
         
         HomeAngle = 90;
+        CurrentAngle = 0;
     end
     
     methods
@@ -88,6 +89,7 @@ classdef BiteBarMotor
         
         function GoHome(this)
             out = this.SendCommand( this.COMMMAND_Home, 0);
+            this.CurrentAngle = -90;
         end
         
         function GoUpright(this)
@@ -95,24 +97,32 @@ classdef BiteBarMotor
             angle = this.GetAngleMotorRef(0);
             microsteps = this.GetMicrosteps(angle);
             out = this.SendCommand( this.COMMMAND_MoveAbsolute, microsteps);
+            
+            this.CurrentAngle = 0;
         end
         
         function TiltLeft(this, angle)
             angle = this.GetAngleMotorRef(-abs(angle));
             microsteps = this.GetMicrosteps(angle);
             out = this.SendCommand( this.COMMMAND_MoveAbsolute, microsteps);
+            
+            this.CurrentAngle = -angle;
         end
         
         function TiltRight(this, angle)
             angle = this.GetAngleMotorRef(abs(angle));
             microsteps = this.GetMicrosteps(angle);
             out = this.SendCommand( this.COMMMAND_MoveAbsolute, microsteps);
+            
+            this.CurrentAngle = angle;
         end
         
         function SetTiltAngle(this, angle)
             angle = this.GetAngleMotorRef(angle);
             microsteps = this.GetMicrosteps(angle);
             out = this.SendCommand( this.COMMMAND_MoveAbsolute, microsteps);
+            
+            this.CurrentAngle = angle;
         end
                 
     end

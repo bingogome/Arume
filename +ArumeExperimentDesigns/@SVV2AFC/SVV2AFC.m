@@ -40,6 +40,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             dlg.UseBiteBarMotor = { {'0','{1}'} };
             dlg.HeadAngle = { 0 '* (deg)' [-40 40] };
+            dlg.TiltHeadAtBegining = { {'0','{1}'} };
             
             dlg.offset = {0 '* (deg)' [-20 20] };
         end
@@ -64,12 +65,14 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             end
             
             % Initialize bitebar
-            if ( this.ExperimentOptions.UseBiteBarMotor )
+            if ( this.ExperimentOptions.UseBiteBarMotor && this.ExperimentOptions.TiltHeadAtBegining )
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
-                this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
-                disp('30 s pause');
-                pause(30);
-                disp('done');
+                if ( length(this.Session.currentRun.pastConditions) == 0 )
+                    this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
+                    disp('30 s pause');
+                    pause(30);
+                    disp('done');
+                end
             end
         end
         
@@ -297,6 +300,23 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         
     end
     
+    
+    % ---------------------------------------------------------------------
+    % Data Analysis methods
+    % ---------------------------------------------------------------------
+    methods ( Access = public )
+        
+        function analysisResults = Analysis_SVV(this)
+            analysisResults = 0;
+        end
+        
+        function analysisResults = Analysis_SVVUpDown(this)
+            analysisResults=4;
+        end
+        
+    end
+    
+    
     % ---------------------------------------------------------------------
     % Utility methods
     % ---------------------------------------------------------------------
@@ -304,11 +324,6 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         function [SVV, a, p, allAngles, allResponses, trialCounts, SVVth] = FitAngleResponses( angles, responses)
             
             % add values in the extremes to "support" the logistic fit
-            angles(end+1) = -90;
-            angles(end+1) = 90;
-            
-            responses(end+1) = 0;
-            responses(end+1) = 1;
             
             ds = dataset;
             if ( max(responses)>10)
@@ -320,12 +335,17 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                 responses(end+1) = 'R';
                 ds.Response = responses=='R';
             else
+                angles(end+1) = -90;
+                angles(end+1) = 90;
+
+                responses(end+1) = 0;
+                responses(end+1) = 1;
                 ds.Response = responses;
             end
             ds.Angle = angles;
             
             outliers = find((ds.Response==1 & ds.Angle<-50) | (ds.Response==0 & ds.Angle>50));
-            
+
             ds(outliers,:) = [];
             
             %             if ( length(ds.Responses) > 20 )
