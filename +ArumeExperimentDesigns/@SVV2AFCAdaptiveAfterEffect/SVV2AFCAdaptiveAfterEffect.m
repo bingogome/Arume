@@ -81,46 +81,52 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
             if ( this.ExperimentOptions.UseBiteBarMotor )
                 if ( nCorrect == this.ExperimentOptions.BaselineTrials )
                     
-                        [mx, my] = RectCenter(this.Graph.wRect);
-                        fixRect = [0 0 10 10];
-                        fixRect = CenterRectOnPointd( fixRect, mx, my );
-                        Screen('FillOval', this.Graph.window,  255, fixRect);
-                        fliptime = Screen('Flip', this.Graph.window);
-
-                    result = [];
+                    if ( ~isempty( this.eyeTracker ) )
+                        this.eyeTracker.StopRecording();
+                    end
+                    
+                    result = 'n';
                     while( result ~= 'y' )
                         result = this.Graph.DlgSelect( ...
-                                    'Continue:', ...
-                                    { 'y' 'n'}, ...
-                                    { 'Yes'  'No'} , [],[]);
+                            'Continue:', ...
+                            { 'y' 'n'}, ...
+                            { 'Yes'  'No'} , [],[]);
                     end
-                            
-%                     this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
-                    disp('30 s pause');
-                    pause(30);
-                    disp('done');
+                    
+                    if ( ~isempty( this.eyeTracker ) )
+                        this.eyeTracker.StartRecording();
+                    end
+                    
+                    [mx, my] = RectCenter(this.Graph.wRect);
+                    fixRect = [0 0 10 10];
+                    fixRect = CenterRectOnPointd( fixRect, mx, my );
+                    Screen('FillOval', this.Graph.window,  255, fixRect);
+                    fliptime = Screen('Flip', this.Graph.window);
+                    
+                    if ( this.ExperimentOptions.UseBiteBarMotor)
+                        pause(2);
+                        this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
+                        disp('30 s pause');
+                        pause(30);
+                        disp('done');
+                    end
                 end
                 
                 if ( nCorrect == this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials)
                     
-                        [mx, my] = RectCenter(this.Graph.wRect);
-                        fixRect = [0 0 10 10];
-                        fixRect = CenterRectOnPointd( fixRect, mx, my );
-                        Screen('FillOval', this.Graph.window,  255, fixRect);
-                        fliptime = Screen('Flip', this.Graph.window);
-                        
-                    result = [];
-                    while( result ~= 'y' )
-                        result = this.Graph.DlgSelect( ...
-                                    'Continue:', ...
-                                    { 'y' 'n'}, ...
-                                    { 'Yes'  'No'} , [],[]);
-                    end
+                    [mx, my] = RectCenter(this.Graph.wRect);
+                    fixRect = [0 0 10 10];
+                    fixRect = CenterRectOnPointd( fixRect, mx, my );
+                    Screen('FillOval', this.Graph.window,  255, fixRect);
+                    fliptime = Screen('Flip', this.Graph.window);
                     
-%                     this.biteBarMotor.GoUpright();
-                    disp('30 s pause');
-                    pause(30);
-                    disp('done');
+                    if ( this.ExperimentOptions.UseBiteBarMotor)
+                        pause(2);
+                        this.biteBarMotor.GoUpright();
+                        disp('30 s pause');
+                        pause(30);
+                        disp('done');
+                    end
                 end
             end
             
