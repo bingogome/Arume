@@ -117,6 +117,11 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
            % this.bitebar.GoUpright();
            
             if ( ~isempty(this.eyeTracker) )
+                
+                if ( ~this.eyeTracker.IsRecording())
+                    this.eyeTracker.SetSessionName(this.Session.name);
+                end
+                
                 if ( ~this.eyeTracker.IsRecording())
                     this.eyeTracker.StartRecording();
                     pause(1);

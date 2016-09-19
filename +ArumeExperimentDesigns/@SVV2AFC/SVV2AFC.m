@@ -78,6 +78,16 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                     end
                 end
             end
+            
+            if ( 1) 
+                %initialize the inpoutx64 low-level I/O driver
+                config_io;
+                %optional step: verify that the inpoutx64 driver was successfully installed
+                global cogent;
+                if( cogent.io.status ~= 0 )
+                    error('inp/outp installation failed');
+                end
+            end
         end
         
         function cleanAfterRunning(this)
@@ -180,6 +190,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             respones = this.GetLeftRightResponses();
             respones(this.Session.trialDataSet.TrialResult>0) = [];
             
+            angles = angles(101:600);
+            respones = respones(101:600);
             [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
             
             
@@ -332,16 +344,24 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             ds = dataset;
             if ( max(responses)>10)
                 n = length(angles);
-                angles(end+1) = -90;
-                angles(end+1) = 90;
+                angles(end+1) = -40;
+                angles(end+1) = 40;
+                angles(end+1) = -40;
+                angles(end+1) = 40;
                 
+                responses(end+1) = 'L';
+                responses(end+1) = 'R';
                 responses(end+1) = 'L';
                 responses(end+1) = 'R';
                 ds.Response = responses=='R';
             else
-                angles(end+1) = -90;
-                angles(end+1) = 90;
+                angles(end+1) = -40;
+                angles(end+1) = 40;
+                angles(end+1) = -40;
+                angles(end+1) = 40;
 
+                responses(end+1) = 0;
+                responses(end+1) = 1;
                 responses(end+1) = 0;
                 responses(end+1) = 1;
                 ds.Response = responses;
@@ -354,23 +374,30 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             %             if ( length(ds.Responses) > 20 )
             modelspec = 'Response ~ Angle';
+            
+            orig_state = warning;
+            warning('off','stats:glmfit:PerfectSeparation')
+            warning('off','stats:glmfit:IterationLimit')
             mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
+            warning(orig_state);
             %             ds(mdl.Diagnostics.CooksDistance > 400/length(mdl.Diagnostics.CooksDistance),:) = [];
             %             end
             
-            if ( sum(ds.Response==0) == 0 )
-                ds.Response(end+1) = 0;
-                ds.Angle(end) = max(ds.Angle(1:end-1))+1;
+            if ( sum(ds.Response==0) == 0 || sum(ds.Response==1) == 0)
+                if ( sum(ds.Response==0) == 0 )
+                    ds.Response(end+1) = 0;
+                    ds.Angle(end) = max(ds.Angle(1:end-1))+1;
+                end
+                
+                if ( sum(ds.Response==1) == 0 )
+                    ds.Response(end+1) = 1;
+                    ds.Angle(end) = min(ds.Angle(1:end-1))-1;
+                end
+                
+                
+                modelspec = 'Response ~ Angle';
+                mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
             end
-            
-            if ( sum(ds.Response==1) == 0 )
-                ds.Response(end+1) = 1;
-                ds.Angle(end) = min(ds.Angle(1:end-1))-1;
-            end
-            
-            
-            modelspec = 'Response ~ Angle';
-            mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
             
             angles = ds.Angle;
             responses = ds.Response;

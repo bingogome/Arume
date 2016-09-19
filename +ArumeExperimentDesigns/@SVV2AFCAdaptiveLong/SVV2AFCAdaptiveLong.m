@@ -135,6 +135,13 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                 
                 startLoopTime = lastFlipTime;
                 
+                
+                % SEND TO PARALEL PORT TRIAL NUMBER
+                %write a value to the default LPT1 printer output port (at 0x378)
+                nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
+                outp(hex2dec('378'),rem(nCorrect,100)*2);
+                
+                
                 while secondsRemaining > 0
                     
                     secondsElapsed      = GetSecs - startLoopTime;
@@ -171,6 +178,9 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                         
                         Screen('DrawLine', graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
                         
+                        % SEND TO PARALEL PORT TRIAL NUMBER
+                        %write a value to the default LPT1 printer output port (at 0x378)
+                        outp(hex2dec('378'),7);
                     end
                     
 %                     if (secondsElapsed < t2)
@@ -229,6 +239,11 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                     end
                     
                     if ( this.lastResponse >= 0 )
+                        
+                        % SEND TO PARALEL PORT TRIAL NUMBER
+                        %write a value to the default LPT1 printer output port (at 0x378)
+                        outp(hex2dec('378'),9);
+                        
                         this.reactionTime = secondsElapsed-1;
                         disp(num2str(this.lastResponse));
                         break;

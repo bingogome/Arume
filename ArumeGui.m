@@ -56,6 +56,7 @@ classdef ArumeGui < handle
         sessionContextMenuRename
         sessionContextMenuDelete
         sessionContextMenuCopy
+        sessionContextMenuCopyTo
         
         % Analysis Contextual menu
         analysisContextMenu
@@ -291,6 +292,9 @@ classdef ArumeGui < handle
             this.sessionContextMenuEditSettings = uimenu(this.sessionContextMenu, ...
                 'Label'     , 'Edit settings ...', ...
                 'Callback'  , @this.EditSessionSettings);
+            this.sessionContextMenuCopyTo = uimenu(this.sessionContextMenu, ...
+                'Label'     , 'Copy session to different project ...', ...
+                'Callback'  , @this.CopySessionsTo);
             set(this.sessionListBox, 'uicontextmenu', this.sessionContextMenu)
             
             % session contextual menu
@@ -489,22 +493,58 @@ classdef ArumeGui < handle
         end
         
         function importSession( this, source, eventdata )     
-               
-            sDlg.Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
-            % Set the default experiment
-            for i=1:length(sDlg.Experiment{1})
-                if ( strcmp(sDlg.Experiment{1}{i}, this.arumeController.currentProject.defaultExperiment) )
-                    sDlg.Experiment{1}{i} = ['{'  sDlg.Experiment{1}{i} '}'];
+            
+            experiments = ArumeCore.ExperimentDesign.GetExperimentList;
+            defaultExperimentIndex = find(strcmp(experiments,this.arumeController.currentProject.defaultExperiment));
+            
+            session.Experiment = experiments{defaultExperimentIndex};
+            session.Subject_Code = '000';
+            session.Session_Code = 'Z';
+            
+            while(1) 
+                sessionDlg.Experiment = {experiments};
+                sessionDlg.Experiment{1}{defaultExperimentIndex} = ['{'  experiments{find(strcmp(experiments,session.Experiment))} '}'];
+                
+                sessionDlg.Subject_Code = session.Subject_Code;
+                sessionDlg.Session_Code = session.Session_Code;
+                
+                session = StructDlg(sessionDlg, 'New Session');
+                if ( isempty( session ) )
+                    return
+                end
+                
+                if ( isempty(regexp(session.Subject_Code,'^[_a-zA-Z0-9]+$','ONCE') ))
+                    uiwait(msgbox('The subject code is not valid', 'Error', 'Modal'));
+                    continue;
+                end
+                
+                if ( isempty(regexp(session.Session_Code,'^[_a-zA-Z0-9]+$','ONCE') ))
+                    uiwait(msgbox('The session code is not valid', 'Error', 'Modal'));
+                    continue;
+                end
+                
+                % Check if session already exists
+                if ( isempty(this.arumeController.currentProject.findSession( session.Experiment, session.Subject_Code, session.Session_Code)))
+                    break;
+                else
+                    uiwait(msgbox('There is already a session with this name/code', 'Error', 'Modal'));
                 end
             end
             
-            sDlg.Subject_Code = '000';
-            sDlg.Session_Code = 'Z';
-            P = StructDlg(sDlg, 'Import session');
-            if ( isempty( P ) )
-                return
+            
+            % Show the dialog for experiment options if necessary
+            experiment = ArumeCore.ExperimentDesign.Create([], session.Experiment);
+            optionsDlg = experiment.GetExperimentOptionsDialog( );
+            if ( ~isempty( optionsDlg) )
+                options = StructDlg(optionsDlg, 'Edit experiment options');
+                if ( isempty( options ) )
+                    options = StructDlg(optionsDlg,'',[],[],'off');
+                end
+            else
+                options = [];
             end
-            this.arumeController.importSession( P.Experiment, P.Subject_Code, P.Session_Code );
+                        
+            this.arumeController.importSession( session.Experiment, session.Subject_Code, session.Session_Code, options  );
             
             this.updateGui();
         end 
@@ -563,6 +603,29 @@ classdef ArumeGui < handle
             
              this.arumeController.copySelectedSessions(newSubjectCodes, newSessionCodes);
              this.updateGui();
+        end
+        
+        function CopySessionsTo( this, source, eventdata )
+            
+            sessions = this.arumeController.selectedSessions;
+            
+            
+            h=waitbar(0,'Please wait..');
+            
+            [filename, pathname] = uigetfile([this.arumeController.defaultDataFolder '/*.aruprj'], 'Pick a project file');
+            if ( ~filename  )
+                close(h)
+                return
+            end
+            
+            waitbar(1/2)
+            this.arumeController.copySelectedSessionsToDifferentProject(fullfile(pathname, filename));
+            waitbar(2/2)
+            this.updateGui();
+            
+            close(h)
+            
+            this.updateGui();
         end
         
         function DeleteSessions( this, source, eventdata )

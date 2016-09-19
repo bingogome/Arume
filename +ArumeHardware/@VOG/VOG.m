@@ -41,6 +41,7 @@ classdef VOG  < handle
                 this.eyeTracker.ChangeSetting('SessionName',sessionName);
             end
         end
+        
         function StartRecording(this)
             if ( ~isempty( this.eyeTracker) )
                 this.eyeTracker.StartRecording();

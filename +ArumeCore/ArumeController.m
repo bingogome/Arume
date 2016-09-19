@@ -67,6 +67,7 @@ classdef ArumeController < handle
                 recentProjects = '';
             end
         end
+        
     end
     
     methods( Access=public )
@@ -136,7 +137,7 @@ classdef ArumeController < handle
             save(fullfile(folder,'arumeconf.mat'), 'conf'); 
         end
         
-        function loadProject( this, file )
+        function loadProject( this, file )  
             % Loads a project from a project file
             
             if ( ~exist( file, 'file') )
@@ -192,22 +193,21 @@ classdef ArumeController < handle
             end
             
             session = ArumeCore.Session.NewSession( this.currentProject, experiment, subjectCode, sessionCode, experimentOptions );
-            this.currentProject.addSession(session);
             this.selectedSessions = session;
             this.currentProject.save();
         end
         
-        function session = importSession( this, experiment, subject_Code, session_Code )
+        function session = importSession( this, experiment, subject_Code, session_Code, options )
             % Imports a session from external files containing the data. It
             % will not be possible to run this session
+                        
+            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code, options );
             
-            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code );
-            
-            [dsTrials, dsSamples] = session.experiment.ImportSession();
-            this.currentProject.addSession(session);
-            session.importData(dsTrials, dsSamples);
-            this.currentSession = session;
             this.selectedSessions = session;
+            
+            session.experiment.ImportSession();
+            session.prepareForAnalysis();
+            
             this.currentProject.save();
         end
         
@@ -218,16 +218,32 @@ classdef ArumeController < handle
             this.currentProject.save();
         end
         
-        function copySelectedSessions( this, newSubjectCodes, newSessionCodes);
+        function copySelectedSessions( this, newSubjectCodes, newSessionCodes)
             
             sessions = this.selectedSessions;
             
             for i =1:length(sessions)
                 newSession = ArumeCore.Session.CopySession( sessions(i), newSubjectCodes{i}, newSessionCodes{i});
-                this.currentProject.addSession(newSession);
             end
                         
             this.currentProject.save();
+        end
+        
+        function copySelectedSessionsToDifferentProject(this, newProjectFile)
+            if ( ~exist( newProjectFile, 'file') )
+                msgbox( 'The project file does not exist.');
+                return;
+            end
+            
+            secondProject = ArumeCore.Project.LoadProject( newProjectFile, [this.configuration.tempFolder '2'] );
+          
+            sessions = this.selectedSessions;
+            
+            for i =1:length(sessions)
+                newSession = ArumeCore.Session.CopySessionToDifferentProject( sessions(i),secondProject, sessions(i).subjectCode, sessions(i).sessionCode);
+            end
+            
+            secondProject.save();
         end
         
         function deleteSelectedSessions( this )
@@ -279,6 +295,7 @@ classdef ArumeController < handle
             h = waitbar(0,'Please wait...');
             n = length(this.selectedSessions);
             for i =1:n
+                disp(['ARUME::preparing analysis for session ' this.selectedSessions(i).name])
                 session = this.selectedSessions(i);
                 session.prepareForAnalysis();
                 waitbar(i/n,h)
@@ -340,7 +357,7 @@ classdef ArumeController < handle
         end
         
         function generatePlots( this, plots, selection )
-            COMBINE_SESSIONS = 1;
+            COMBINE_SESSIONS = 0;
              
             if ( ~isempty( selection ) )
                 for i=1:length(selection)

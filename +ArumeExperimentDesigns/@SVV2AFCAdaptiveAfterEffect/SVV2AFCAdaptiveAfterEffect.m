@@ -338,6 +338,142 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
     % Data Analysis methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
+        function trialDataSet = PrepareTrialDataSet( this, ds)
+            data = ds;
+            if ( data.TimeStopTrial(end) == 0)
+                data(end,:) = [];
+            end
+            
+            binSize = 30;
+            stepSize = 10;
+            
+            newData.Bin30SVV = nan(size(data,1),1);
+            newData.Bin30SVVth = nan(size(data,1),1);
+            newData.Bin30Start = nan(size(data,1),1);
+            newData.Bin30End = nan(size(data,1),1);
+            for j=1:ceil(size(data,1)/stepSize)
+                idx = (1:binSize) + (j-1)*stepSize;
+                idx(idx<1 | idx>size(data,1)) = [];
+                
+                MEANIDX = mean(idx);
+                if (  MEANIDX < this.ExperimentOptions.BaselineTrials )
+                    idx(idx>this.ExperimentOptions.BaselineTrials) = [];
+                elseif ( MEANIDX < this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials)
+                    idx(idx<=this.ExperimentOptions.BaselineTrials | idx > this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
+                else
+                    idx(idx <= this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
+                end
+                
+                if ( length(idx) >= 20 )
+                    angles = data.Angle(idx);
+                    responses = data.Response(idx);
+                    [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
+                    
+                    saveidx = floor(MEANIDX - stepSize/2 + (1:stepSize));
+                    saveidx(saveidx<1 | saveidx>size(data,1)) = [];
+                    
+                    if (  MEANIDX < this.ExperimentOptions.BaselineTrials )
+                        saveidx(saveidx>this.ExperimentOptions.BaselineTrials) = [];
+                    elseif ( MEANIDX < this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials)
+                        saveidx(saveidx<=this.ExperimentOptions.BaselineTrials | saveidx > this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
+                    else
+                        saveidx(saveidx <= this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
+                    end
+                    
+                    newData.Bin30SVV(saveidx) = SVV1;
+                    newData.Bin30SVVth(saveidx) = SVVth1;
+                    newData.Bin30Start(saveidx) = min(idx);
+                    newData.Bin30End(saveidx) = max(idx);
+                end
+            end
+            
+            
+            binSize = 100;
+            stepSize = 10;
+            f = binSize/stepSize;
+            
+            newData.Bin100SVV = nan(size(data,1),1);
+            newData.Bin100SVVth = nan(size(data,1),1);
+            newData.Bin100Start = nan(size(data,1),1);
+            newData.Bin100End = nan(size(data,1),1);
+            for j=1:ceil(size(data,1)/stepSize)
+                idx = (1:binSize) + (j-1)*stepSize;
+                idx(idx<1 | idx>size(data,1)) = [];
+                
+                MEANIDX = (j-1)*stepSize;
+                if (  MEANIDX < this.ExperimentOptions.BaselineTrials )
+                    idx(idx>this.ExperimentOptions.BaselineTrials) = [];
+                elseif ( MEANIDX < this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials)
+                    idx(idx<=this.ExperimentOptions.BaselineTrials | idx > this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
+                else
+                    idx(idx <= this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
+                end
+                
+                if ( length(idx) >= 20 )
+                    angles = data.Angle(idx);
+                    responses = data.Response(idx);
+                    [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
+                    
+                    
+                    saveidx = floor(mean(idx) - stepSize/2 + (1:stepSize));
+                    saveidx(saveidx<1 | saveidx>size(data,1)) = [];
+                    
+                    if (  MEANIDX < this.ExperimentOptions.BaselineTrials )
+                        saveidx(saveidx>this.ExperimentOptions.BaselineTrials) = [];
+                    elseif ( MEANIDX < this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials)
+                        saveidx(saveidx<=this.ExperimentOptions.BaselineTrials | saveidx > this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
+                    else
+                        saveidx(saveidx <= this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
+                    end
+                    
+                    newData.Bin100SVV(saveidx) = SVV1;
+                    newData.Bin100SVVth(saveidx) = SVVth1;
+                    newData.Bin100Start(saveidx) = min(idx);
+                    newData.Bin100End(saveidx) = max(idx);
+                end
+            end
+            
+            
+            
+            
+            torsionFolder = 'N:\RAW_DATA\SVVTorsionAfterEffect\PostProcess';
+            T = nan(size(data.TimeStartTrial));
+            
+            if (length(dir(fullfile(torsionFolder,[this.Session.name(1:end-1)  '*']))) == 2);
+                folders = dir(fullfile(torsionFolder,[this.Session.name(1:end-1)  '*']));
+                d = GetCalibratedData(fullfile(torsionFolder,folders(1).name));
+                T = CleanTorsion(d);
+                d = GetCalibratedData(fullfile(torsionFolder,folders(2).name));
+                T = [T;CleanTorsion(d)];
+                
+                t = data.TimeStartTrial;
+                t2 = data.TimeStopTrial;
+                t2 = t2-t(1);
+                t = t-t(1);
+                t(101:end)= t(101:end)-t(101)+t2(100);
+                t2(101:end)= t2(101:end)-t(101)+t2(100);
+                
+                L = t2(end)-t(1);
+                LT = length(T);
+                t = t * LT / L;
+                t2 = t2 * LT / L;
+                
+                torsion = T;
+                T = nan(size(t));
+                for j=1:length(t)
+                    idx = t(j):t2(j);
+                    idx(idx<1) = [];
+                    idx(idx>length(torsion)) = [];
+                    T(j) = nanmedian(torsion(round(idx)));
+                end
+            end
+            
+            newData.Torsion = T;
+            
+            newDs = struct2dataset(newData);
+            
+            trialDataSet = [data newDs];
+         end
     end
     
     % ---------------------------------------------------------------------

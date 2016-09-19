@@ -55,7 +55,7 @@ classdef Display < handle
             graph.screens = Screen('Screens');
             screens=Screen('Screens');
         	graph.selectedScreen=max(screens);
-%          	graph.selectedScreen=0;
+%           	graph.selectedScreen=0;
     
             %-- window
             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);

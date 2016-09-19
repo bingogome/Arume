@@ -24,6 +24,7 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
         function dlg = GetOptionsDialog( this )
             dlg.UseEyeTracker = { {'{0}' '1'} };
             dlg.TrialDuration = { 30 '* (seconds)' [1 100] };
+            dlg.OKNStimulus = { {'{Wedges}' 'Dots'}};
         end
 
         function initNewCreatedSession( this  )
@@ -93,18 +94,50 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
             forcenew = false;
-            imgFile = fullfile( this.Project.stimuliPath, 'radialCheckerBoardImage.mat');
-            if ( exist( imgFile, 'file' ) && ~forcenew)
-                dat = load(imgFile);
-                this.checkerBoardImg = dat.radialCheckerBoardImage;
+            
+            if ( isfield( this.ExperimentOptions, 'OKNStimulus') )
+                oknStim = this.ExperimentOptions.OKNStimulus;
             else
-                width = 1080;  % Height of the screen
-                fringe = 12;  % Width of the ramped fringe
-                width = width - fringe;
+                oknStim = 'Wedges';
+            end
+            switch(oknStim)
                 
-                radialCheckerBoardImage = double(RadialCheckerBoard([width/2 0], [-180 180], [0 20]));
-                save( imgFile, 'radialCheckerBoardImage');
-                this.checkerBoardImg = radialCheckerBoardImage;
+                case 'Wedges'
+                    
+                    imgFile = fullfile( this.Project.stimuliPath, 'radialCheckerBoardImage.mat');
+                    if ( exist( imgFile, 'file' ) && ~forcenew)
+                        dat = load(imgFile);
+                        this.checkerBoardImg = dat.radialCheckerBoardImage;
+                    else
+                        width = 1080;  % Height of the screen
+                        fringe = 12;  % Width of the ramped fringe
+                        width = width - fringe;
+                        
+                        radialCheckerBoardImage = double(RadialCheckerBoard([width/2 0], [-180 180], [0 20]));
+                        save( imgFile, 'radialCheckerBoardImage');
+                        this.checkerBoardImg = radialCheckerBoardImage;
+                    end
+                    
+                    this.checkerBoardTexture = Screen('MakeTexture', this.Graph.window, this.checkerBoardImg, 1);
+                    
+                case 'Dots'
+                    img = imread('C:\secure\Grants\2016\k99\matlab\Picture1.png');
+                    img = uint8((img>3)*255);
+%                     imgFile = fullfile( this.Project.stimuliPath, 'radialDotsImage.mat');
+%                     if ( exist( imgFile, 'file' ) && ~forcenew)
+%                         dat = load(imgFile);
+%                         this.checkerBoardImg = dat.radialCheckerBoardImage;
+%                     else
+%                         width = 1080;  % Height of the screen
+%                         fringe = 12;  % Width of the ramped fringe
+%                         width = width - fringe;
+%                         
+%                         radialCheckerBoardImage = double(RadialCheckerBoard([width/2 0], [-180 180], [0 20]));
+%                         save( imgFile, 'radialDotsImage');
+%                         this.checkerBoardImg = radialCheckerBoardImage;
+%                     end
+                    
+                    this.checkerBoardTexture = Screen('MakeTexture', this.Graph.window, img, 1);
             end
             
             
@@ -116,7 +149,6 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
                 this.eyeTracker.RecordEvent(num2str(size(this.Session.CurrentRun.pastConditions,1)));
             end
             
-            this.checkerBoardTexture = Screen('MakeTexture', this.Graph.window, this.checkerBoardImg, 1);
             
             trialResult =  Enum.trialResult.CORRECT;
         end
@@ -180,6 +212,25 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
                 fixRect = CenterRectOnPointd( fixRect, mx, my );
                 Screen('FillOval', graph.window, this.fixColor, fixRect);
                 
+                
+                fixRect = [0 0 500 500];
+                fixRect = CenterRectOnPointd( fixRect, mx, my );
+                Screen('FrameOval',graph.window, [128], fixRect,100);
+                
+%                 targetAngle = turnangle;
+%                                 fromH = mx + 170*sin(targetAngle/180*pi);
+%                                 fromV = my - 170*cos(targetAngle/180*pi);
+%                                 toH = mx + 240*sin(targetAngle/180*pi);
+%                                 toV = my - 240*cos(targetAngle/180*pi);
+%                                 
+%                 Screen('DrawLine', graph.window, [255 0 0], fromH, fromV, toH, toV, 4);
+                
+                fixRect = [0 0 5 5];
+                targetAngle = turnangle;
+                                fromH = mx + 200*sin(targetAngle/180*pi);
+                                fromV = my - 200*cos(targetAngle/180*pi);
+                fixRect = CenterRectOnPointd( fixRect, fromH, fromV );
+                Screen('FrameOval',graph.window, [255 0 0], fixRect,100);
                 
                 % -----------------------------------------------------------------
                 % --- END Drawing of stimulus -------------------------------------

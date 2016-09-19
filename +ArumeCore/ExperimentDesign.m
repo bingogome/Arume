@@ -137,9 +137,7 @@ classdef ExperimentDesign < handle
     methods( Access = public)
         
         %% ImportSession
-        function [trialDataSet, sampleDataSet] = ImportSession( this )
-            trialDataSet = [];
-            sampleDataSet = [];
+        function ImportSession( this )
         end
     end
     
@@ -1053,12 +1051,13 @@ classdef ExperimentDesign < handle
     % --------------------------------------------------------------------
     methods
         
-        function trialDataSet = PrepareTrialDataSet( this, ds)
-            trialDataSet = ds;
+        function trialDataSet = PrepareTrialDataSet( this, trialDataSet)
         end
             
-        function samplesDataSet = PrepareSamplesDataSet(this, trialDataSet)
-            samplesDataSet = dataset;
+        function samplesDataSet = PrepareSamplesDataSet(this, samplesDataSet)
+        end
+        
+        function samplesDataSet = PrepareEventDataSet(this, eventDataset)
         end
     end
 end

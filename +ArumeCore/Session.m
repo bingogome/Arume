@@ -36,6 +36,9 @@ classdef Session < ArumeCore.DataDB
         % Most of is created automatically for all the experiments using the 
         % experiment design and the experiment run information.
         % Each experiment can add extra information in the method prepareTrialDataSet.
+        %
+        %
+        
         trialDataSet
             
         % Dataset with all the sample data (one row per sample) :
@@ -43,6 +46,7 @@ classdef Session < ArumeCore.DataDB
         % Different experiments can load different columns.
         % Each experiment has to take care of preparing the dataset
         %
+        % It should at least have this columns
         % TimeStamp
         % LeftHorizontal
         % LeftVertical
@@ -52,6 +56,48 @@ classdef Session < ArumeCore.DataDB
         % RightTorsion
         % HeadRollTilt
         samplesDataSet
+        
+        % Dataset with all the events data
+        % 
+        % Different experiments can load different columns.
+        % Each experiment has to take care of preparing the dataset
+        %
+        % Basic type of events will be Saccades, blinks, slow phases
+        %
+        % It should at least have this columns
+        %
+        % StartSample
+        % EndSample
+        % TrialNumber
+        % Duration
+        % Amplitude
+        % AmplitudeLeft
+        % AmplitudeRight
+        % HorizontalAmplitudeLeft
+        % VerticalAmplitudeRight
+        % TorsionalAmplitudeRight
+        % HorizontalAmplitudeLeft
+        % VerticalAmplitudeRight
+        % TorsionalAmplitudeRight
+        % PeakVelocity
+        % PeakVelocityLeft
+        % PeakVelocityRight
+        % HorizontalPeakVelocityLeft
+        % VerticalPeakVelocityRight
+        % TorsionalPeakVelocityRight
+        % HorizontalPeakVelocityLeft
+        % VerticalPeakVelocityRight
+        % TorsionalPeakVelocityRight
+        % MeanVelocity
+        % MeanVelocityLeft
+        % MeanVelocityRight
+        % HorizontalMeanVelocityLeft
+        % VerticalMeanVelocityRight
+        % TorsionalMeanVelocityRight
+        % HorizontalMeanVelocityLeft
+        % VerticalMeanVelocityRight
+        % TorsionalMeanVelocityRight
+        eventsDataSet
         
         % Results of the experiment specific analysis
         analysisResults 
@@ -104,6 +150,10 @@ classdef Session < ArumeCore.DataDB
         
         function samplesDataSet = get.samplesDataSet(this)
             samplesDataSet = this.ReadVariable('samplesDataSet');
+        end
+        
+        function eventsDataSet = get.eventsDataSet(this)
+            eventsDataSet = this.ReadVariable('eventsDataSet');
         end
         
         function analysisResults = get.analysisResults(this)
@@ -203,8 +253,12 @@ classdef Session < ArumeCore.DataDB
         end
         
         function deleteFolders( this )
-            rmdir(this.dataRawPath,'s');
-            rmdir(this.dataAnalysisPath,'s');
+            if ( exist(this.dataRawPath, 'dir') )
+                rmdir(this.dataRawPath,'s');
+            end
+            if ( exist(this.dataAnalysisPath, 'dir') )
+                rmdir(this.dataAnalysisPath,'s');
+            end
         end
         
         function importData( this, trialDataSet, samplesDataSet )
@@ -316,104 +370,121 @@ classdef Session < ArumeCore.DataDB
         %
         function prepareForAnalysis( this )
             
+            %% 1) Prepare the sample dataset
+            varNames={'TimeStamp', 'LeftHorizontal','LeftVertical','LeftTorsion','RightHorizontal','RightVertical','RightTorsion','HeadRollTilt'};
+            samplesDataSet = dataset([],[],[],[],[],[],[],[],'VarNames',varNames);
+            
+            samplesDataSet = this.experiment.PrepareSamplesDataSet(samplesDataSet);
+            if ( ~isempty(samplesDataSet) )
+                this.WriteVariable(samplesDataSet,'samplesDataSet');
+            end
+            
+            
+            %% 2) Prepare the trial dataset
+            
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
-            if ( isempty( this.currentRun) )
-                return;
-            end
-            
             ds = dataset;
-            ds.TrialNumber = (1:length(this.currentRun.pastConditions(:,1)))';
-            ds.ConditionNumber = this.currentRun.pastConditions(:,Enum.pastConditions.condition);
-            ds.TrialResult = this.currentRun.pastConditions(:,Enum.pastConditions.trialResult);
-            ds.BlockNumber = this.currentRun.pastConditions(:,Enum.pastConditions.blocknumber);
-            ds.BlockID = this.currentRun.pastConditions(:,Enum.pastConditions.blockid);
-            ds.Session = this.currentRun.pastConditions(:,Enum.pastConditions.session);
-            
-            ds.TimeStartTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_START,1);
-            ds.TimeStopTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_STOP,1);
-
-            % find all the possible output variables
-            outputVars = {};
-            for i=1:length(this.currentRun.Data)
-                if ( isfield( this.currentRun.Data{i}, 'trialOutput' ) && ~isempty( this.currentRun.Data{i}.trialOutput ) )
-                    fields = fieldnames(this.currentRun.Data{i}.trialOutput);
-                    outputVars = union(outputVars,fields);
+            if ( ~isempty( this.currentRun) )
+                
+                ds.TrialNumber = (1:length(this.currentRun.pastConditions(:,1)))';
+                ds.ConditionNumber = this.currentRun.pastConditions(:,Enum.pastConditions.condition);
+                ds.TrialResult = this.currentRun.pastConditions(:,Enum.pastConditions.trialResult);
+                ds.BlockNumber = this.currentRun.pastConditions(:,Enum.pastConditions.blocknumber);
+                ds.BlockID = this.currentRun.pastConditions(:,Enum.pastConditions.blockid);
+                ds.Session = this.currentRun.pastConditions(:,Enum.pastConditions.session);
+                
+                ds.TimeStartTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_START,1);
+                ds.TimeStopTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_STOP,1);
+                
+                % find all the possible output variables
+                outputVars = {};
+                for i=1:length(this.currentRun.Data)
+                    if ( isfield( this.currentRun.Data{i}, 'trialOutput' ) && ~isempty( this.currentRun.Data{i}.trialOutput ) )
+                        fields = fieldnames(this.currentRun.Data{i}.trialOutput);
+                        outputVars = union(outputVars,fields);
+                    end
                 end
-            end
-            
-            % collect the actual values
-            output = [];
-            for i=1:length(this.currentRun.Data)
-                for j=1:length(outputVars)
-                    field = outputVars{j};
-                    if ( isfield( this.currentRun.Data{i}, 'trialOutput' ) && isfield( this.currentRun.Data{i}.trialOutput, field))
-                        if ( isempty(output) || ~isfield(output, field) )
-                            output.(field) = this.currentRun.Data{i}.trialOutput.(field);
-                        else
-                            output.(field)(i) = this.currentRun.Data{i}.trialOutput.(field);
+                
+                % collect the actual values
+                output = [];
+                for i=1:length(this.currentRun.Data)
+                    for j=1:length(outputVars)
+                        field = outputVars{j};
+                        if ( isfield( this.currentRun.Data{i}, 'trialOutput' ) && isfield( this.currentRun.Data{i}.trialOutput, field))
+                            if ( isempty(output) || ~isfield(output, field) )
+                                output.(field) = this.currentRun.Data{i}.trialOutput.(field);
+                            else
+                                output.(field)(i) = this.currentRun.Data{i}.trialOutput.(field);
+                            end
                         end
                     end
                 end
-            end
-            
-            % add the output variables to the dataset
-            if ( ~isempty( output) )
-                fields = fieldnames(output);
-                for j=1:length(fields)
-                    field = fields{j};
-                    ds.(field)  = output.(field)';
+                
+                % add the output variables to the dataset
+                if ( ~isempty( output) )
+                    fields = fieldnames(output);
+                    for j=1:length(fields)
+                        field = fields{j};
+                        ds.(field)  = output.(field)';
+                    end
                 end
-            end
-            
-            
-            trialVars = {};
-            for i=1:length(this.currentRun.Data)
-                if ( ~isempty( this.currentRun.Data{i}.variables ) )
-                    fields = fieldnames(this.currentRun.Data{i}.variables);
-                    trialVars = union(trialVars,fields);
+                
+                
+                trialVars = {};
+                for i=1:length(this.currentRun.Data)
+                    if ( ~isempty( this.currentRun.Data{i}.variables ) )
+                        fields = fieldnames(this.currentRun.Data{i}.variables);
+                        trialVars = union(trialVars,fields);
+                    end
                 end
-            end
-            
-            
-            % collect the actual values
-            var = [];
-            for i=1:length(this.currentRun.Data)
-                for j=1:length(trialVars)
-                    field = trialVars{j};
-                    if isfield( this.currentRun.Data{i}.variables, field)
-                        if ( isempty(var) || ~isfield(var, field) )
-                            var.(field) = {this.currentRun.Data{i}.variables.(field)};
-                        else
-                            var.(field){i} = this.currentRun.Data{i}.variables.(field);
+                
+                
+                % collect the actual values
+                var = [];
+                for i=1:length(this.currentRun.Data)
+                    for j=1:length(trialVars)
+                        field = trialVars{j};
+                        if isfield( this.currentRun.Data{i}.variables, field)
+                            if ( isempty(var) || ~isfield(var, field) )
+                                var.(field) = {this.currentRun.Data{i}.variables.(field)};
+                            else
+                                var.(field){i} = this.currentRun.Data{i}.variables.(field);
+                            end
                         end
                     end
                 end
-            end
-            
-            % add the output variables to the dataset
-            if ( ~isempty( var) )
-                fields = fieldnames(var);
-                for j=1:length(fields)
-                    field = fields{j};
-                    if ( ischar(var.(field){1} ))
-                        ds.(field)  = var.(field)';
-                    else
-                        ds.(field)  = cell2mat(var.(field)');
+                
+                % add the output variables to the dataset
+                if ( ~isempty( var) )
+                    fields = fieldnames(var);
+                    for j=1:length(fields)
+                        field = fields{j};
+                        if ( ischar(var.(field){1} ))
+                            ds.(field)  = var.(field)';
+                        else
+                            ds.(field)  = cell2mat(var.(field)');
+                        end
                     end
                 end
+                trialDataSet = ds;
+            else
+                varNames={'TrialNumber', 'Condition','TrialResult','StartTrialSample', 'EndTrialSample'};
+                trialDataSet = dataset([],[],[],[],[],'VarNames',varNames);
             end
             
             % save the datasets
-            trialDataSet = this.experiment.PrepareTrialDataSet(ds);
+            trialDataSet = this.experiment.PrepareTrialDataSet(trialDataSet);
             if ( ~isempty(trialDataSet) )
                 this.WriteVariable(trialDataSet,'trialDataSet');
             end
             
-            samplesDataSet = this.experiment.PrepareSamplesDataSet(trialDataSet);
-            if ( ~isempty(samplesDataSet) )
-                this.WriteVariable(samplesDataSet,'samplesDataSet');
-            end
+            %% Finally prepare the event dataset
+%             varNames={' StartSample','EndSample','TrialNumber','Duration', ...
+%                 'Amplitude','AmplitudeLeft','AmplitudeRight','HorizontalAmplitudeLeft','VerticalAmplitudeRight','TorsionalAmplitudeRight','HorizontalAmplitudeLeft','VerticalAmplitudeRight','TorsionalAmplitudeRight', ...
+%                 'PeakVelocity','PeakVelocityLeft','PeakVelocityRight','HorizontalPeakVelocityLeft','VerticalPeakVelocityRight','TorsionalPeakVelocityRight','HorizontalPeakVelocityLeft','VerticalPeakVelocityRight','TorsionalPeakVelocityRight', ...
+%                 'MeanVelocity','MeanVelocityLeft','MeanVelocityRight','HorizontalMeanVelocityLeft','VerticalMeanVelocityRight','TorsionalMeanVelocityRight','HorizontalMeanVelocityLeft','VerticalMeanVelocityRight','TorsionalMeanVelocityRight'};
+%             trialDataSet = dataset([],[],[],[],[],'VarNames',varNames);
         end
         
         function RunAnalyses( this, analysisSelection )
@@ -434,14 +505,15 @@ classdef Session < ArumeCore.DataDB
             % TODO add factory for multiple types of experimentNames
             session = ArumeCore.Session();
             session.init(project, experimentName, subjectCode, sessionCode, experimentOptions);
+            project.addSession(session);
         end
         
         function session = LoadSession( project, data )
             % TODO add factory for multiple types of experimentNames
             
             session = ArumeCore.Session();
-            
             session.initExisting( project, data );
+            project.addSession(session);
         end
         
         function session = CopySession( sourceSession, newSubjectCode, newSessionCode)
@@ -456,6 +528,35 @@ classdef Session < ArumeCore.DataDB
             
             session = ArumeCore.Session();
             session.initExisting( sourceSession.project, newData );
+            sourceSession.project.addSession(session);
+            
+            if ( length(dir(sourceSession.dataAnalysisPath)) > 2 )
+                copyfile(fullfile(sourceSession.dataAnalysisPath,'*'),fullfile(session.dataAnalysisPath));
+            end
+            if ( length(dir(sourceSession.dataRawPath)) > 2 )
+                copyfile(fullfile(sourceSession.dataRawPath,'*'),fullfile(session.dataRawPath));
+            end
+        end
+        
+        function session = CopySessionToDifferentProject( sourceSession, destinationProject, newSubjectCode, newSessionCode)
+            data = sourceSession.save();
+            
+            newData = data;
+            
+            newData.subjectCode = newSubjectCode;
+            newData.sessionCode = newSessionCode;
+            
+            session = ArumeCore.Session();
+            session.initExisting( destinationProject, newData );
+            
+            destinationProject.addSession(session);
+            
+            if ( length(dir(sourceSession.dataAnalysisPath)) > 2 )
+                copyfile(fullfile(sourceSession.dataAnalysisPath,'*'),fullfile(session.dataAnalysisPath));
+            end
+            if ( length(dir(sourceSession.dataRawPath)) > 2 )
+                copyfile(fullfile(sourceSession.dataRawPath,'*'),fullfile(session.dataRawPath));
+            end
         end
     end
     

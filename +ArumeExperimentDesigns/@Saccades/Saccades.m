@@ -14,7 +14,7 @@ classdef Saccades < ArumeCore.ExperimentDesign
         function dlg = GetOptionsDialog( this )
             dlg.UseEyeTracker = { {'{0}' '1'} };
             
-            dlg.Mode = {{'{Horizontal}' 'Vertical' 'HVcross' 'DiagonalCross' 'Grid'}};
+            dlg.Mode = {{'{Horizontal}' 'Vertical' 'HVcross' 'DiagonalCross' 'Grid' 'Across' 'AcrossV'}};
             dlg.Shuffle = { {'{0}' '1'} };
             
             dlg.TargetDiameter = { 0.2 '* (deg)' [0.1 10] };
@@ -53,11 +53,20 @@ classdef Saccades < ArumeCore.ExperimentDesign
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
             this.numberOfTimesRepeatBlockSequence = this.ExperimentOptions.NumberOfRepetitions;
-            this.blocksToRun = 3;
-            this.blocks = [ ...
-                struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 1), ...
-                struct( 'fromCondition', 2, 'toCondition', this.NumberOfConditions, 'trialsToRun', this.NumberOfConditions - 1 ),...
-                struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 1)];
+            
+            switch(this.ExperimentOptions.Mode)
+                case 'Across' 
+                case 'AcrossV' 
+                    this.blocksToRun = 1;
+                    this.blocks = [ ...
+                        struct( 'fromCondition', 1, 'toCondition', this.NumberOfConditions, 'trialsToRun', this.NumberOfConditions  )];
+                otherwise
+                    this.blocksToRun = 3;
+                    this.blocks = [ ...
+                        struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 1), ...
+                        struct( 'fromCondition', 2, 'toCondition', this.NumberOfConditions, 'trialsToRun', this.NumberOfConditions - 1 ),...
+                        struct( 'fromCondition', 1, 'toCondition', 1, 'trialsToRun', 1)];
+            end
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -66,17 +75,19 @@ classdef Saccades < ArumeCore.ExperimentDesign
             
             i = i+1;
             conditionVars(i).name   = 'TargetLocation';
-            conditionVars(i).values = {[0,0]};
             switch(this.ExperimentOptions.Mode)
                 case 'Horizontal' 
+                    conditionVars(i).values = {[0,0]};
                     for x=(-this.ExperimentOptions.MaxEccentricity):this.ExperimentOptions.TargetSeparation:this.ExperimentOptions.MaxEccentricity
                         conditionVars(i).values{end+1}   =  [x,0];
                     end
                 case 'Vertical' 
+                    conditionVars(i).values = {[0,0]};
                     for y=(-this.ExperimentOptions.MaxEccentricity):this.ExperimentOptions.TargetSeparation:this.ExperimentOptions.MaxEccentricity
                         conditionVars(i).values{end+1}   =  [0,y];
                     end
                 case 'HVcross' 
+                    conditionVars(i).values = {[0,0]};
                     for x=(-this.ExperimentOptions.MaxEccentricity):this.ExperimentOptions.TargetSeparation:this.ExperimentOptions.MaxEccentricity
                         conditionVars(i).values{end+1}   =  [x,0];
                     end
@@ -84,11 +95,18 @@ classdef Saccades < ArumeCore.ExperimentDesign
                         conditionVars(i).values{end+1}   =  [0,y];
                     end
                 case 'Grid'
+                    conditionVars(i).values = {[0,0]};
                     for x=(-this.ExperimentOptions.MaxEccentricity):this.ExperimentOptions.TargetSeparation:this.ExperimentOptions.MaxEccentricity
                         for y=(-this.ExperimentOptions.MaxEccentricity):this.ExperimentOptions.TargetSeparation:this.ExperimentOptions.MaxEccentricity
                             conditionVars(i).values{end+1}   =  [x,y];
                         end
                     end
+                case 'Across'
+                    conditionVars(i).values   =  {[-this.ExperimentOptions.MaxEccentricity,0]};
+                    conditionVars(i).values{2}   =  [this.ExperimentOptions.MaxEccentricity,0];
+                case 'AcrossV'
+                    conditionVars(i).values   =  {[0, -this.ExperimentOptions.MaxEccentricity]};
+                    conditionVars(i).values{2}   =  [0,this.ExperimentOptions.MaxEccentricity];
             end
         end
         
