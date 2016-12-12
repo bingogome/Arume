@@ -5,6 +5,8 @@ function arumeController = Arume(command, param)
 persistent arumeSingleton;
 arumeController = arumeSingleton;
 
+useGui = 1;
+
 % option to clear the singleton
 if ( exist('command','var') )
     switch (command )
@@ -18,6 +20,8 @@ if ( exist('command','var') )
             if ( exist('param','var') )
                 projectPath = param;
             end
+        case 'nogui'
+            useGui = 0;
     end
 end
 
@@ -30,8 +34,10 @@ if isempty(arumeSingleton)
     arumeController = arumeSingleton;
 end
 
-% Load the GUI
-gui = ArumeGui( arumeSingleton );
+if ( useGui )
+    % Load the GUI
+    gui = ArumeGui( arumeSingleton );
+end
 
 if ( exist('projectPath','var') )
     arumeSingleton.loadProject( projectPath )

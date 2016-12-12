@@ -200,7 +200,8 @@ classdef ArumeController < handle
         function session = importSession( this, experiment, subject_Code, session_Code, options )
             % Imports a session from external files containing the data. It
             % will not be possible to run this session
-                        
+            
+            % check if session already exists
             session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code, options );
             
             this.selectedSessions = session;
@@ -287,20 +288,37 @@ classdef ArumeController < handle
         %
         % Analyzing and plotting
         %
-        
-        function prepareAnalysis( this )
+        function prepareAnalysis( this, sessions )
             % Prepares the session for analysis. Mainly this creates the
             % trial dataset and the samples dataset
             
-            h = waitbar(0,'Please wait...');
-            n = length(this.selectedSessions);
-            for i =1:n
-                disp(['ARUME::preparing analysis for session ' this.selectedSessions(i).name])
-                session = this.selectedSessions(i);
-                session.prepareForAnalysis();
-                waitbar(i/n,h)
+            useWaitBar = 0;
+            if ( ~exist('sessions','var') )
+                sessions = this.selectedSessions;
+                useWaitBar = 1;
             end
-            close(h);
+            
+            if (useWaitBar)
+                h = waitbar(0,'Please wait...');
+                n = length(this.selectedSessions);
+            end
+            
+            try
+                for i =1:n
+                    disp(['ARUME::preparing analysis for session ' sessions(i).name])
+                    session = sessions(i);
+                    session.prepareForAnalysis();
+                    if ( useWaitBar )
+                        waitbar(i/n,h)
+                    end
+                end
+            catch
+                disp('Error preparing a session');
+            end
+            
+            if (useWaitBar)
+                close(h);
+            end
             
             this.currentProject.save();
         end
@@ -318,9 +336,10 @@ classdef ArumeController < handle
                 
                 h = waitbar(0,'Please wait...');
                 n = length(this.selectedSessions);
-                
+                i=0;
                 % Single sessions plot
                 for session = this.selectedSessions
+                    i = i+1;
                     session.RunAnalyses(analysisSelection);
                     waitbar(i/n,h)
                 end

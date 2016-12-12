@@ -502,10 +502,19 @@ classdef Session < ArumeCore.DataDB
         % Factory methods
         %
         function session = NewSession( project, experimentName, subjectCode, sessionCode, experimentOptions )
-            % TODO add factory for multiple types of experimentNames
-            session = ArumeCore.Session();
-            session.init(project, experimentName, subjectCode, sessionCode, experimentOptions);
-            project.addSession(session);
+            
+            session = project.findSession( experimentName, subjectCode, sessionCode);
+            
+            if ( isempty(session) )
+                
+                % TODO add factory for multiple types of experimentNames
+                session = ArumeCore.Session();
+                session.init(project, experimentName, subjectCode, sessionCode, experimentOptions);
+                project.addSession(session);
+            else
+                warning('Session already exists ... overriding');
+                session.init(project, experimentName, subjectCode, sessionCode, experimentOptions);
+            end
         end
         
         function session = LoadSession( project, data )

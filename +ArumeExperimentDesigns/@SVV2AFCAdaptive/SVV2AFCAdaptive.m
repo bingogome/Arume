@@ -484,6 +484,8 @@ T = [];
             firstplot = 0;
             figure
             allData = {};
+            allDataSham = {};
+            allDataTMS = {};
             allDataT = {};
             for i=1:length(subjects)
                 for j=1:Rows
@@ -504,11 +506,12 @@ T = [];
 %                         plot(shamdataPost.Bin100SVV(1:299)-(shamdataPre.Bin100SVV(1:299)  ))
 %                         plot(tmsdataPost.Bin100SVV(1:299)-(tmsdataPre.Bin100SVV(1:299)))
                         
-                        for jj=j:Rows
-%                             allData{jj,i} = (tmsdataPost.Bin100SVV(1:299)-(tmsdataPre.Bin100SVV(1:299))) - (shamdataPost.Bin100SVV(1:299)-(shamdataPre.Bin100SVV(1:299)));
-                            allData{jj,i} = (tmsdataPost.Bin100SVV(1:490)-nanmedian(tmsdataPre.Bin100SVV(1:290))) - (shamdataPost.Bin100SVV(1:490)-nanmedian(shamdataPre.Bin100SVV(1:290)));
-                            allDataT{jj,i} = (tmsdataPost.Bin100Torsion(1:490)-nanmedian(tmsdataPre.Bin100Torsion(1:290))) - (shamdataPost.Bin100Torsion(1:490)-nanmedian(shamdataPre.Bin100Torsion(1:290)));
-                        end
+
+                        allData{j,i} = (tmsdataPost.Bin100SVV(1:490)-nanmedian(tmsdataPre.Bin100SVV(1:290))) - (shamdataPost.Bin100SVV(1:490)-nanmedian(shamdataPre.Bin100SVV(1:290)));
+                        allDataSham{j,i} = (shamdataPost.Bin100SVV(1:490)-nanmedian(shamdataPre.Bin100SVV(1:290)));
+                        allDataTMS{j,i} = (tmsdataPost.Bin100SVV(1:490)-nanmedian(tmsdataPre.Bin100SVV(1:290)));
+                        allDataT{j,i} = (tmsdataPost.Bin100Torsion(1:490)-nanmedian(tmsdataPre.Bin100Torsion(1:290))) - (shamdataPost.Bin100Torsion(1:490)-nanmedian(shamdataPre.Bin100Torsion(1:290)));
+                        
                         if( j == 1)
                             title(subjects{i})
                         end
@@ -605,7 +608,7 @@ T = [];
                         Selection.ED = 2;
                         Selection.FA = 2;
                         Selection.DC = 3;
-                        Selection.MU = 1;
+                        Selection.MU = 2;
             
 %             Selection.AY = 1;
 %             Selection.BV = 1;
@@ -618,11 +621,113 @@ T = [];
 %             Selection.ED = 1;
             
             allDataSelected =  {};
+            allDataSelectedSham =  {};
+            allDataSelectedTMS =  {};
             for i=1:length(subjects)
                 idx = Selection.(subjects{i});
                 allDataSelected{1,i} = allData{idx,i};
+                
+                allDataSelectedSham{1,i} = nan(50,1);
+                allDataSelectedTMS{1,i} = nan(50,1);
+                for iTrial = 1:50
+                    trialIdx = (1:10) + 10*(iTrial-1);
+                    allDataSelectedSham{1,i}(iTrial) = nanmean(allDataSham{idx,i}(trialIdx(trialIdx<length(allDataSham{idx,i}))));
+                    allDataSelectedTMS{1,i}(iTrial) = nanmean(allDataTMS{idx,i}(trialIdx(trialIdx<length(allDataTMS{idx,i}))));
+                end
+            end
+            %%
+            
+            clear SelectionBARS
+                        SelectionBARS.AY = [1 2 3 4     5 6];
+                        SelectionBARS.BV = [1 2         3 4];
+                        SelectionBARS.HN = [1 2         3 5];
+                        SelectionBARS.DC = [1           2 3];
+                        SelectionBARS.DO = [1           2 3];
+                        SelectionBARS.ED = [3           1 2];
+                        SelectionBARS.KC = [3           1 2];
+                        SelectionBARS.AM = [3           1 2];
+                        SelectionBARS.US = [3           1 2];
+                        SelectionBARS.FA = [            1 2];
+                        SelectionBARS.MU = [            1 2];
+                        SelectionBARS.WD = [            1 2];
+                        
+%                         subjects = fieldnames(SelectionBARS)
+                        IDX = 1:490;
+            figure
+            for i=1:length(subjects)
+                subplot(2,length(subjects)/2,i,'nextplot','add')
+                for k=1:length(SelectionBARS.(subjects{i}))-2
+                    j = SelectionBARS.(subjects{i})(k);
+                    effect = nanmean(allDataTMS{j,i}(IDX)) - nanmean(allDataSham{j,i}(IDX));
+                    b = bar(k, effect); 
+                    set(b,'facecolor',[1 0.7 0.3])
+                end
+                
+                    j = SelectionBARS.(subjects{i})(end-1);
+                    effect = nanmean(allDataTMS{j,i}(IDX)) - nanmean(allDataSham{j,i}(IDX));
+                    b = bar(length(SelectionBARS.(subjects{i}))-1, effect); 
+                    set(b,'facecolor',[1 0.7 0.3])
+                            set(b,'facecolor','r')
+%                             
+%                     j = SelectionBARS.(subjects{i})(end);
+%                     effect = nanmean(allDataTMS{j,i}(IDX)) - nanmean(allDataSham{j,i}(IDX));
+%                     b = bar(length(SelectionBARS.(subjects{i})), effect); 
+%                     set(b,'facecolor',[1 0.7 0.3])
+%                             set(b,'facecolor','r')
+                            
+                set(gca,'xlim',[0 7],'ylim',[-5 10])
+                set(gca,'xtick',[])
+                set(gcf,'color','w')
+                title(subjects{i})
             end
             
+            %%
+            figure
+            for ii=1:length(subjects)
+                
+                s = fieldnames(SelectionBARS);
+                i = find( strcmp(subjects,s{ii}));
+                
+                k = 1;
+                j = SelectionBARS.(subjects{i})(end);
+                subplot(6, length(subjects), ii + (k-1)*length(subjects),'nextplot','add');
+                title(subjects{i})
+                plot(allDataSham{j,i}(IDX), 'linewidth',2)
+                plot(allDataTMS{j,i}(IDX), 'linewidth',2,'color','r')
+                xlabel(' ');
+                ylabel(' ');
+                set(gca,'ylim',[-10 10])
+                
+                k = 2;
+                j = SelectionBARS.(subjects{i})(end-1);
+                subplot(6, length(subjects), ii + (k-1)*length(subjects),'nextplot','add');
+                plot(allDataSham{j,i}(IDX), 'linewidth',2)
+                plot(allDataTMS{j,i}(IDX), 'linewidth',2,'color','r')
+                xlabel(' ');
+                ylabel(' ');
+                set(gca,'ylim',[-10 10])
+                
+                
+                for k=1:length(SelectionBARS.(subjects{i}))-2
+                    
+                    subplot(6, length(subjects), ii + (k+1)*length(subjects),'nextplot','add');
+                    
+                    j = SelectionBARS.(subjects{i})(k);
+                    plot(allDataSham{j,i}(IDX), 'linewidth',2)
+                    plot(allDataTMS{j,i}(IDX), 'linewidth',2,'color',[1 0.7 0.3])
+                xlabel(' ');
+                ylabel(' ');
+                set(gca,'ylim',[-10 10])
+                end
+                
+                
+%                 set(gca,'xlim',[0 7],'ylim',[-5 10])
+%                 set(gca,'xtick',[])
+                set(gcf,'color','w')
+            end
+            
+            
+            %%
             figure
             
             m = nanmean(cell2mat(allDataSelected(1,:))');
@@ -640,6 +745,35 @@ T = [];
             xlabel('Trial number');
             ylabel('TMS-sham SVV (deg');
             text(500,0,['p-value = ' num2str(p)]);
+            
+            
+            %%%
+            
+            figure
+            m = nanmean(cell2mat(allDataSelectedSham(1,:))');
+            s = nanstd(cell2mat(allDataSelectedSham(1,:))');
+            sSham = s./sqrt(sum(~isnan((cell2mat(allDataSelectedSham(1,:))))'));
+            
+            svvtime = cell2mat(allDataSelectedSham(1,:));
+            mmSham = nanmean(svvtime(1:end,:)')
+            
+            
+            m = nanmean(cell2mat(allDataSelectedTMS(1,:))');
+            s = nanstd(cell2mat(allDataSelectedTMS(1,:))');
+            sTMS = s./sqrt(sum(~isnan((cell2mat(allDataSelectedTMS(1,:))))'));
+            
+            svvtime = cell2mat(allDataSelectedTMS(1,:));
+            mmTMS = nanmean(svvtime(1:end,:)')
+            
+            
+            errorbar((1:50)*10 ,mmSham,sSham);
+            hold
+            e = errorbar((1:50)*10 ,mmTMS,sTMS);
+            set(e,'color','red')
+            set(gca,'xlim',[0 500],'ylim',[-5 5])
+            xlabel('Trial number');
+            ylabel('SVV - baseline (deg)');
+            
             
             %%
             figure
