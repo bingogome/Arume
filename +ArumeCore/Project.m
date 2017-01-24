@@ -113,7 +113,6 @@ classdef Project < handle
             % load sessions
             for session = data.sessions
                 s = ArumeCore.Session.LoadSession( this, session );
-                this.addSession(s);
             end
         end
             
@@ -139,13 +138,16 @@ classdef Project < handle
             
             % compress project file and keep temp folder
             tar(this.projectFile , this.path);
-            movefile([this.projectFile '.tar'], this.projectFile);
+            movefile([this.projectFile '.tar'], this.projectFile,'f');
             
             % send session variables to workspace
+            arumeData = [];
             for session = this.sessions
-                assignin ('base',[session.name '_trialDataSet'],session.trialDataSet);
-                assignin ('base',[session.name '_analysisResults'],session.analysisResults);
+                arumeData.(session.name).trialDataSet = session.trialDataSet;
+                arumeData.(session.name).analysisResults = session.analysisResults;
             end
+            
+            assignin ('base','arumeData',arumeData);
         end
         
         %

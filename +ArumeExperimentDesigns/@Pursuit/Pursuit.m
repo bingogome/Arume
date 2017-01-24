@@ -144,7 +144,6 @@ classdef Pursuit < ArumeCore.ExperimentDesign
                     % -----------------------------------------------------------------
                     
                     [mx, my] = RectCenter(this.Graph.wRect);
-                    
                     switch ( this.ExperimentOptions.Mode )
                         case 'Horizontal'
                             if (secondsElapsed > this.ExperimentOptions.Initial_Fixation_Duration )

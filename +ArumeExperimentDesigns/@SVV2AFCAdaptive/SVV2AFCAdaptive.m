@@ -293,8 +293,28 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
     % ---------------------------------------------------------------------
     methods ( Access = public )
                 
+        function plotResults = Plot_TorsionSVV(this)
+            
+            ds = this.Session.trialDataSet;
+            
+            figure
+            plot(ds.TrialNumber, ds.Bin100SVV,'linewidth',3,'color','b');
+            hold
+            plot(ds.TrialNumber, ds.Bin100Torsion,'linewidth',3,'color','r');
+            
+            legend({ 'SVV' 'Torsion'});
+             
+            xlabel('TrialNumber');
+            ylabel('Deg');
+        end
+        
         function plotResults = Plot_ExperimentTimeCourse(this)
             analysisResults = 0;
+            
+            MEDIUM_BLUE =  [0.1000 0.5000 0.8000];
+            MEDIUM_RED = [0.9000 0.2000 0.2000];
+            MEDIUM_GREEN = [0.5000 0.8000 0.3000];
+            MEDIUM_GOLD = [0.9000 0.7000 0.1000];
             
             ds = this.Session.trialDataSet;
             ds.Response = ds.Response == 'L';
@@ -308,15 +328,34 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             axes('nextplot','add');
             
             % Plot button presses
-            plot(ds(ds.Response==0 & strcmp(ds.Position,'Up'),'TrialNumber'), ds(ds.Response==0 & strcmp(ds.Position,'Up'),'Angle'),'^','MarkerEdgeColor',[0.3 0.3 0.3],'linewidth',1);
-            plot(ds(ds.Response==1 & strcmp(ds.Position,'Up'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Up'),'Angle'),'^','MarkerEdgeColor','r','linewidth',1);
-            plot(ds(ds.Response==0 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==0 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor',[0.3 0.3 0.3],'linewidth',1);
-            plot(ds(ds.Response==1 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor','r','linewidth',1);
+            p = patch([ds.TrialNumber;ds.TrialNumber(end:-1:1);ds.TrialNumber(1)], [ds.RangeCenter-ds.Range;ds.RangeCenter(end:-1:1)+ds.Range(end:-1:1);ds.RangeCenter(1)-ds.Range(1)],[1 1 0.5]);
+            set(p,'edgecolor','w');
+            
+            plot(ds(ds.Response==0 & strcmp(ds.Position,'Up'),'TrialNumber'), ds(ds.Response==0 & strcmp(ds.Position,'Up'),'Angle'),'^','MarkerEdgeColor',MEDIUM_RED,'linewidth',1);
+            plot(ds(ds.Response==1 & strcmp(ds.Position,'Up'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Up'),'Angle'),'^','MarkerEdgeColor',MEDIUM_BLUE,'linewidth',1);
+            plot(ds(ds.Response==0 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==0 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor',MEDIUM_RED,'linewidth',1);
+            plot(ds(ds.Response==1 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor',MEDIUM_BLUE,'linewidth',1);
             
             % Plot center of the range
-            plot(ds.TrialNumber, ds.RangeCenter,'linewidth',3,'color',[.5 .8 .3]);
-            plot(ds.TrialNumber, ds.RangeCenter-ds.Range,'linewidth',1,'color',[.5 .8 .3]);
-            plot(ds.TrialNumber, ds.RangeCenter+ds.Range,'linewidth',1,'color',[.5 .8 .3]);
+            plot(ds.TrialNumber, ds.RangeCenter,'linewidth',3,'color',MEDIUM_GREEN);
+            plot(ds.TrialNumber, ds.RangeCenter-ds.Range,'linewidth',1,'color',MEDIUM_GREEN);
+            plot(ds.TrialNumber, ds.RangeCenter+ds.Range,'linewidth',1,'color',MEDIUM_GREEN);
+%             plot(ds.TrialNumber, ds.Bin30SVV,'linewidth',3,'color',[.3 .5 .8]);
+%             plot(ds.TrialNumber, ds.Bin100SVV,'linewidth',3,'color',[.8 .3 .5]);
+
+SVV = [];
+T = [];
+                    for j=1:15;
+                        idx = (50:100) + (j-1)*50;
+                        idx(idx>=length(ds.Bin100SVV)) = [];
+                        if ( length(idx) > 20)
+                            SVV(j) = nanmean(ds.Bin100SVV(idx));
+                            T(j) = nanmean(ds.Torsion(idx));
+                        end
+                    end
+            SVV(:,[2 12 15]) = nan;
+            T(:,[2 12 15]) = nan;
+            
             
             legend({'Answered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
             legend('boxoff')
@@ -361,146 +400,397 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
         
         function plotResults = PlotAggregate_SVVCombined(this, sessions)
             
-            SVV = nan(size(sessions));
-            SVVUp = nan(size(sessions));
-            SVVDown = nan(size(sessions));
-            SVVLine = nan(size(sessions));
-            names = {};
+            s.Subject = cell(length(sessions),1);
+            s.SessionNumber = (1:length(sessions))';
+            s.TMS = zeros(length(sessions),1);
+            s.Pre = zeros(length(sessions),1);
             for i=1:length(sessions)
-                session = sessions(i);
-                names{i} = session.sessionCode;
-                switch(class(session.experiment))
-                    case {'ArumeExperimentDesigns.SVVdotsAdaptFixed' 'ArumeExperimentDesigns.SVVLineAdaptFixed' 'ArumeExperimentDesigns.SVVForcedChoice'}
-                        ds = session.trialDataSet;
-                        ds(ds.TrialResult>0,:) = [];
-                        ds(ds.Response<0,:) = [];
-                        
-                        subds = ds(:,:);
-                        [SVV(i), a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-                        
-                        subds = ds(strcmp(ds.Position,'Up'),:);
-                        [SVVUp(i), a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-                        subds = ds(strcmp(ds.Position,'Down'),:);
-                        [SVVDown(i), a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-                        
-                        
-                    case 'ArumeExperimentDesigns.SVVClassical'
-                        ds = session.trialDataSet;
-                        ds(ds.TrialResult>0,:) = [];
-                        
-                        SVV(i) = median(ds.Response');
-                        SVVLine(i) = SVV(i);
-                    case {'ArumeExperimentDesigns.SVVClassicalUpDown' 'ArumeExperimentDesigns.SVVClassicalDotUpDown'}
-                        ds = session.trialDataSet;
-                        ds(ds.TrialResult>0,:) = [];
-                        
-                        SVV(i) = median(ds.Response');
-                        SVVLine(i) = SVV(i);
-                        
-                        SVVUp(i) = median(ds.Response(streq(ds.Position,'Up'),:)');
-                        SVVDown(i) = median(ds.Response(streq(ds.Position,'Down'),:)');
+                s.Subject{i} = sessions(i).subjectCode;
+                if ( strfind(sessions(i).sessionCode, 'Sham') )
+                    s.TMS(i) = 0;
+                elseif ( strfind(sessions(i).sessionCode, 'TMS6') )
+                    s.TMS(i) = 6;
+                elseif ( strfind(sessions(i).sessionCode, 'TMS5') )
+                    s.TMS(i) = 5;
+                elseif ( strfind(sessions(i).sessionCode, 'TMS4') )
+                    s.TMS(i) = 4;
+                elseif ( strfind(sessions(i).sessionCode, 'TMS3') )
+                    s.TMS(i) = 3;
+                elseif ( strfind(sessions(i).sessionCode, 'TMS2') )
+                    s.TMS(i) = 2;
+                elseif ( ~isempty(strfind(sessions(i).sessionCode, 'TMS1')) || ~isempty(strfind(sessions(i).sessionCode, 'TMS') ))
+                    s.TMS(i) = 1;
+                end
+                if ( strfind(sessions(i).sessionCode, 'Pre') )
+                    s.Pre(i) = 1;
+                end
+            end
+
+            ds = struct2dataset(s);
+            
+            subjects = unique(ds.Subject);
+            figure
+            for i=1:length(subjects)
+                subplot(2,length(subjects),i,'nextplot','add');
+                d = ds(strcmp(ds.Subject,subjects{i}),:);
+                for j=1:size(d,1)
+                    data = sessions(d.SessionNumber(j)).trialDataSet;
+                    plot(sgolayfilt(data.Bin100SVV,1,31), 'linewidth',2)
+                end
+                set(gca,'xlim',[0 500],'ylim',[-20 20])
+                title(subjects{i});
+                if ( i==1)
+                    xlabel('Trial number');
+                    ylabel('SVV');
+                end
+                
+                subplot(2,length(subjects),i+length(subjects),'nextplot','add');
+                d = ds(strcmp(ds.Subject,subjects{i}),:);
+                for j=1:size(d,1)
+                    data = sessions(d.SessionNumber(j)).trialDataSet;
+                    plot(sgolayfilt(data.Bin100SVVth,1,31), 'linewidth',2)
+                end
+                set(gca,'xlim',[0 500],'ylim',[0 10])
+                title(subjects{i});
+                if ( i==1)
+                    xlabel('Trial number');
+                    ylabel('SVV threshold');
                 end
             end
             
-            figure('position',[100 100 1000 700])
             
-            subplot(1,2,1,'fontsize',14);
-            plot(SVV,1:length(SVV),'o','markersize',10)
-            hold
-            plot(SVVLine,1:length(SVV),'+','markersize',10)
-            set(gca,'ytick',1:length(SVV),'yticklabel',names)
+            PreSVV = nan(length(subjects), 10);
+            figure
+            for i=1:length(subjects)
+                subplot(1,length(subjects),i,'nextplot','add');
+                d = ds(strcmp(ds.Subject,subjects{i}),:);
+                for j=1:size(d,1)
+                    data = sessions(d.SessionNumber(j)).trialDataSet;
+                    plot(sgolayfilt(data.Bin100Torsion,1,31), 'linewidth',2)
+                    if ( d.Pre(j) == 1 )
+                        PreSVV(i,j) = nanmean(data.Bin100SVV(1:250));
+                    end
+                end
+                set(gca,'xlim',[0 500],'ylim',[-20 20])
+                title(subjects{i});
+                if ( i==1)
+                    xlabel('Trial number');
+                    ylabel('Torsion');
+                end
+            end
             
-            set(gca,'ydir','reverse');
-            line([0 0], get(gca,'ylim'),'color',[0.5 0.5 0.5])
+            Rows = max(ds.TMS);
             
-            set(gca,'xlim',[-20 20])
-            
-            xlabel('SVV (deg)','fontsize',16);
-            
-            subplot(1,2,2,'fontsize',14);
-            plot(SVVUp-SVVDown,1:length(SVV),'o','markersize',10)
-            set(gca,'ytick',1:length(SVV),'yticklabel',names)
-            set(gca,'ydir','reverse');
-            line([0 0], get(gca,'ylim'),'color',[0.5 0.5 0.5])
-            
-            xlabel('SVV UP-Down diff. (deg)','fontsize',16);
-            
-            set(gca,'xlim',[-6 6])
-            
-            ds =[];
-            
-            for i=1:length(sessions)
-                session = sessions(i);
-                names{i} = session.sessionCode;
-                switch(class(session.experiment))
-                    case {'ArumeExperimentDesigns.SVVdotsAdaptFixed' 'ArumeExperimentDesigns.SVVLineAdaptFixed' 'ArumeExperimentDesigns.SVVForcedChoice'}
-                        sds = session.trialDataSet;
-                        sds(sds.TrialResult>0,:) = [];
-                        sds(sds.Response<0,:) = [];
+            firstplot = 0;
+            figure
+            allData = {};
+            allDataT = {};
+            for i=1:length(subjects)
+                for j=1:Rows
+                    if ( sum(strcmp(ds.Subject,subjects{i}) & ds.TMS == j ) >0 )
+                        d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == 0 & ds.Pre == 1 ,:);
+                        shamdataPre = sessions(d.SessionNumber(1)).trialDataSet;
+                        d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == 0 & ds.Pre == 0 ,:);
+                        shamdataPost = sessions(d.SessionNumber(1)).trialDataSet;
+                        d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == j & ds.Pre == 1 ,:);
+                        tmsdataPre = sessions(d.SessionNumber(1)).trialDataSet;
+                        d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == j & ds.Pre == 0 ,:);
+                        tmsdataPost = sessions(d.SessionNumber(1)).trialDataSet;
                         
-                        if ( isempty(ds) )
-                            ds = sds;
-                        else
-                            ds =[ds;sds]
+                        subplot(Rows, length(subjects), i + (j-1)*length(subjects),'nextplot','add');
+                        
+                        plot(shamdataPost.Bin100SVV-nanmedian(shamdataPre.Bin100SVV(1:299)  ), 'linewidth',2)
+                        plot(tmsdataPost.Bin100SVV-nanmedian(tmsdataPre.Bin100SVV(1:299)), 'linewidth',2)
+%                         plot(shamdataPost.Bin100SVV(1:299)-(shamdataPre.Bin100SVV(1:299)  ))
+%                         plot(tmsdataPost.Bin100SVV(1:299)-(tmsdataPre.Bin100SVV(1:299)))
+                        
+                        for jj=j:Rows
+%                             allData{jj,i} = (tmsdataPost.Bin100SVV(1:299)-(tmsdataPre.Bin100SVV(1:299))) - (shamdataPost.Bin100SVV(1:299)-(shamdataPre.Bin100SVV(1:299)));
+                            allData{jj,i} = (tmsdataPost.Bin100SVV(1:490)-nanmedian(tmsdataPre.Bin100SVV(1:290))) - (shamdataPost.Bin100SVV(1:490)-nanmedian(shamdataPre.Bin100SVV(1:290)));
+                            allDataT{jj,i} = (tmsdataPost.Bin100Torsion(1:490)-nanmedian(tmsdataPre.Bin100Torsion(1:290))) - (shamdataPost.Bin100Torsion(1:490)-nanmedian(shamdataPre.Bin100Torsion(1:290)));
+                        end
+                        if( j == 1)
+                            title(subjects{i})
                         end
                         
+                        if ( firstplot == 0 )
+                            firstplot = 1;
+                            
+                            legend({'Sham', 'TMS'})
+
+                            xlabel('Trial number');
+                            ylabel('SVV');
+                        end
+                        set(gca,'ylim',[-10 10])
+                    end
                 end
+            end
+            
+            
+%             firstplot = 0;
+%             figure
+%             allData = {};
+%             allDataT = {};
+%             for i=1:length(subjects)
+%                 subjects{i}
+%                 for j=1:Rows
+%                     if ( sum(strcmp(ds.Subject,subjects{i}) & ds.TMS == j ) >0 )
+%                         d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == 0 & ds.Pre == 1 ,:);
+%                         shamdataPre = sessions(d.SessionNumber(1)).trialDataSet;
+%                         d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == 0 & ds.Pre == 0 ,:);
+%                         shamdataPost = sessions(d.SessionNumber(1)).trialDataSet;
+%                         d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == j & ds.Pre == 1 ,:);
+%                         tmsdataPre = sessions(d.SessionNumber(1)).trialDataSet;
+%                         d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == j & ds.Pre == 0 ,:);
+%                         tmsdataPost = sessions(d.SessionNumber(1)).trialDataSet;
+%                         
+%                         subplot(Rows, length(subjects), i + (j-1)*length(subjects),'nextplot','add');
+%                         
+%                         plot(shamdataPost.Bin100Torsion-nanmedian(shamdataPre.Bin100Torsion(1:299)  ), 'linewidth',2)
+%                         plot(tmsdataPost.Bin100Torsion-nanmedian(tmsdataPre.Bin100Torsion(1:299)), 'linewidth',2)
+% %                         plot(shamdataPost.Bin100SVV(1:299)-(shamdataPre.Bin100SVV(1:299)  ))
+% %                         plot(tmsdataPost.Bin100SVV(1:299)-(tmsdataPre.Bin100SVV(1:299)))
+%                         
+%                         for jj=j:Rows
+% %                             allData{jj,i} = (tmsdataPost.Bin100SVV(1:299)-(tmsdataPre.Bin100SVV(1:299))) - (shamdataPost.Bin100SVV(1:299)-(shamdataPre.Bin100SVV(1:299)));
+%                             allData{jj,i} = (tmsdataPost.Bin100SVV(1:499)-nanmedian(tmsdataPre.Bin100SVV(1:299))) - (shamdataPost.Bin100SVV(1:499)-nanmedian(shamdataPre.Bin100SVV(1:299)));
+%                             allDataT{jj,i} = (tmsdataPost.Bin100Torsion(1:499)-nanmedian(tmsdataPre.Torsion(1:299))) - (shamdataPost.Bin100Torsion(1:499)-nanmedian(shamdataPre.Torsion(1:299)));
+%                         end
+%                         
+%                         if( j == 1)
+%                             title(subjects{i})
+%                         end
+%                         
+%                         if ( firstplot == 0 )
+%                             firstplot = 1;
+%                             
+%                             legend({'Sham', 'TMS'})
+% 
+%                             xlabel('Trial number');
+%                             ylabel('Torsion');
+%                         end
+%                         set(gca,'ylim',[-10 10])
+%                     end
+%                 end
+%             end
+            
+            figure
+            for i=1:Rows
+                subplot(Rows,1,i)
+                m = nanmean(cell2mat(allData(i,:))');
+                s = nanstd(cell2mat(allData(i,:))');
+                s = s./sqrt(sum(~isnan((cell2mat(allData(i,:))))'));
+                
+                svvtime = cell2mat(allData(i,:));
+                mm = nanmean(svvtime(1:end,:));
+                [h p] = ttest(mm);
+                
+                set(gca,'xlim',[0 500],'ylim',[-5 5])
+                errorbar(m,s);
+                set(gca,'xlim',[0 500],'ylim',[-5 5])
+                line([0 500],[0 0],'color','k');
+                xlabel('Trial number');
+                ylabel('TMS-sham SVV (deg');
+                text(500,0,['p-value = ' num2str(p)]);
+            end
+            
+                        Selection.AY = 6;
+                        Selection.BV = 1;
+                        Selection.DO = 3;
+                        Selection.HN = 5;
+                        Selection.US = 2;
+                        Selection.WD = 2;
+                        Selection.AM = 2;
+                        Selection.KC = 2;
+                        Selection.ED = 2;
+                        Selection.FA = 2;
+                        Selection.DC = 3;
+                        Selection.MU = 1;
+            
+%             Selection.AY = 1;
+%             Selection.BV = 1;
+%             Selection.DO = 1;
+%             Selection.HN = 1;
+%             Selection.US = 1;
+%             Selection.WD = 1;
+%             Selection.AM = 1;
+%             Selection.KC = 1;
+%             Selection.ED = 1;
+            
+            allDataSelected =  {};
+            for i=1:length(subjects)
+                idx = Selection.(subjects{i});
+                allDataSelected{1,i} = allData{idx,i};
             end
             
             figure
             
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( ds.Angle, ds.Response);
+            m = nanmean(cell2mat(allDataSelected(1,:))');
+            s = nanstd(cell2mat(allDataSelected(1,:))');
+            s = s./sqrt(sum(~isnan((cell2mat(allDataSelected(1,:))))'));
             
-            plot( allAngles, allResponses,'o', 'color', [0.7 0.7 0.7], 'markersize',10,'linewidth',2)
-            plot(a,p, 'color', 'k','linewidth',2);
-            line([SVV, SVV], [0 100], 'color','k','linewidth',2);
+            svvtime = cell2mat(allDataSelected(1,:));
+            mm = nanmean(svvtime(1:end,:))
+            [h p] = ttest(mm);
+            
+            set(gca,'xlim',[0 500],'ylim',[-5 5])
+            errorbar(m,s);
+            set(gca,'xlim',[0 500],'ylim',[-5 5])
+            line([0 500],[0 0],'color','k');
+            xlabel('Trial number');
+            ylabel('TMS-sham SVV (deg');
+            text(500,0,['p-value = ' num2str(p)]);
+            
+            %%
+            figure
+            for i=1:Rows
+                subplot(Rows,1,i)
+                m = nanmean(cell2mat(allData(i,:))');
+                s = nanstd(cell2mat(allData(i,:))');
+                s = s./sqrt(sum(~isnan((cell2mat(allData(i,:))))'));
+                
+                svvtime = cell2mat(allData(i,:));
+                mm = nanmean(svvtime);
+                [h p] = ttest(mm);
+                bar(mm)
+                hold
+                errorbar(7,mean(mm),std(mm)/sqrt(6),'linewidth',3,'color','k')
+                bar(7,mean(mm));
+                text(0,3.5,['p-value = ' num2str(p)]);
+            end
+            
+            %%
+            
+%             figure
+%             for i=1:Rows
+%                 subplot(Rows,1,i)
+%                 m = nanmean(cell2mat(allDataT(i,:))');
+%                 s = nanstd(cell2mat(allDataT(i,:))');
+%                 s = s./sqrt(sum(~isnan((cell2mat(allDataT(i,:))))'));
+%                 
+%                 svvtime = cell2mat(allDataT(i,:));
+%                 mm = nanmean(svvtime(200:end,:));
+%                 [h p] = ttest(mm);
+%                 
+%                 set(gca,'xlim',[0 500],'ylim',[-5 5])
+%                 errorbar(m,s);
+%                 set(gca,'xlim',[0 500],'ylim',[-5 5])
+%                 line([0 500],[0 0],'color','k');
+%                 xlabel('Trial number');
+%                 ylabel('TMS-sham Torsion (deg');
+%                 text(500,0,['p-value = ' num2str(p)]);
+%                 
+%             end
+            
         end
         
-        function analysisResults = Analysis_SVVbin(this)
-            data = this.Session.trialDataSet;
+        function trialDataSet = PrepareTrialDataSet( this, ds)
+            data = ds;
+            if ( data.TimeStopTrial(end) == 0)
+                data(end,:) = [];
+            end
             
-            binDataSVV = [];
-            binDataSVVth = [];
-            for j=1:floor(size(data,1)/100)
-                idx = (50:100) + (j-1)*100;
-                if ( max(idx) <= length(data.Angle) )
-                    angles = data.Angle(idx);
-                    responses = data.Response(idx);
-                    [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
-                    binDataSVV(j) = SVV1;
-                    binDataSVVth(j) = SVVth1;
+            torsionFolder = 'F:\DATATEMP\SVVTorsionTMS';
+            T = nan(size(data.TimeStartTrial));
+            
+            if (length(dir(fullfile(torsionFolder,[this.Session.name  '*']))) == 1);
+                folders = dir(fullfile(torsionFolder,[this.Session.name  '*']));
+                d = GetCalibratedData(fullfile(torsionFolder,folders(1).name));
+                T = CleanTorsion(d);
+                T(T>10 | T<-10) = nan;
+
+                
+                
+                t = data.TimeStartTrial;
+                t2 = data.TimeStopTrial;
+                t2 = t2-t(1);
+                t = t-t(1);
+%                 t(101:end)= t(101:end)-t(101)+t2(100);
+%                 t2(101:end)= t2(101:end)-t(101)+t2(100);
+                
+                L = t2(end)-t(1);
+                LT = length(T);
+                t = t * LT / L;
+                t2 = t2 * LT / L;
+                
+                torsion = T;
+                T = nan(size(t));
+                for j=1:length(t)
+                    idx = t(j):t2(j);
+                    idx(idx<1) = [];
+                    idx(idx>length(torsion)) = [];
+                    T(j) = nanmedian(torsion(round(idx)));
                 end
             end
             
-            analysisResults.SVV = binDataSVV;
-            analysisResults.SVVth = binDataSVVth;
             
-        end
-        
-        function analysisResults = Analysis_SVVSmooth(this)
+                T(T>10 | T<-10) = nan;
+            newData.Torsion = T;
             
-            data = this.Session.trialDataSet;
             
-            smoothDataSVV = [];
-            smoothDataSVVth = [];
             
-            % Get SVVsmooth
-            for j=1:floor(size(data,1)/10)
-                idx1 = max(min((j)*10 -10,length(data.Angle)),1);
-                idx2 = max(min((j)*10 +19,length(data.Angle)),1);
-                idx = idx1:idx2;
-                if ( max(idx) <= length(data.Angle) && length(idx) >= 10)
+            binSize = 30;
+            stepSize = 10;
+            
+            newData.Bin30SVV = nan(size(data,1),1);
+            newData.Bin30SVVth = nan(size(data,1),1);
+            newData.Bin30Start = nan(size(data,1),1);
+            newData.Bin30End = nan(size(data,1),1);
+            newData.Bin30Torsion = nan(size(data,1),1);
+            for j=1:ceil(size(data,1)/stepSize)
+                idx = (1:binSize) + (j-1)*stepSize;
+                idx(idx<1 | idx>size(data,1)) = [];
+                if ( length(idx) >= 20 )
                     angles = data.Angle(idx);
                     responses = data.Response(idx);
                     [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
-                    smoothDataSVV(j) = SVV1;
-                    smoothDataSVVth(j) = SVVth1;
+                    
+                    saveidx = floor(mean(idx) - stepSize/2 + (1:stepSize));
+                    saveidx(saveidx<1 | saveidx>size(data,1)) = [];
+                    
+                    newData.Bin30SVV(saveidx) = SVV1;
+                    newData.Bin30SVVth(saveidx) = SVVth1;
+                    newData.Bin30Start(saveidx) = min(idx);
+                    newData.Bin30End(saveidx) = max(idx);
+                    newData.Bin30Torsion(saveidx) = nanmedian(T(idx));
                 end
             end
             
-            analysisResults.SVV = smoothDataSVV;
-            analysisResults.SVVth = smoothDataSVVth;
-        end
+            
+            binSize = 100;
+            stepSize = 10;
+            f = binSize/stepSize;
+            
+            newData.Bin100SVV = nan(size(data,1),1);
+            newData.Bin100SVVth = nan(size(data,1),1);
+            newData.Bin100Start = nan(size(data,1),1);
+            newData.Bin100End = nan(size(data,1),1);
+            newData.Bin100Torsion = nan(size(data,1),1);
+            for j=1:ceil(size(data,1)/stepSize)
+                idx = (1:binSize) + (j-1)*stepSize;
+                idx(idx<1 | idx>size(data,1)) = [];
+                if ( length(idx) >= 20 )
+                    angles = data.Angle(idx);
+                    responses = data.Response(idx);
+                    [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
+                    
+                    
+                    saveidx = floor(mean(idx) - stepSize/2 + (1:stepSize));
+                    saveidx(saveidx<1 | saveidx>size(data,1)) = [];
+                    
+                    newData.Bin100SVV(saveidx) = SVV1;
+                    newData.Bin100SVVth(saveidx) = SVVth1;
+                    newData.Bin100Start(saveidx) = min(idx);
+                    newData.Bin100End(saveidx) = max(idx);
+                    newData.Bin100Torsion(saveidx) = nanmedian(T(idx));
+                end
+            end
+            
+            
+            newDs = struct2dataset(newData);
+            
+            trialDataSet = [data newDs];
+         end
     end
     
     % ---------------------------------------------------------------------
