@@ -211,10 +211,10 @@ classdef ExperimentDesign < handle
                         ListenChar(1);
                     end
                     
-                    Screen('Preference', 'VisualDebugLevel', 3);
                     
                     switch(this.DisplayToUse)
                         case 'ptbScreen'
+                            Screen('Preference', 'VisualDebugLevel', 3);
                             this.Graph = ArumeCore.Display( );
                         case 'cmdline'    
                             this.Graph = ArumeCore.DisplayCmdLine( );
