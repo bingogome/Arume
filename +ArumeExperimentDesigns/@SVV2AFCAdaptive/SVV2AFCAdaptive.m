@@ -318,7 +318,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             plot(ds.TrialNumber, ds.RangeCenter-ds.Range,'linewidth',1,'color',[.5 .8 .3]);
             plot(ds.TrialNumber, ds.RangeCenter+ds.Range,'linewidth',1,'color',[.5 .8 .3]);
             
-            legend({'Ansered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
+            legend({'Answered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
             legend('boxoff')
             set(gca,'xlim',[-3 503],'ylim',[-90 90],'ylim',[-20 20])
             ylabel('Angle (deg)', 'fontsize',16);

@@ -85,8 +85,6 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
                
                 this.eyeTracker = ArumeHardware.VOG();
                 this.eyeTracker.Connect();
-                
-                this.eyeTracker.SetSessionName(this.Session.name);
             end
         end
         
@@ -118,6 +116,7 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
            
             if ( ~isempty(this.eyeTracker) )
                 if ( ~this.eyeTracker.IsRecording())
+                    this.eyeTracker.SetSessionName(this.Session.name);
                     this.eyeTracker.StartRecording();
                     pause(1);
                 end

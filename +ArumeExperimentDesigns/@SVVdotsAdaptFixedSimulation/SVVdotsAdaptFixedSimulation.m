@@ -221,7 +221,7 @@ classdef SVVdotsAdaptFixedSimulation < ArumeCore.ExperimentDesign
             hold
             plot(ds(ds.Response==1,'TrialNumber'), ds(ds.Response==1,'Angle'),'o','MarkerEdgeColor','r','linewidth',2);
             
-            legend({'Ansered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
+            legend({'Answered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
             legend('boxoff')
             set(gca,'xlim',[-3 103],'ylim',[-90 90])
             ylabel('Angle (deg)', 'fontsize',16);
