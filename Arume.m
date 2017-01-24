@@ -32,11 +32,14 @@ if isempty(arumeSingleton)
     arumeSingleton = ArumeCore.ArumeController();
     arumeSingleton.init();
     arumeController = arumeSingleton;
+else
+    arumeController = arumeSingleton;
 end
 
-if ( useGui )
+if ( useGui && isempty(arumeController.gui))
     % Load the GUI
     gui = ArumeGui( arumeSingleton );
+    arumeController.gui = gui;
 end
 
 if ( exist('projectPath','var') )

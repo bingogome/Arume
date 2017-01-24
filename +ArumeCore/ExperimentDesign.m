@@ -139,6 +139,10 @@ classdef ExperimentDesign < handle
         %% ImportSession
         function ImportSession( this )
         end
+        
+        function UpdateExperimentOptions(this, newOptions)
+            this.ExperimentOptions = newOptions;
+        end
     end
     
     % --------------------------------------------------------------------

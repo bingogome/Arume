@@ -170,11 +170,19 @@ classdef Project < handle
         function session = findSession( this, experimentName, subjectCode, sessionCode)
             
             for i=1:length(this.sessions)
-                if ( strcmp(upper(this.sessions(i).experiment.Name), upper(experimentName)) &&  ...
-                    strcmp(upper(this.sessions(i).subjectCode), upper(subjectCode)) &&  ...
-                       strcmp(upper(this.sessions(i).sessionCode), upper(sessionCode)))
-                   session = this.sessions(i);
-                   return;
+                if ( exist('sessionCode','var') )
+                    if ( strcmp(upper(this.sessions(i).experiment.Name), upper(experimentName)) &&  ...
+                        strcmp(upper(this.sessions(i).subjectCode), upper(subjectCode)) &&  ...
+                           strcmp(upper(this.sessions(i).sessionCode), upper(sessionCode)))
+                       session = this.sessions(i);
+                       return;
+                    end
+                else
+                    if ( strcmp(upper(this.sessions(i).experiment.Name), upper(experimentName)) &&  ...
+                        strcmp([upper(this.sessions(i).subjectCode) upper(this.sessions(i).sessionCode),], upper(subjectCode)))
+                       session = this.sessions(i);
+                       return;
+                    end
                 end
             end
             

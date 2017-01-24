@@ -30,7 +30,9 @@ classdef ArumeController < handle
     properties( Access=private )
         configuration       % Configuration options saved into a mat file in the Arume folder
     end
-    
+    properties
+        gui                 % Current gui associated with the controller
+    end
     properties( SetAccess=private )
         currentProject      % Current working project 
         selectedSessions    % Current selected sessions (if multiple selected enabled)
@@ -211,7 +213,10 @@ classdef ArumeController < handle
             
             this.currentProject.save();
         end
-        
+        function updateExperimentOptions( this, experiment, subject_Code, session_Code, options )
+            session = this.currentProject.findSession( experiment, subject_Code, session_Code);
+            session.experiment.UpdateExperimentOptions(options);
+        end
         function renameCurrentSession( this, subjectCode, sessionCode)
             % Renames the current session
             
