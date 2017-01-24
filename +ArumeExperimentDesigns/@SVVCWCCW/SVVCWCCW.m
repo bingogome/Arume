@@ -297,7 +297,7 @@ classdef SVVCWCCW < ArumeExperimentDesigns.SVV2AFC
             
             plot(SVV,'linewidth',2,'color',[.5 .8 .3]);
             
-            legend({'Ansered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
+            legend({'Answered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
             legend('boxoff')
             set(gca,'xlim',[-3 length(ds.Response)+3],'ylim',[-50 50])
             ylabel('Angle (deg)', 'fontsize',16);

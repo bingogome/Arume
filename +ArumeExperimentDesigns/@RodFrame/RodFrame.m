@@ -273,7 +273,7 @@ classdef RodFrame < ArumeCore.ExperimentDesign
             plot(ds(ds.Response==0 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==0 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor',[0.3 0.3 0.3],'linewidth',2);
             plot(ds(ds.Response==1 & strcmp(ds.Position,'Down'),'TrialNumber'), ds(ds.Response==1 & strcmp(ds.Position,'Down'),'Angle'),'v','MarkerEdgeColor','r','linewidth',2);
             
-            legend({'Ansered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
+            legend({'Answered tilted to the right', 'Answered tilted to the left'},'fontsize',16)
             legend('boxoff')
             set(gca,'xlim',[-3 103],'ylim',[-90 90])
             ylabel('Angle (deg)', 'fontsize',16);
