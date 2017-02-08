@@ -488,10 +488,20 @@ classdef Session < ArumeCore.DataDB
         end
         
         function RunAnalyses( this, analysisSelection )
-            for i=1:length(analysisSelection)
-                analysis = analysisSelection{i};
-                data = this.experiment.(['Analysis_' analysisSelection{i}])();
-                this.WriteVariable(data, analysisSelection{i});
+            if ( exist( 'analysisSelection', 'var') )
+                for i=1:length(analysisSelection)
+                    analysis = analysisSelection{i};
+                    data = this.experiment.(['Analysis_' analysisSelection{i}])();
+                    this.WriteVariable(data, analysisSelection{i});
+                end
+            else
+                methodList = meta.class.fromName(class(this.experiment)).MethodList;
+                for i=1:length(methodList)
+                    if ( strfind( methodList(i).Name, 'Analysis_') )
+                        data = this.experiment.(methodList(i).Name)();
+                        this.WriteVariable(data, strrep(methodList(i).Name,'Analysis_',''));
+                    end
+                end
             end
         end
     end
