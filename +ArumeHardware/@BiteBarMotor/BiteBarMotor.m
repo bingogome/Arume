@@ -44,9 +44,9 @@ classdef BiteBarMotor
                 end
                 
                 disp('Testing available serial ports');
-                for i=length(serialInfo.AvailableSerialPorts):-1:1  
-                    
-                    port = serialInfo.AvailableSerialPorts{i};
+%                 for i=length(serialInfo.AvailableSerialPorts):-1:1  
+%                     
+                    port = serialInfo.AvailableSerialPorts{2};
                     
                     disp(['Testing ' port]);
                     
@@ -58,7 +58,7 @@ classdef BiteBarMotor
                         this.Init();
                         return;
                     end
-                end
+%                 end
             else     
                 this.s = ss;
             end

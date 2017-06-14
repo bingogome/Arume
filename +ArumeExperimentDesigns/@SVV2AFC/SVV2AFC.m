@@ -79,7 +79,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                 end
             end
             
-            if ( 1) 
+            if ( 0) % this was for the EEG experiment to output something with the parallel port
                 %initialize the inpoutx64 low-level I/O driver
                 config_io;
                 %optional step: verify that the inpoutx64 driver was successfully installed
@@ -190,8 +190,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             respones = this.GetLeftRightResponses();
             respones(this.Session.trialDataSet.TrialResult>0) = [];
             
-            angles = angles(101:600);
-            respones = respones(101:600);
+%             angles = angles(101:201);
+%             respones = respones(101:201);
             [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
             
             
