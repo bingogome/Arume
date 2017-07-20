@@ -29,6 +29,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             dlg.UseGamePad = { {'0','{1}'} };
             
             
+            dlg.Type_of_line = { {'{Radius}','Diameter'} };
+            dlg.Length_of_line = 300;
             dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
             
             dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
@@ -141,15 +143,55 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                 end
             end
             
-            if ( ~isempty( response) )
-                if ( reverse )
-                    switch(response)
-                        case 'L'
-                            response = 'R';
-                        case 'R'
-                            response = 'L';
+            % only reverse (for bottom trials) if the line is a radius
+            % not if it is a diameter
+            switch(this.ExperimentOptions.Type_of_line)
+                case 'Radius'
+                    if ( ~isempty( response) )
+                        if ( reverse )
+                            switch(response)
+                                case 'L'
+                                    response = 'R';
+                                case 'R'
+                                    response = 'L';
+                            end
+                        end
                     end
-                end
+                case 'Diameter'
+            end
+        end
+        
+        function DrawLine(this)
+            
+            switch(this.ExperimentOptions.Type_of_line)
+                case 'Radius'
+                    lineLength = this.ExperimentOptions.Length_of_line;
+                    [mx, my] = RectCenter(this.Graph.wRect);
+                    
+                    switch(variables.Position)
+                        case 'Up'
+                            fromH = mx;
+                            fromV = my;
+                            toH = mx + lineLength*sin(this.currentAngle/180*pi);
+                            toV = my - lineLength*cos(this.currentAngle/180*pi);
+                        case 'Down'
+                            fromH = mx;
+                            fromV = my;
+                            toH = mx - lineLength*sin(this.currentAngle/180*pi);
+                            toV = my + lineLength*cos(this.currentAngle/180*pi);
+                    end
+                    
+                    Screen('DrawLine', this.Graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
+                case 'Diameter'
+                    lineLength = this.ExperimentOptions.Length_of_line;
+                    [mx, my] = RectCenter(this.Graph.wRect);
+                    
+                    fromH = mx - lineLength*sin(this.currentAngle/180*pi);
+                    fromV = my + lineLength*cos(this.currentAngle/180*pi);
+                    toH = mx + lineLength*sin(this.currentAngle/180*pi);
+                    toV = my - lineLength*cos(this.currentAngle/180*pi);
+                    
+                    Screen('DrawLine', this.Graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
             end
         end
     end

@@ -15,6 +15,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
          
         function dlg = GetOptionsDialog( this )
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFC(this);
+            
         end
         
         function initExperimentDesign( this  )
@@ -165,26 +166,12 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     t1 = this.ExperimentOptions.fixationDuration/1000;
                     t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
                     
-                    lineLength = 300;
                                             
 %                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
                     if ( secondsElapsed > t1)
                         %-- Draw target
                         
-                        switch(variables.Position)
-                            case 'Up'
-                                fromH = mx;
-                                fromV = my;
-                                toH = mx + lineLength*sin(this.currentAngle/180*pi);
-                                toV = my - lineLength*cos(this.currentAngle/180*pi);
-                            case 'Down'
-                                fromH = mx;
-                                fromV = my;
-                                toH = mx - lineLength*sin(this.currentAngle/180*pi);
-                                toV = my + lineLength*cos(this.currentAngle/180*pi);
-                        end
-                        
-                        Screen('DrawLine', graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
+                        this.DrawLine();
                        
                     end
                     
