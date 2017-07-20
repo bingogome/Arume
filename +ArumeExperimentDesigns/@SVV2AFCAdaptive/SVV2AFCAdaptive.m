@@ -12,7 +12,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods ( Access = protected )
-        
+         
         function dlg = GetOptionsDialog( this )
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFC(this);
         end

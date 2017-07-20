@@ -66,6 +66,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             % Initialize bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor)
+                clear this.biteBarMotor;
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
                 
                 if ( this.ExperimentOptions.TiltHeadAtBegining )
@@ -129,7 +130,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                 if ( keyIsDown )
                     keys = find(keyCode);
                     for i=1:length(keys)
-                        KbName(keys(i))
+                        KbName(keys(i));
                         switch(KbName(keys(i)))
                             case 'RightArrow'
                                 response = 'R';

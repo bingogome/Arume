@@ -152,22 +152,17 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                 startMotorTime = Screen('Flip', graph.window);
                 this.motorAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
                 this.initialAccelerometerAngle = this.hapticDevice.getCurrentAngle();
-                this.hapticDevice.move(this.motorAngle);
+                %                 pause(.5);
+                this.hapticDevice.directMove(this.motorAngle);
+                
+%                 while GetSecs - startMotorTime < 1
+%                 end
                 
                 % checking if the end angle is desired angle
                 this.endAccelerometerAngle = this.hapticDevice.getCurrentAngle();
                 errorinAngle = this.endAccelerometerAngle-this.motorAngle;
                 fprintf('\nError angle = %1.1f\n',errorinAngle);
-                while ( errorinAngle > 1.1 ) || ( -1.1 > errorinAngle)
-                    fprintf ('\nMOVING THE MOTOR AGAIN, ERROR ANGLE WAS TOO LARGE\n');
-                    this.hapticDevice.directMove(this.motorAngle);
-                    this.endAccelerometerAngle = this.hapticDevice.getCurrentAngle();
-                    errorinAngle = this.endAccelerometerAngle-this.motorAngle;
-                    fprintf('\nNew error angle = %1.1f\n',errorinAngle);
-                end
                 
-                while GetSecs- startMotorTime < 1
-                end
                 DoubleBeep(1000);
                 
                 %-- add here the trial code
@@ -274,12 +269,12 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                         this.reactionTime = secondsElapsed-1;
                         disp(num2str(this.lastResponse));
                         
-                        % checking if the angle difference before and after 
+                        % checking if the angle difference before and after
                         % response is greater than 3, abort trial if it is
                         this.endAccelerometerAngle = this.hapticDevice.getCurrentAngle();
                         errorinAngle = this.endAccelerometerAngle-this.motorAngle;
                         fprintf('\nError angle = %1.1f\n',errorinAngle);
-                        if ( errorinAngle > 1.5 ) || ( -1.5 > errorinAngle)
+                        if ( abs(errorinAngle) > 2 ) 
                             disp('TRIAL ABORTED BECAUSE BAR MOVED');
                             trialResult =  Enum.trialResult.ABORT;
                         end
@@ -293,7 +288,7 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                 end
             catch ex
                 if ( ~isempty( this.eyeTracker ) )
-%                     this.eyeTracker.StopRecording();
+                    %                     this.eyeTracker.StopRecording();
                 end
                 rethrow(ex)
             end
@@ -431,12 +426,8 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             ylabel('Reaction time (ms)','fontsize',16);
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
             set(gca,'xgrid','on')
-            
-            %%
         end
-        
         function plotResults = PlotAggregate_SVVCombined(this, sessions)
-            
             s.Subject = cell(length(sessions),1);
             s.SessionNumber = (1:length(sessions))';
             s.TMS = zeros(length(sessions),1);
@@ -899,7 +890,6 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             newData.Torsion = T;
             
             
-            
             binSize = 30;
             stepSize = 10;
             
@@ -984,7 +974,7 @@ fs = 8000;
 T = 0.1; % 2 seconds duration
 t = 0:(1/fs):T;
 f = freq;
-y = [sin(2*pi*f*t) zeros(1,400) sin(2*pi*f*t)];
+y = [sin(2*pi*f*t) zeros(1,800) sin(2*pi*f*t)]; %changed to 800 from 400 for better distinction of double beep
 sound(y, fs);
 end
 
