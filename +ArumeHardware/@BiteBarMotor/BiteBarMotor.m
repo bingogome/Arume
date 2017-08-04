@@ -68,7 +68,11 @@ classdef BiteBarMotor < handle
                 disp('Testing available serial ports');
                 %                 for i=length(serialInfo.AvailableSerialPorts):-1:1
                 %
-                port = serialInfo.AvailableSerialPorts{2};
+                port = 'COM3';
+                openport = instrfindall('Type', 'serial','name','Serial-COM3');
+                if ( ~isempty( openport)  )
+                    delete(openport);
+                end
                 
                 disp(['Testing ' port]);
                 

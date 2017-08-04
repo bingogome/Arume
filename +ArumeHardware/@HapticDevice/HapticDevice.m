@@ -46,6 +46,16 @@ classdef HapticDevice < handle
             
             if ( isempty(ard) )
                 % add initialization code here
+                
+                openport = instrfindall('Type', 'serial','name','Serial-COM4');
+                if ( ~isempty( openport)  )
+                    delete(openport);
+                end
+                openport = instrfindall('Type', 'serial','name','Serial-COM19');
+                if ( ~isempty( openport)  )
+                    delete(openport);
+                end
+                
                 this.ard = arduino('COM4', 'Uno', 'Libraries', 'Adafruit\MotorShieldV2');
                 shield = this.ard.addon('Adafruit\MotorShieldV2');
                 this.sm = shield.stepper(2, 200, 'stepType', 'double');
@@ -71,8 +81,8 @@ classdef HapticDevice < handle
             initialAccelerometerAngle = readAcc(this.ac);
             currentAngle = initialAccelerometerAngle;
             counterOfTurns = 0;
-            TIMEOUT = 3;
-            while(abs(currentAngle)>1 && counterOfTurns<TIMEOUT)
+            TIMEOUT = 2;
+            while(abs(currentAngle)>1 && counterOfTurns<4)
                 counterOfTurns = counterOfTurns+1;
                 diffAngle = GetAngleToMove(currentAngle,0);
                 steps = -round(diffAngle/360*200,0);

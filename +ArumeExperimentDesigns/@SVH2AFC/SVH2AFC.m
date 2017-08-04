@@ -65,6 +65,7 @@ classdef SVH2AFC < ArumeCore.ExperimentDesign
             
             % Initialize bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor)
+                this.biteBarMotor = [];
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
                 if ( this.ExperimentOptions.TiltHeadAtBegining )
                     if ( length(this.Session.currentRun.pastConditions) == 0 )
@@ -78,10 +79,10 @@ classdef SVH2AFC < ArumeCore.ExperimentDesign
             end
             
             % Initialize HapticDevice
+            this.hapticDevice = [];
             this.hapticDevice = ArumeHardware.HapticDevice();
             this.hapticDevice.reset();
-            fprintf ('Finished reset, press any key to begin.');
-            pause
+            fprintf ('Finished reset, starting experiment.');
             % end initialize HapticDevice
         end
         

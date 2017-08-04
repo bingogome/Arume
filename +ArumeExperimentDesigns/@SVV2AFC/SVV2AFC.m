@@ -161,7 +161,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             end
         end
         
-        function DrawLine(this)
+        function DrawLine(this,variables)
             
             switch(this.ExperimentOptions.Type_of_line)
                 case 'Radius'

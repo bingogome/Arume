@@ -90,8 +90,8 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             if ( length(previousValues)>0 )
                 if ( N == 0 )
                     ds = dataset;
-                    ds.Response = previousResponses(1:end);
-                    ds.Angle = previousValues(1:end);
+                    ds.Response = previousResponses(max(1,end-30):end);
+                    ds.Angle = previousValues(max(1,end-30):end);
                     modelspec = 'Response ~ Angle';
                     subds = ds;
                     
@@ -274,9 +274,9 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                         this.endAccelerometerAngle = this.hapticDevice.getCurrentAngle();
                         errorinAngle = this.endAccelerometerAngle-this.motorAngle;
                         fprintf('\nError angle = %1.1f\n',errorinAngle);
-                        if ( abs(errorinAngle) > 2 ) 
+                        if ( abs(errorinAngle) > 3 ) 
                             disp('TRIAL ABORTED BECAUSE BAR MOVED');
-                            trialResult =  Enum.trialResult.ABORT;
+                            trialResult =  Enum.trialResult.SOFTABORT;
                         end
                         
                         break;

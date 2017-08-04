@@ -161,7 +161,7 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                     if ( secondsElapsed > t1)
                         %-- Draw target
                         
-                        this.DrawLine();
+                        this.DrawLine(variables);
                         
                         % SEND TO PARALEL PORT TRIAL NUMBER
                         %write a value to the default LPT1 printer output port (at 0x378)

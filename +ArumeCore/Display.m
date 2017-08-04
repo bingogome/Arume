@@ -259,6 +259,15 @@ classdef Display < handle
                         result = char('a');
                         break;
                     end
+                    
+                    [x,y,buttons] = GetMouse();
+                    
+                    if buttons(2) % wait for release
+                        
+                        result = char('a');
+                        break
+                    end
+                    
                 catch
                 end
                 
@@ -268,6 +277,8 @@ classdef Display < handle
                     result = keyCode(keys(1));
                     break;
                 end
+                
+                
             end
             
 %             char = GetChar;

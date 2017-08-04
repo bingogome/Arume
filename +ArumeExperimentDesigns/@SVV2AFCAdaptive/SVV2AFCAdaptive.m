@@ -171,7 +171,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     if ( secondsElapsed > t1)
                         %-- Draw target
                         
-                        this.DrawLine();
+                        this.DrawLine(variables);
                        
                     end
                     

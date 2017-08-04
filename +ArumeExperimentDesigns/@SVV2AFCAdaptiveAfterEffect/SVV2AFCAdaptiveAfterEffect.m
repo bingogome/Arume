@@ -234,7 +234,7 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
                     if ( secondsElapsed > t1)
                         %-- Draw target
                         
-                        this.DrawLine();
+                        this.DrawLine(variables);
                     end
                     
 %                     if (secondsElapsed < t2)
