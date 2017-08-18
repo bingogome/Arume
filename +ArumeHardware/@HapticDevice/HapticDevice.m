@@ -81,7 +81,7 @@ classdef HapticDevice < handle
             initialAccelerometerAngle = readAcc(this.ac);
             currentAngle = initialAccelerometerAngle;
             counterOfTurns = 0;
-            TIMEOUT = 2;
+            TIMEOUT = 1;
             while(abs(currentAngle)>1 && counterOfTurns<4)
                 counterOfTurns = counterOfTurns+1;
                 diffAngle = GetAngleToMove(currentAngle,0);
@@ -139,14 +139,14 @@ classdef HapticDevice < handle
             initialAccelerometerAngle = readAcc(this.ac);
             currentAngle = initialAccelerometerAngle;
             counterOfTurns = 0;
-            TIMEOUT = 3;
+            TIMEOUT = 1.5;
             while(abs(currentAngle-finalangle)>1 && counterOfTurns<3)
                 counterOfTurns = counterOfTurns+1;
                 diffAngle = GetAngleToMove(currentAngle,finalangle);
                 steps = -round(diffAngle/360*200,0);
                 fprintf('\nMOTOR: Moving motor from %1.1f to %1.1f angle with %d steps ...',currentAngle,finalangle, steps);
                 this.sm.move(steps);
-                pause(0.5*counterOfTurns);
+                pause(0.55*counterOfTurns);
                 currentAngle = readAcc(this.ac);
             end
             if ( counterOfTurns > 0 )

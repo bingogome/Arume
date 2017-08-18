@@ -235,7 +235,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
 %             angles = angles(101:201);
 %             respones = respones(101:201);
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
+            [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
             
             
             figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
@@ -253,6 +253,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             %xlabel('Angle (deg)', 'fontsize',16);
             text(30, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
+            text(30, 60, sprintf('SVV slope: %0.2f°',SVVth), 'fontsize',16,'HorizontalAlignment','right');
             
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
