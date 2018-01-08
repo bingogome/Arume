@@ -1,4 +1,4 @@
-classdef BiteBarMotor
+classdef BiteBarMotor < handle
     %BITEBARMOTOR Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -27,14 +27,36 @@ classdef BiteBarMotor
     end
     
     methods
-        function this = BiteBarMotor()
+        function out = Singleton(this, command)
             persistent ss;
+            persistent counter;
+            if ( isempty(counter) )
+                counter = 0;
+            end
+            switch(command)
+                case 'check'
+                    counter = counter +1;
+                case 'init'
+                    ss = this.s;
+                case 'clear'
+                    counter = counter -1;
+                    if ( counter == 0 )
+                        delete(ss)
+                        clear ss;
+                        clear this.s;
+                        out = [];
+                        return
+                    end
+            end
+            
+            out = ss;
+        end
+        
+        function this = BiteBarMotor()
+            ss = this.Singleton('check');
             
             if ( isempty(ss) )
                 % close all serial ports
-                
-                disp('Closing all serial ports');
-                delete(instrfindall);
                 
                 disp('Querying available serial ports');
                 serialInfo = instrhwinfo('serial');
@@ -44,23 +66,32 @@ classdef BiteBarMotor
                 end
                 
                 disp('Testing available serial ports');
-                for i=length(serialInfo.AvailableSerialPorts):-1:1  
-                    
-                    port = serialInfo.AvailableSerialPorts{i};
-                    
-                    disp(['Testing ' port]);
-                    
-                    ss =  serial(port,'BaudRate',9600);
-                    
-                    this.s = ss;
-                    
-                    if ( this.CheckID )
-                        this.Init();
-                        return;
-                    end
+                %                 for i=length(serialInfo.AvailableSerialPorts):-1:1
+                %
+                port = 'COM3';
+                openport = instrfindall('Type', 'serial','name','Serial-COM3');
+                if ( ~isempty( openport)  )
+                    delete(openport);
                 end
+                
+                disp(['Testing ' port]);
+                
+                this.s = serial(port,'BaudRate',9600);
+                
+                this.Singleton('init');
+                
+                if ( this.CheckID )
+                    this.Init();
+                end
+                %                 end
             else     
                 this.s = ss;
+            end
+            
+            if (~isempty(this.s) && strcmp(class(this.s),'serial') && strcmp(this.s.Status, 'open'))
+                disp('Serial port should be OK');
+            else
+                error('!!!!!!!!! PROBLEM WITH BITEBAR SERIAL PORT !!!!');
             end
         end
         
@@ -73,7 +104,6 @@ classdef BiteBarMotor
         end
         
         function Close(this)
-            fclose(this.s);
         end
         
         function result = CheckID(this)
@@ -125,6 +155,15 @@ classdef BiteBarMotor
             this.CurrentAngle = angle;
         end
                 
+    end
+    
+    %% Destructor
+    methods (Access=protected)
+        function delete(this)
+            % User delete of BiteBarMotor objects is disabled. Use clear
+            % instead.
+            this.Singleton('clear');
+        end
     end
     
     methods(Access = private)

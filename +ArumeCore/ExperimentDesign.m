@@ -1003,6 +1003,7 @@ classdef ExperimentDesign < handle
             Enum.trialResult.ABORT = 1;   % Trial not finished, wrong key pressed, subject did not fixate, etc
             Enum.trialResult.ERROR = 2;   % Error during the trial
             Enum.trialResult.QUIT = 3;    % Escape was pressed during the trial
+            Enum.trialResult.SOFTABORT = 4; % Like an abort but does not go to hitkey to continue
             
             
             % -- useful key codes

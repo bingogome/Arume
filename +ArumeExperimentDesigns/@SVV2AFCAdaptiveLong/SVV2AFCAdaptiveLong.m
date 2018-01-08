@@ -138,8 +138,8 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                 
                 % SEND TO PARALEL PORT TRIAL NUMBER
                 %write a value to the default LPT1 printer output port (at 0x378)
-                nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
-                outp(hex2dec('378'),rem(nCorrect,100)*2);
+                %nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
+                %outp(hex2dec('378'),rem(nCorrect,100)*2);
                 
                 
                 while secondsRemaining > 0
@@ -156,31 +156,16 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
 
                     t1 = this.ExperimentOptions.fixationDuration/1000;
                     t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
-                    
-                    lineLength = 300;
-                    
+                                        
 %                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
                     if ( secondsElapsed > t1)
                         %-- Draw target
                         
-                        switch(variables.Position)
-                            case 'Up'
-                                fromH = mx;
-                                fromV = my;
-                                toH = mx + lineLength*sin(this.currentAngle/180*pi);
-                                toV = my - lineLength*cos(this.currentAngle/180*pi);
-                            case 'Down'
-                                fromH = mx;
-                                fromV = my;
-                                toH = mx - lineLength*sin(this.currentAngle/180*pi);
-                                toV = my + lineLength*cos(this.currentAngle/180*pi);
-                        end
-                        
-                        Screen('DrawLine', graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
+                        this.DrawLine(variables);
                         
                         % SEND TO PARALEL PORT TRIAL NUMBER
                         %write a value to the default LPT1 printer output port (at 0x378)
-                        outp(hex2dec('378'),7);
+                        %outp(hex2dec('378'),7);
                     end
                     
 %                     if (secondsElapsed < t2)
@@ -242,7 +227,7 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                         
                         % SEND TO PARALEL PORT TRIAL NUMBER
                         %write a value to the default LPT1 printer output port (at 0x378)
-                        outp(hex2dec('378'),9);
+                        %outp(hex2dec('378'),9);
                         
                         this.reactionTime = secondsElapsed-1;
                         disp(num2str(this.lastResponse));

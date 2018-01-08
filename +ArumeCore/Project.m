@@ -136,6 +136,11 @@ classdef Project < handle
             filename = fullfile( this.path, 'project.mat');
             save( filename, 'data' );
             
+            % create a backup of the last project file before overriding it
+            if ( exist(this.projectFile,'file') )
+                copyfile(this.projectFile, [this.projectFile '.aruback']);
+            end
+            
             % compress project file and keep temp folder
             tar(this.projectFile , this.path);
             movefile([this.projectFile '.tar'], this.projectFile,'f');
@@ -148,6 +153,8 @@ classdef Project < handle
             end
             
             assignin ('base','arumeData',arumeData);
+            
+            disp('========== ARUME PROJECT SAVED TO DISK =================================')
         end
         
         %

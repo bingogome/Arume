@@ -281,7 +281,7 @@ classdef Session < ArumeCore.DataDB
             data.experimentName     = this.experiment.Name;
             data.subjectCode        = this.subjectCode;
             data.sessionCode        = this.sessionCode;
-            data.comment        = this.comment;
+            data.comment            = this.comment;
             data.experimentOptions  = this.experiment.ExperimentOptions;
             
             if (~isempty( this.currentRun ))
