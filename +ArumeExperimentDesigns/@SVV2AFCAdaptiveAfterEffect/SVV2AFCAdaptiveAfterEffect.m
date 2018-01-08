@@ -439,7 +439,7 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
             torsionFolder = 'N:\RAW_DATA\SVVTorsionAfterEffect\PostProcess';
             T = nan(size(data.TimeStartTrial));
             
-            if (length(dir(fullfile(torsionFolder,[this.Session.name(1:end-1)  '*']))) == 2);
+            if (length(dir(fullfile(torsionFolder,[this.Session.name(1:end-1)  '*']))) == 2)
                 folders = dir(fullfile(torsionFolder,[this.Session.name(1:end-1)  '*']));
                 d = GetCalibratedData(fullfile(torsionFolder,folders(1).name));
                 T = CleanTorsion(d);

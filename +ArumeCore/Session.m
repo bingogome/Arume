@@ -55,6 +55,7 @@ classdef Session < ArumeCore.DataDB
         % RightVertical
         % RightTorsion
         % HeadRollTilt
+        rawDataSet
         samplesDataSet
         
         % Dataset with all the events data
@@ -146,6 +147,10 @@ classdef Session < ArumeCore.DataDB
         
         function trialDataSet = get.trialDataSet(this)
             trialDataSet = this.ReadVariable('trialDataSet');
+        end
+        
+        function rawDataSet = get.rawDataSet(this)
+            rawDataSet = this.ReadVariable('rawDataSet');
         end
         
         function samplesDataSet = get.samplesDataSet(this)
@@ -374,11 +379,14 @@ classdef Session < ArumeCore.DataDB
             varNames={'TimeStamp', 'LeftHorizontal','LeftVertical','LeftTorsion','RightHorizontal','RightVertical','RightTorsion','HeadRollTilt'};
             samplesDataSet = dataset([],[],[],[],[],[],[],[],'VarNames',varNames);
             
-            samplesDataSet = this.experiment.PrepareSamplesDataSet(samplesDataSet);
+            [samplesDataSet, rawDataSet] = this.experiment.PrepareSamplesDataSet(samplesDataSet);
             if ( ~isempty(samplesDataSet) )
                 this.WriteVariable(samplesDataSet,'samplesDataSet');
             end
             
+            if ( ~isempty(rawDataSet) )
+                this.WriteVariable(rawDataSet,'rawDataSet');
+            end
             
             %% 2) Prepare the trial dataset
             

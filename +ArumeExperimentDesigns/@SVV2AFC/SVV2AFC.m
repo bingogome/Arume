@@ -190,8 +190,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             respones = this.GetLeftRightResponses();
             respones(this.Session.trialDataSet.TrialResult>0) = [];
             
-            angles = angles(101:600);
-            respones = respones(101:600);
+             angles = angles(301:401);
+             respones = respones(301:401);
             [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
             
             
