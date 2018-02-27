@@ -146,6 +146,11 @@ classdef ArumeController < handle
                 msgbox( 'The project file does not exist.');
             end
             
+            if ( ~isempty(this.currentProject) && strcmp(this.currentProject.projectFile, file))
+                disp('Loading the same project file that is currently loaded');
+                return;
+            end
+            
             this.currentProject = ArumeCore.Project.LoadProject( file, this.configuration.tempFolder );
             this.selectedSessions = [];
             

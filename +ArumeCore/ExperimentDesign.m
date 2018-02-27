@@ -1007,6 +1007,8 @@ classdef ExperimentDesign < handle
             
             
             % -- useful key codes
+            try
+                
             KbName('UnifyKeyNames');
             Enum.keys.SPACE     = KbName('space');
             Enum.keys.ESCAPE    = KbName('ESCAPE');
@@ -1024,6 +1026,8 @@ classdef ExperimentDesign < handle
             Enum.keys.UP        = KbName('UpArrow');
             Enum.keys.RIGHT     = KbName('RightArrow');
             Enum.keys.DOWN      = KbName('DownArrow');
+            catch
+            end
             
             i=1;
             Enum.Events.EYELINK_START_RECORDING     = i;i=i+1;

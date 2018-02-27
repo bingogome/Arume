@@ -122,11 +122,11 @@ classdef Project < handle
         function save( this )
             data = [];
             data.name = this.name;
-            data.defaultExperiment = this.defaultExperiment;
+            data.defaultExperiment = this.defaultExperiment; 
             
             data.sessions = [];
             for session = this.sessions
-                if isempty( data.sessions ) 
+                if isempty( data.sessions )   
                     data.sessions = session.save();
                 else
                     data.sessions(end+1) = session.save();

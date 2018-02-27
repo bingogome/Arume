@@ -421,7 +421,7 @@ classdef MVSNystagmusSuppression < ArumeCore.ExperimentDesign
                 v(qp) = nan;
                 for i=1:length(x{j})/T
                     idx = (1:T) + (i-1)*T;
-                    idx(idx>length(x{j})) = [];
+                    idx(idx>length(v)) = [];
                     
                     vchunk = v(idx);
                     if( nanstd(vchunk) < 10)

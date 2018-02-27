@@ -1,6 +1,5 @@
 function arumeController = Arume(command, param)
 
-
 % persistent variable to keep the singleton
 persistent arumeSingleton;
 arumeController = arumeSingleton;

@@ -53,35 +53,41 @@ classdef ReboundNystagmus < ArumeCore.ExperimentDesign
             trials= this.Session.trialDataSet;
             
             t = nan(size(data.Time))';
-            for i=1:length(trials);
+            for i=1:length(trials)
                 idx = trials.StartTrialSample(i):trials.StartEccentricSample(i);
                 t(idx) =10;
                 idx = trials.StartEccentricSample(i):trials.StartReboundSample(i);
                 t(idx) =20;
                 idx = trials.StartReboundSample(i):trials.EndTrialSample(i);
                 t(idx) =30;
+                idx = trials.StartTrialSample(i):(trials.StartEccentricSample(i)-2500);
+                t(idx) =0;
             end
             
             figure
             time = data.Time/1000;
             
-            subplot(3,1,1,'nextplot','add')
+            data.LeftX(t==0) = nan;
+            data.RightX(t==0) = nan;
+            
+            subplot(1,1,1,'nextplot','add')
             plot(time, data.LeftX)
             plot(time, data.RightX)
             plot(time,t);
             ylabel('Horizontal (deg)','fontsize', 16);
+            title(this.ExperimentOptions.Condition); 
             
-            subplot(3,1,2,'nextplot','add')
-            plot(time, data.LeftY)
-            plot(time, data.RightY)
-            plot(time,t);
-            ylabel('Vertical (deg)','fontsize', 16);
-            
-            subplot(3,1,3,'nextplot','add')
-            plot(time, data.LeftT)
-            plot(time, data.RightT)
-            plot(time,t);
-            ylabel('Torsion (deg)','fontsize', 16);
+%             subplot(3,1,2,'nextplot','add')
+%             plot(time, data.LeftY)
+%             plot(time, data.RightY)
+%             plot(time,t);
+%             ylabel('Vertical (deg)','fontsize', 16);
+%             
+%             subplot(3,1,3,'nextplot','add')
+%             plot(time, data.LeftT)
+%             plot(time, data.RightT)
+%             plot(time,t);
+%             ylabel('Torsion (deg)','fontsize', 16);
             xlabel('Time (s)');
 
         end
@@ -103,6 +109,8 @@ classdef ReboundNystagmus < ArumeCore.ExperimentDesign
             
             subjects = unique(ds.Subject);
             AUC = nan(length(subjects),4,10);
+            AUCecc = nan(length(subjects),4,10);
+            SPV = cell(length(subjects),4);
             for i=1:length(subjects)
                 subjects(i)
                 for kk=1:4
@@ -117,12 +125,11 @@ classdef ReboundNystagmus < ArumeCore.ExperimentDesign
                         [lspv rspv lspvt rspvt] = this.GetSlowPhaseVelocities(sessions(d.SessionNumber(1)).samplesDataSet);
                         for j=1:10
                             
-                            idx = find(lspvt>trials.StartReboundSample(j) & lspvt<trials.StartReboundSample(j)+5*500);
-                            lspvFixt{i} = lspvt(idx);
-                            lspvFix{i} = lspv(idx);
-                            lspvFixt{i} = lspvFixt{i} - trials.StartReboundSample(i) ;
-                            x = lspvFixt{i};
-                            y = lspvFix{i};
+                            idx = find(lspvt>trials.StartReboundSample(j) & lspvt<trials.StartReboundSample(j)+15*500);
+                            lspvFixt{j} = lspvt(idx)- trials.StartReboundSample(j) ;
+                            lspvFix{j} = lspv(idx);
+                            x = lspvFixt{j};
+                            y = lspvFix{j};
                             if ( sum(~isnan(y)) >= 5 )
                                 lauc = nansum(diff(x).*(y(1:end-1)+y(2:end))/2)/(max(x)-min(x));
                             else
@@ -130,11 +137,11 @@ classdef ReboundNystagmus < ArumeCore.ExperimentDesign
                             end
                             
                             
-                            idx = find(rspvt>trials.StartReboundSample(j) & rspvt<trials.StartReboundSample(j)+5*500);
-                            rspvFixt{i} = rspvt(idx);
-                            rspvFix{i} = rspv(idx);
-                            x = rspvFixt{i};
-                            y = rspvFix{i};
+                            idx = find(rspvt>trials.StartReboundSample(j) & rspvt<trials.StartReboundSample(j)+15*500);
+                            rspvFixt{j} = rspvt(idx) - trials.StartReboundSample(j) ;
+                            rspvFix{j} = rspv(idx);
+                            x = rspvFixt{j};
+                            y = rspvFix{j};
                             if ( sum(~isnan(y)) >= 5 )
                                 rauc = nansum(diff(x).*(y(1:end-1)+y(2:end))/2)/(max(x)-min(x));
                             else
@@ -147,10 +154,149 @@ classdef ReboundNystagmus < ArumeCore.ExperimentDesign
                             else
                                 AUC(i,kk,j) = nanmean([lauc rauc]);
                             end
+                            
                         end
+                        
+                        %%
+                        tbins = 0:0.5:15;
+                        spvsubj = nan(10, length(tbins)-2);
+                        for j=1:10
+                            spvt = [lspvFixt{j}/500;rspvFixt{j}/500;];
+                            spvv = [lspvFix{j};rspvFix{j}];
+                            for tt=1:length(tbins)-2
+                                idx = spvt>tbins(tt) & spvt<tbins(tt+2);
+                                
+                                jj = j;
+                                if ( strcmp(subjects{i},'GK') )
+                                    jj = mod(j+4,10)+1;
+                                end
+                                
+                                if ( jj>5)
+                                    spvsubj(jj,tt) = -nanmedian(spvv(idx));
+                                else
+                                    spvsubj(jj,tt) = nanmedian(spvv(idx));
+                                end
+                            end
+                        end
+                        SPV{i,kk} = nanmedian(spvsubj);
+                        
+                        %% ECCENTRIC SPV
+                        for j=1:10
+                             
+                            idx = find(lspvt>trials.StartEccentricSample(j)+10*500 & lspvt<trials.StartEccentricSample(j)+20*500);
+                            lspvFixt{j} = lspvt(idx) - trials.StartReboundSample(j) ;
+                            lspvFix{j} = lspv(idx);
+                            x = lspvFixt{j};
+                            y = lspvFix{j};
+                            if ( sum(~isnan(y)) >= 5 )
+                                lauc = nansum(diff(x).*(y(1:end-1)+y(2:end))/2)/(max(x)-min(x));
+                            else
+                                lauc = nan;
+                            end
+                            
+                            
+                            idx = find(rspvt>trials.StartEccentricSample(j)+10*500 & rspvt<trials.StartEccentricSample(j)+20*500);
+                            rspvFixt{j} = rspvt(idx) - trials.StartReboundSample(j) ;
+                            rspvFix{j} = rspv(idx);
+                            x = rspvFixt{j};
+                            y = rspvFix{j};
+                            if ( sum(~isnan(y)) >= 5 )
+                                rauc = nansum(diff(x).*(y(1:end-1)+y(2:end))/2)/(max(x)-min(x));
+                            else
+                                rauc = nan;
+                            end
+                            
+                            if ( strcmp(subjects{i},'GK') )
+                                jj = mod(j+4,10)+1;
+                                AUCecc(i,kk,jj) = nanmean([lauc rauc]);
+                            else
+                                AUCecc(i,kk,j) = nanmean([lauc rauc]);
+                            end
+                        end
+                        
+                        %%
+                        
+                        
                     end
                 end
             end
+            %%
+            tbins = 0:0.5:15;
+            m1 = mean(cell2mat(SPV(:,1)));
+            m2 = mean(cell2mat(SPV(:,2)));
+            m3 = mean(cell2mat(SPV(:,3)));
+            m4 = mean(cell2mat(SPV(:,4)));
+            ss1 = std(cell2mat(SPV(:,1)))/sqrt(6);
+            ss2 = std(cell2mat(SPV(:,2)))/sqrt(6);
+            ss3 = std(cell2mat(SPV(:,3)))/sqrt(6);
+            ss4 = std(cell2mat(SPV(:,4)))/sqrt(6);
+            
+            figure('color','w','position', [116         446        1490         420])
+            
+            subplot(1,8,[1:2],'nextplot','add','fontsize',14);
+            errorbar(tbins(2:end-1),m1,ss1,'linewidth',2);
+            errorbar(tbins(2:end-1),m2,ss2,'linewidth',2);
+            set(gca,'ylim',[-1 6],'xlim',[0 15])
+            xlabel('Time after returning to center (s)')
+            ylabel('Slow-phase velocity (deg/s)');
+            legend({'Flashing target' 'Continuos target'},'box','off');
+               
+            amp = [];
+            tau = [];
+            for i=1:6
+                subplot(1,8,i+2,'nextplot','add')
+                for j=1:2
+                    plot(tbins(2:end-1), SPV{i,j},'-o');
+                end
+                for j=1:2
+                    x = tbins(2:end-1)';
+                    y =SPV{i,j}';
+                    f = fit(x,y,'exp1','StartPoint',[5,5], 'Lower',[0 -1],'upper',[10 -0.05]);
+                    plot(x,f(x),'color',[0.5 0.5 0.5])
+                    
+                    c = coeffvalues(f);
+                    tau(i,j) = -1/c(2);
+                    amp(i,j) = c(1);
+                end
+                set(gca,'ylim',[-1 6],'xlim',[0 15],'xticklabel',[],'yticklabel',[]);
+                title(sprintf('S%d',i));
+                legend({sprintf('\\tau = %0.2f',tau(i,1)), sprintf('\\tau = %0.2f',tau(i,2))},'box','off');
+            end
+            
+            figure('color','w','position', [116         456        1490         420])
+            subplot(1,8,[1:2],'nextplot','add')
+            errorbar(tbins(2:end-1),m1,ss1,'linewidth',2);
+            errorbar(tbins(2:end-1),m3,ss3,'linewidth',2);
+            errorbar(tbins(2:end-1),m4,ss4,'linewidth',2);
+            set(gca,'ylim',[-1 6],'xlim',[0 15],'fontsize',14);
+            xlabel('Time after returning to center (s)')
+            ylabel('Slow-phase velocity (deg/s)');
+            legend({'Single saccade' 'Smooth pursuit' 'Step saccades'},'box','off');
+            
+            for i=1:6
+                subplot(1,8,i+2,'nextplot','add')
+                for j=[1 3 4]
+                    plot(tbins(2:end-1),SPV{i,j},'-o');
+                end
+                for j=[1 3 4]
+                    x = tbins(2:end-1)';
+                    y =SPV{i,j}';
+                    f = fit(x,y,'exp1','StartPoint',[5,5], 'Lower',[0 -1],'upper',[10 -0.05]);
+                    plot(x,f(x),'color',[0.5 0.5 0.5])
+                    
+                    c = coeffvalues(f);
+                    tau(i,j) = -1/c(2);
+                    amp(i,j) = c(1);
+                end
+                set(gca,'ylim',[-1 6],'xlim',[0 15],'xticklabel',[],'yticklabel',[]);
+                title(sprintf('S%d',i));
+                legend({sprintf('\\tau = %0.2f',tau(i,1)), sprintf('\\tau = %0.2f',tau(i,3)), sprintf('\\tau = %0.2f',tau(i,4))},'box','off');
+            end
+            
+            %%
+            
+            figure
+            plot(AUCecc(:),AUC(:),'o')
             
             figure
             for i=1:length(subjects)
@@ -162,13 +308,62 @@ classdef ReboundNystagmus < ArumeCore.ExperimentDesign
                 xlabel('Trial');
                 ylabel('Avg SPV');
             end
+            
+            figure
+            for i=1:length(subjects)
+                subplot(2,length(subjects)/2,i);
+                bar(squeeze(AUCecc(i,:,:))','LineStyle','none');
+                set(gca,'ylim',[-10 10])
+                set(gca,'xlim',[0 11])
+                title(subjects{i})
+                xlabel('Trial');
+                ylabel('Avg SPV');
+            end
+            %%
             figure
             subplot(1,2,1,'fontsize',14);
-            m = squeeze(nanmean(AUC(:,:,:),1))';
+            m = squeeze(nanmedian(AUC(:,:,:),1))';
             s = squeeze(nanstd(AUC(:,:,:),1))';
             errorbar(m(1:5,:),s(1:5,:)./sqrt(squeeze(sum(~isnan((AUC(:,:,1:5))),1))'),'linewidth',2);
             hold
             errorbar(m(6:10,:),s(6:10,:)./sqrt(squeeze(sum(~isnan((AUC(:,:,6:10))),1))'),'linewidth',2);
+%             legend({'F1' 'F3' 'F4' 'F5' 'F1' 'F3' 'F4' 'F5'})
+%                 title('Average')
+                xlabel('Trial');
+                ylabel('Avg SPV');
+                set(gca,'ylim',[-10 10])
+                
+            subplot(1,2,2,'fontsize',14);
+            AUCr = (AUC(:,:,1:5) - AUC(:,:,6:10))/2;
+            m = squeeze(nanmedian(AUCr(:,:,:),1))';
+            s = squeeze(nanstd(AUCr(:,:,:),1))';
+            errorbar(m,s./sqrt(squeeze(sum(~isnan((AUCr(:,:,:))),1))'),'linewidth',2);
+            legend({'Single saccade (flashing)' 'Single saccade (continuos)' 'Smooth pursuit' 'Step saccades'},'box','off');
+%                 title('Average')
+                xlabel('Trial');
+                ylabel('Avg SPV');
+                set(gca,'ylim',[0 3])
+                
+                
+                figure
+                AUCr2 = squeeze(mean(AUCr,2));
+            m = squeeze(nanmedian(AUCr2,1))';
+            s = squeeze(nanstd(AUCr2,1))';
+            errorbar(m,s./sqrt(squeeze(sum(~isnan((AUCr2)),1))'),'linewidth',2);
+            legend({'Single saccade (flashing)' 'Single saccade (continuos)' 'Smooth pursuit' 'Step saccades'},'box','off');
+%                 title('Average')
+                xlabel('Trial');
+                ylabel('Avg SPV');
+                set(gca,'ylim',[0 3])
+                %%
+                
+            figure
+            subplot(1,2,1,'fontsize',14);
+            m = squeeze(nanmean(AUCecc(:,:,:),1))';
+            s = squeeze(nanstd(AUCecc(:,:,:),1))';
+            errorbar(m(1:5,:),s(1:5,:)./sqrt(squeeze(sum(~isnan((AUCecc(:,:,1:5))),1))'),'linewidth',2);
+            hold
+            errorbar(m(6:10,:),s(6:10,:)./sqrt(squeeze(sum(~isnan((AUCecc(:,:,6:10))),1))'),'linewidth',2);
             legend({'F1' 'F3' 'F4' 'F5' 'F1' 'F3' 'F4' 'F5'})
                 title('Average')
                 xlabel('Trial');
@@ -176,15 +371,27 @@ classdef ReboundNystagmus < ArumeCore.ExperimentDesign
                 set(gca,'ylim',[-10 10])
                 
             subplot(1,2,2,'fontsize',14);
-            AUC = (AUC(:,:,1:5) - AUC(:,:,6:10))/2;
-            m = squeeze(nanmean(AUC(:,:,:),1))';
-            s = squeeze(nanstd(AUC(:,:,:),1))';
-            errorbar(m,s./sqrt(squeeze(sum(~isnan((AUC(:,:,:))),1))'),'linewidth',2);
-            legend({'F1' 'F3' 'F4' 'F5'})
+            AUCeccr = (-AUCecc(:,:,1:5) + AUCecc(:,:,6:10))/2;
+            m = squeeze(nanmean(AUCeccr(:,:,:),1))';
+            s = squeeze(nanstd(AUCeccr(:,:,:),1))';
+            errorbar(m,s./sqrt(squeeze(sum(~isnan((AUCeccr(:,:,:))),1))'),'linewidth',2);
+            legend({'Single saccade (flashing)' 'Single saccade (continuos)' 'Smooth pursuit' 'Step saccades'},'box','off');
                 title('Average')
                 xlabel('Trial');
                 ylabel('Avg SPV');
-                set(gca,'ylim',[-10 10])
+                set(gca,'ylim',[-1 5])
+                
+                figure
+                
+                AUCeccr2 = squeeze(mean(AUCeccr,2));
+            m = squeeze(nanmedian(AUCeccr2,1))';
+            s = squeeze(nanstd(AUCeccr2,1))';
+            errorbar(m,s./sqrt(squeeze(sum(~isnan((AUCeccr2)),1))'),'linewidth',2);
+            legend({'Single saccade (flashing)' 'Single saccade (continuos)' 'Smooth pursuit' 'Step saccades'},'box','off');
+%                 title('Average')
+                xlabel('Trial');
+                ylabel('Avg SPV');
+                set(gca,'ylim',[0 3])
         end
         
         
@@ -298,7 +505,7 @@ classdef ReboundNystagmus < ArumeCore.ExperimentDesign
             lspvFix = {};
             lspvtFix = {};
             for i=1:size(trials,1)
-                idx = find(lspvt>trials.StartReboundSample(i) & lspvt<trials.EndTrialSample(i));
+                idx = find(lspvt>trials.StartEccentricSample(i) & lspvt<trials.EndTrialSample(i));
                 lspvFixt{i} = lspvt(idx);
                 lspvFix{i} = lspv(idx);
                 lspvFixt{i} = lspvFixt{i} - trials.StartReboundSample(i) ;
@@ -307,7 +514,7 @@ classdef ReboundNystagmus < ArumeCore.ExperimentDesign
             rspvFix = {};
             rspvtFix = {};
             for i=1:size(trials,1)
-                idx = find(rspvt>trials.StartReboundSample(i) & rspvt<trials.EndTrialSample(i));
+                idx = find(rspvt>trials.StartEccentricSample(i) & rspvt<trials.EndTrialSample(i));
                 rspvFixt{i} = rspvt(idx);
                 rspvFix{i} = rspv(idx);
                 rspvFixt{i} = rspvFixt{i} - trials.StartReboundSample(i) ;
@@ -348,6 +555,28 @@ classdef ReboundNystagmus < ArumeCore.ExperimentDesign
                     legend({'Left','Right'});
                 end
             end
+            
+            
+            %%
+            figure
+            tbins = 0:0.5:15;
+            spv = nan(length(tbins)-2,10);
+            for j=1:10
+                for i=1:length(tbins)-2
+                    spvt = [lspvFixt{j}/500;rspvFixt{j}/500;];
+                    spvv = [lspvFix{j};rspvFix{j}];
+                    idx = spvt>tbins(i) & spvt<tbins(i+2);
+                    
+                    if ( j>5)
+                        spv(i,j) = -nanmedian(spvv(idx));
+                    else
+                        spv(i,j) = nanmedian(spvv(idx));
+                    end
+                end
+            end
+            plot(tbins(2:end-1),nanmedian(spv,2),'o')
+            
+            %%
 %             
 %             figure
 %             AUC = nan(1,10);

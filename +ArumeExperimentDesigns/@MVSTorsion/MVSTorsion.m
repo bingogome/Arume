@@ -19,7 +19,7 @@ classdef MVSTorsion < ArumeCore.ExperimentDesign
             % Important variables to use:
             %
             % this.ExperimentOptions.NAMEOFOPTION will contain the values
-            %       from GetOptionsDialog
+            %       from GetOptionsDialog   
             %
             %
         end
@@ -47,10 +47,10 @@ classdef MVSTorsion < ArumeCore.ExperimentDesign
             trialDataSet.TrialNumber(1) = 1;
             trialDataSet.TrialResult(1) = 1;
             trialDataSet.StartTrialSample(1) = 1;
-            trialDataSet.EndTrialSample(1) = length(this.Session.samplesDataSet);
+            trialDataSet.EndTrialSample(1) = size(this.Session.samplesDataSet,1);
         end
         
-        function samplesDataSet = PrepareSamplesDataSet(this, samplesDataSet)
+        function [samplesDataSet, rawData] = PrepareSamplesDataSet(this, samplesDataSet)
             
             % load data
             rawData = VOG.LoadVOGdataset(this.ExperimentOptions.EyeDataFile);
@@ -58,8 +58,10 @@ classdef MVSTorsion < ArumeCore.ExperimentDesign
             % calibrate data
             [calibratedData leftEyeCal rightEyeCal] = VOG.CalibrateData(rawData, this.ExperimentOptions.EyeCalibrationFile);
             
+            [rawData, samplesDataSet] = VOG.ResampleAndCleanData2(calibratedData);
+%             
             % clean data
-            samplesDataSet = VOG.ResampleAndCleanData(calibratedData);
+%             samplesDataSet = VOG.ResampleAndCleanData(calibratedData);
         end
         
         function samplesDataSet = PrepareEventDataSet(this, eventDataset)
@@ -90,24 +92,107 @@ classdef MVSTorsion < ArumeCore.ExperimentDesign
             figure
             subplot(3,1,1,'nextplot','add')
             grid
-            plot(t,vxl,'.')
-            plot(t,vxr,'.')
+            plot(t,vxl,'o')
+            plot(t,vxr,'o')
             ylabel('Horizontal (deg/s)')
             subplot(3,1,2,'nextplot','add')
             grid
             set(gca,'ylim',[-20 20])
-            plot(t,vyl,'.')
-            plot(t,vyr,'.')
+            plot(t,vyl,'o')
+            plot(t,vyr,'o')
             ylabel('Vertical (deg/s)')
             subplot(3,1,3,'nextplot','add')
             set(gca,'ylim',[-20 20])
-            plot(t,vtl,'.')
-            plot(t,vtr,'.')
+            plot(t,vtl,'o')
+            plot(t,vtr,'o')
             ylabel('Torsional (deg/s)')
             grid
             set(gca,'ylim',[-20 20])
             xlabel('Time (s)');
             linkaxes(get(gcf,'children'))
+            
+            
+            %%
+            t = this.Session.analysisResults.SPV.Time;
+            pos = (this.Session.analysisResults.SPV.LeftXPos+this.Session.analysisResults.SPV.RightXPos)/2;
+            pos = pos-nanmedian(pos);
+            v = (this.Session.analysisResults.SPV.LeftX+this.Session.analysisResults.SPV.RightX)/2;
+%             v = (this.Session.analysisResults.SPV.LeftX);
+            
+            leftIdx = find(pos<-10);
+            rightIdx = find(pos>10);
+            centerIdx =  find(pos>-5 & pos<5);
+            
+%             figure
+%             subplot(2,1,1,'nextplot','add')
+%             plot(t(leftIdx),pos(leftIdx),'.','markersize',6)
+%             plot(t(rightIdx),pos(rightIdx),'.','markersize',6)
+%             plot(t(centerIdx),pos(centerIdx),'.','markersize',6)
+%             subplot(2,1,2,'nextplot','add')
+%             plot(t(leftIdx),v(leftIdx),'.','markersize',6)
+%             plot(t(rightIdx),v(rightIdx),'.','markersize',6)
+%             plot(t(centerIdx),v(centerIdx),'.','markersize',6)
+            
+            VbinLeft = [];
+            VbinRight = [];
+            VbinCenter = [];
+            VbinLeftPos = [];
+            VbinRightPos = [];
+            VbinCenterPos = [];
+            
+            D  = 11;
+            for i=1:D*6
+                idx = (1:20) + (i-1)*20;
+                Pchunk = pos(idx);
+                Vchunk = v(idx); 
+                VbinRight(i) = nanmedian(Vchunk(Pchunk>10));
+                VbinLeft(i) = nanmedian(Vchunk(Pchunk<-10));
+                VbinCenter(i) = nanmedian(Vchunk(Pchunk>-5 & Pchunk<5));
+                VbinRightPos(i) = nanmedian(Pchunk(Pchunk>10));
+                VbinLeftPos(i) = nanmedian(Pchunk(Pchunk<-10));
+                VbinCenterPos(i) = nanmedian(Pchunk(Pchunk>-5 & Pchunk<5));
+            end
+            %%
+            figure
+            subplot(3,1,1,'nextplot','add')
+            plot((1:D*6)/6,VbinLeftPos,'o','markerSize',10);
+            plot((1:D*6)/6,VbinRightPos,'o','markerSize',10);
+            plot((1:D*6)/6,VbinCenterPos,'o','markerSize',10);
+            xlabel('Time (min)');
+            ylabel('Eye position (deg)');
+            legend({'Left gaze', 'Right gaze', 'Center gaze'});
+            grid
+            
+            subplot(3,1,2,'nextplot','add')
+            plot((1:D*6)/6,VbinLeft,'o','markerSize',10);
+            plot((1:D*6)/6,VbinRight,'o','markerSize',10);
+            plot((1:D*6)/6,VbinCenter,'o','markerSize',10);
+            xlabel('Time (min)');
+            ylabel('Slow phase velocity (deg/s)');
+            legend({'Left gaze', 'Right gaze', 'Center gaze'});
+            grid
+                        
+            subplot(3,1,3,'nextplot','add')
+            plot((1:D*6)/6,VbinLeft-VbinCenter,'o','markerSize',10);
+            plot((1:D*6)/6,VbinRight-VbinCenter,'o','markerSize',10);
+            plot((1:D*6)/6,VbinCenter-VbinCenter,'o','markerSize',10);
+            xlabel('Time (min)');
+            ylabel('Slow phase velocity - Left-Right (deg/s)');
+            grid
+            
+            %%
+            figure
+            subplot(2,1,1,'nextplot','add')
+            plot(VbinLeftPos, VbinLeft-VbinCenter,'.')
+            plot(VbinRightPos, VbinRight-VbinCenter,'.')
+            ylabel('SPV difference eccentric-center (deg/s)')
+            xlabel('Eye position (deg)');
+            subplot(2,1,2,'nextplot','add')
+            plot(abs(VbinCenter), abs(VbinLeft-VbinRight),'.')
+            xlabel('Abs Eye velocity at center (deg/s)');
+            ylabel('Abs SPV difference left-right (deg/s)')
+            
+            
             
         end
     end
@@ -122,6 +207,15 @@ classdef MVSTorsion < ArumeCore.ExperimentDesign
         %             analysisResults = [];
         %         end
         
+        function analysisResults = Analysis_SlowPhaseQuickPhase(this)
+            
+            [qp_props,sp_props] = VOG.GetQuickAndSlowPhaseProperties(this.Session.samplesDataSet);
+                        
+            analysisResults.SlowPhases = sp_props;
+            analysisResults.QuickPhases = qp_props;
+            
+        end
+        
         function analysisResults = Analysis_SPV(this)
             
             x = { this.Session.samplesDataSet.LeftX, ...
@@ -132,35 +226,42 @@ classdef MVSTorsion < ArumeCore.ExperimentDesign
                 this.Session.samplesDataSet.RightT};
             lx = x{1};
             T = 500;
-            t = 1:ceil(length(lx)/T);
-            spv = {nan(ceil(length(lx)/T),1), ...
-                nan(ceil(length(lx)/T),1), ...
-                nan(ceil(length(lx)/T),1), ...
-                nan(ceil(length(lx)/T),1), ...
-                nan(ceil(length(lx)/T),1), ...
-                nan(ceil(length(lx)/T),1)};
+            t = 1:ceil(length(lx)/T*2);
+            spv = {nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1)};
+            spvPos = {nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1)};
             
             for j =1:length(x)
                 v = diff(x{j})*500;
                 v1 = diff(x{2})*500;
                 qp = boxcar(abs(v1)>50,10)>0;
                 v(qp) = nan;
-                for i=1:length(x{j})/T
-                    idx = (1:T) + (i-1)*T;
+                for i=1:length(x{j})/T*2
+                    idx = (1:T) + (i-1)*T/2;
                     idx(idx>length(v)) = [];
                     
                     vchunk = v(idx);
+                    xchunk = x{j}(idx);
                     if( nanstd(vchunk) < 20)
                         spv{j}(i) =  nanmedian(vchunk);
+                        spvPos{j}(i) =  nanmedian(xchunk);
                     end
                 end
             end
             
-            analysisResults = dataset(t', spv{1}, spv{3}, spv{5}, spv{2}, spv{4}, spv{6}, ...
-                'varnames',{'Time' 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'});
+            analysisResults = dataset(t', spv{1}, spv{3}, spv{5}, spv{2}, spv{4}, spv{6}, spvPos{1}, spvPos{3}, spvPos{5}, spvPos{2}, spvPos{4}, spvPos{6}, ...
+                'varnames',{'Time' 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'  'LeftXPos', 'LeftYPos' 'LeftTPos' 'RightXPos' 'RightYPos' 'RightTPos'});
         end
-        
-        
+                
         function plotResults = Plot_PlotSPVFeetAndHead(this)
             
             t1 = this.Session.analysisResults.SPV.Time;
@@ -212,6 +313,22 @@ classdef MVSTorsion < ArumeCore.ExperimentDesign
                 text( eventTimes(i), ylim(2)-mod(i,2)*5-5, events{i});
             end
             line(xlim, [0 0],'color',[0.5 0.5 0.5])
+        end
+        
+        
+        function  plotResults = Plot_RawDataDebug(this)
+            VOG.PlotCleanAndResampledData(this.Session.rawDataSet, this.Session.samplesDataSet);
+            plotResults = [];
+        end
+        
+        function  plotResults = Plot_SaccadeDetectionDebug(this)
+            VOG.PlotQuickPhaseDebug(this.Session.samplesDataSet);
+            plotResults = [];
+        end
+        
+        function  plotResults = Plot_SaccadeTraces(this)
+            VOG.PlotSaccades(this.Session.samplesDataSet);
+            plotResults = [];
         end
     end
     
