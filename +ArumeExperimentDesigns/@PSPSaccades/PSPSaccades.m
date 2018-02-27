@@ -1,54 +1,44 @@
-classdef SaccadicSupression < ArumeExperimentDesigns.Fixation
-    %OPTOKINETICTORSION Summary of this class goes here
-    %   Detailed explanation goes here
+classdef PSPSaccades < ArumeCore.ExperimentDesign
     
     properties
-    end
+        eyeTracker
         
+        fixRad = 20;
+        fixColor = [255 0 0];
+    end
+    
     % ---------------------------------------------------------------------
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods ( Access = protected )
-        
         function dlg = GetOptionsDialog( this )
             dlg.UseEyeTracker = { {'{0}' '1'} };
-            dlg.Shuffle = { {'0' '{1}'} };
-            dlg.TargetDiameter = { 0.2 '* (deg)' [0.1 10] };
             
-            dlg.Trial_Duration =  { 2 '* (s)' [0 500] };
+            dlg.TargetSize = 0.3;
+            dlg.FixationMinDuration = 1200;
+            dlg.FixationMaxDuration = 2000;
+            dlg.EccentricDuration   = 1500;
             
-            dlg.ScreenDistance = { 124 '* (cm)' [1 200] };
-            dlg.ScreenWidth = { 40 '* (cm)' [1 200] };
-            dlg.ScreenHeight = { 30 '* (cm)' [1 200] };
+            dlg.NumberOfRepetitions = 10;
             
-            dlg.AspectRatio = {{'1/1' '{4/3}'}};
+            dlg.ScreenWidth = 100;
+            dlg.ScreenHeight = 100;
+            dlg.ScreenDistance =100;
             
-            dlg.NumberOfRepetitions = { 1 '* (N)' [1 200] };
-            
-            dlg.BackgroundBrightness = { 50 '* (%)' [0 100] };
-            
-            
-            
-            
-            dlg.Mode = {{'{TopBottom}' 'LeftRight'}};
-            dlg.FlashDuration = { 100 '* (ms)' [10 1000] };
-            dlg.BarSize = { 0.2 '* (%total)' [0 0.5] };
+            dlg.BackgroundBrightness = 50;
         end
         
         function initExperimentDesign( this  )
             this.HitKeyBeforeTrial = 0;
             this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness/100*255;
-            this.trialDuration = this.ExperimentOptions.Trial_Duration; %seconds
-                        
+            
+            this.trialDuration = 3; %seconds
+            
             % default parameters of any experiment
-            if ( this.ExperimentOptions.Shuffle )
-                this.trialSequence = 'Random';	% Sequential, Random, Random with repetition, ...
-            else
-                this.trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            end
+            this.trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
             
             this.trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
-            this.trialsPerSession = this.NumberOfConditions*this.ExperimentOptions.NumberOfRepetitions;
+            this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
@@ -56,6 +46,7 @@ classdef SaccadicSupression < ArumeExperimentDesigns.Fixation
             this.blocksToRun = 1;
             this.blocks = [ ...
                 struct( 'fromCondition', 1, 'toCondition', this.NumberOfConditions, 'trialsToRun', this.NumberOfConditions  )];
+            
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -63,8 +54,25 @@ classdef SaccadicSupression < ArumeExperimentDesigns.Fixation
             i= 0;
             
             i = i+1;
-            conditionVars(i).name   = 'TimeOffset';
-            conditionVars(i).values = 0:100:500;
+            conditionVars(i).name   = 'TargetLocation';
+            conditionVars(i).values = {[2,0], [-2,0], [5,0], [-5,0], [8,0], [-8,0], [10,0], [-10,0], [0,2], [0,-2], [0,5], [0,-5], [0,8], [0,-8], [0,10], [0,-10]};
+        end
+        
+        function initBeforeRunning( this )
+
+            if ( this.ExperimentOptions.UseEyeTracker )
+                this.eyeTracker = ArumeHardware.VOG();
+                this.eyeTracker.Connect();
+                this.eyeTracker.StartRecording();
+            end
+                
+        end
+        
+        function cleanAfterRunning(this)
+            
+                if ( this.ExperimentOptions.UseEyeTracker )
+                    this.eyeTracker.StopRecording();
+                end
         end
         
         function trialResult = runPreTrial(this, variables )
@@ -73,7 +81,6 @@ classdef SaccadicSupression < ArumeExperimentDesigns.Fixation
             trialResult =  Enum.trialResult.CORRECT;
         end
         
-        
         function trialResult = runTrial( this, variables )
                        
             try            
@@ -81,7 +88,7 @@ classdef SaccadicSupression < ArumeExperimentDesigns.Fixation
                 Enum = ArumeCore.ExperimentDesign.getEnum();
                 
                 if ( this.ExperimentOptions.UseEyeTracker )
-                    this.eyeTracker.RecordEvent(['new trial']);
+                    this.eyeTracker.RecordEvent(['new trial [' num2str(variables.TargetLocation(1)) ',' num2str(variables.TargetLocation(2)) ']'] );
                 end
                 
                 graph = this.Graph;
@@ -92,42 +99,47 @@ classdef SaccadicSupression < ArumeExperimentDesigns.Fixation
                 %-- add here the trial code
                 
                 lastFlipTime        = GetSecs;
-                secondsRemaining    = this.trialDuration;
+                
+                
+                d = rand*(this.ExperimentOptions.FixationMaxDuration -  this.ExperimentOptions.FixationMinDuration);
+                fixDuration = (this.ExperimentOptions.FixationMinDuration + d)/1000;
+                totalDuration = fixDuration + this.ExperimentOptions.EccentricDuration/1000;
+                
+                secondsRemaining    = totalDuration;
                 
                 startLoopTime = lastFlipTime;
                 
                 while secondsRemaining > 0
                     
                     secondsElapsed      = GetSecs - startLoopTime;
-                    secondsRemaining    = this.trialDuration - secondsElapsed;
+                    secondsRemaining    = totalDuration - secondsElapsed;
                     
                     
                     % -----------------------------------------------------------------
                     % --- Drawing of stimulus -----------------------------------------
                     % -----------------------------------------------------------------
                     
-                    %-- Find the center of the screen
-                    [mx, my] = RectCenter(graph.wRect);
+                    if (secondsElapsed < fixDuration )
+                        xdeg = 0;
+                        ydeg = 0;
+                    else
+                        xdeg = variables.TargetLocation(1);
+                        ydeg = variables.TargetLocation(2);
+                    end
+                        
+                    
+                    [mx, my] = RectCenter(this.Graph.wRect);
+                    xpix = mx + this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(xdeg/180*pi);
+                    aspectRatio = 1;
+                    ypix = my + this.Graph.pxHeight/this.ExperimentOptions.ScreenHeight * this.ExperimentOptions.ScreenDistance * tan(ydeg/180*pi)*aspectRatio;
                     
                     %-- Draw fixation spot
-                    targetPix = this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(this.ExperimentOptions.TargetDiameter/180*pi);
+                    targetPix = this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(this.ExperimentOptions.TargetSize/180*pi);
                     fixRect = [0 0 targetPix targetPix];
-
-                    fixRect = CenterRectOnPointd( fixRect, mx, my );
+                    fixRect = CenterRectOnPointd( fixRect, xpix, ypix );
                     Screen('FillOval', graph.window, this.fixColor, fixRect);
                     
                     
-                    onsetTime = this.trialDuration/2 + variables.TimeOffset;
-                    offsetTime= this.trialDuration/2 + variables.TimeOffset+this.ExperimentOptions.FlashDuration; 
-                    if ( secondsElapsed*1000 > onsetTime && secondsElapsed*1000 < offsetTime )
-                        topRect  = graph.wRect;
-                        topRect(4) = topRect(4)*this.ExperimentOptions.BarSize;
-                        
-                        bottomRect = graph.wRect;
-                        bottomRect(2) = bottomRect(4)*(1-this.ExperimentOptions.BarSize);
-                        Screen('FillRect', graph.window, this.fixColor, topRect );
-                        Screen('FillRect', graph.window, this.fixColor, bottomRect );
-                    end
                     % -----------------------------------------------------------------
                     % --- END Drawing of stimulus -------------------------------------
                     % -----------------------------------------------------------------
@@ -161,19 +173,69 @@ classdef SaccadicSupression < ArumeExperimentDesigns.Fixation
         function trialOutput = runPostTrial(this)
             trialOutput = [];   
         end
+        
     end
     
-    % ---------------------------------------------------------------------
-    % Data Analysis methods
-    % ---------------------------------------------------------------------
-    methods ( Access = public )
+    % --------------------------------------------------------------------
+    %% Analysis methods --------------------------------------------------
+    % --------------------------------------------------------------------
+    methods
+        
+        function trialDataSet = PrepareTrialDataSet( this, ds)
+            trialDataSet = ds;
+        end
+            
+        function samplesDataSet = PrepareSamplesDataSet(this, trialDataSet, dataFile, calibrationFile)
+            if ( ~exist('dataFile','var') || ~exist('calibrationFile', 'var') )
+                res = questdlg('Do you want to import the eye data?', 'Import data', 'Yes', 'No', 'Yes');
+                if ( streq(res,'No'))
+                    return;
+                end
+            end
+            
+            S = [];
+            
+            if ( ~exist('dataFile', 'var') )
+                S.Data_File = { {'uigetfile(''*.txt'')'} };
+            end
+            
+            if ( ~exist('calibrationFile', 'var') )
+                S.Calibration_File = { {'uigetfile(''*.cal'')'} };
+            end
+            
+            S = StructDlg(S,'Select data file',[]);
+            if ( isempty(S) )
+                return;
+            end
+            
+            if ( ~exist('dataFile', 'var') )
+                dataFile = S.Data_File;
+            end
+            
+            if ( ~exist('calibrationFile', 'var') )
+                calibrationFile = S.Calibration_File;
+            end
+            
+            sessionVogDataFile = fullfile(this.Session.dataRawPath,[this.Session.name '_VOGData.txt']);
+            sessionVogCalibrationFile = fullfile(this.Session.dataRawPath,[this.Session.name '_VOGCalibration.cal']);
+            
+            copyfile(dataFile, sessionVogDataFile);
+            copyfile(calibrationFile, sessionVogCalibrationFile);
+            
+            dataset = GetCalibratedData(sessionVogDataFile, sessionVogCalibrationFile, 1);
+            
+            samplesDataSet = dataset;
+        end
     end
     
     % ---------------------------------------------------------------------
     % Plot  methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
-        
+        function plotResults = Plot_Traces(this)
+            figure
+            
+        end
     end
     
     % ---------------------------------------------------------------------
