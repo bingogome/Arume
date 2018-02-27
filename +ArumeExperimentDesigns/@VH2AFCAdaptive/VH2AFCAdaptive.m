@@ -1,4 +1,4 @@
-classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
+classdef VH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
     
     properties
         currentAngle = 0;
@@ -6,6 +6,7 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
         currentRange = 180;
         
         motorAngle = 0;
+        visualLineAngle = 0;
         initialAccelerometerAngle = 0;
         endAccelerometerAngle = 0;
     end
@@ -32,9 +33,9 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 10;
+            this.numberOfTimesRepeatBlockSequence = 4;
             this.blocksToRun = 1;
-            this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 5, 'trialsToRun', 10) ];
+            this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 25, 'trialsToRun', 25) ];
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -48,6 +49,10 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             i = i+1;
             conditionVars(i).name   = 'Position';
             conditionVars(i).values = {'Up'};
+            
+            i = i+1;
+            conditionVars(i).name   = 'VisualLineAngle';
+            conditionVars(i).values = ([-10:10/2.5:10-10/5]+10/5);
         end
         
         function [ randomVars] = getRandomVariables( this )
@@ -145,18 +150,21 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                 
                 trialResult = Enum.trialResult.CORRECT;
                 
+                this.visualLineAngle = variables.VisualLineAngle;
+                this.motorAngle = this.visualLineAngle + this.currentAngle;
+                
                 % MOVE MOTOR
                 % beep before moving the motor
                 
                 SingleBeep(1000);
                 startMotorTime = Screen('Flip', graph.window);
-                this.motorAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
+                
                 this.initialAccelerometerAngle = this.hapticDevice.getCurrentAngle();
                 %                 pause(.5);
                 this.hapticDevice.directMove(this.motorAngle);
                 
-%                 while GetSecs - startMotorTime < 1
-%                 end
+                %                 while GetSecs - startMotorTime < 1
+                %                 end
                 
                 % checking if the end angle is desired angle
                 this.endAccelerometerAngle = this.hapticDevice.getCurrentAngle();
@@ -188,26 +196,30 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                     
                     lineLength = 300;
                     
-                    % if ( secondsElapsed > t1 && secondsElapsed < t2 )
-                    if ( secondsElapsed > t1)
-                        %-- Draw target
-                        
-                        switch(variables.Position)
-                            case 'Up'
-                                fromH = mx;
-                                fromV = my;
-                                toH = mx + lineLength*sin(this.currentAngle/180*pi);
-                                toV = my - lineLength*cos(this.currentAngle/180*pi);
-                            case 'Down'
-                                fromH = mx;
-                                fromV = my;
-                                toH = mx - lineLength*sin(this.currentAngle/180*pi);
-                                toV = my + lineLength*cos(this.currentAngle/180*pi);
-                        end
-                        
-                        Screen('DrawLine', graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
-                        
-                    end
+                    %-- Draw target
+                    
+                    %                         switch(variables.Position)
+                    %                             case 'Up'
+                    %                                 fromH = mx;
+                    %                                 fromV = my;
+                    %                                 toH = mx + lineLength*sin(this.visualLineAngle/180*pi);
+                    %                                 toV = my - lineLength*cos(this.visualLineAngle/180*pi);
+                    %                             case 'Down'
+                    %                                 fromH = mx;
+                    %                                 fromV = my;
+                    %                                 toH = mx - lineLength*sin(this.visualLineAngle/180*pi);
+                    %                                 toV = my + lineLength*cos(this.visualLineAngle/180*pi);
+                    %                         end
+                    [mx, my] = RectCenter(this.Graph.wRect);
+                    
+                    fromH = mx - lineLength*sin(this.visualLineAngle/180*pi);
+                    fromV = my + lineLength*cos(this.visualLineAngle/180*pi);
+                    toH = mx + lineLength*sin(this.visualLineAngle/180*pi);
+                    toV = my - lineLength*cos(this.visualLineAngle/180*pi);
+                    
+                    Screen('DrawLine', this.Graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
+                    %Screen('DrawLine', graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
+                    
                     
                     % if (secondsElapsed < t2)
                     %   % black patch to block part of the line
@@ -226,7 +238,7 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                     % -----------------------------------------------------------------
                     if (1)
                         % TODO: it would be nice to have some call back system here
-                        Screen('DrawText', graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.white);
+                        % Screen('DrawText', graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.white);
                         currentline = 50 + 25;
                         vNames = fieldnames(variables);
                         for iVar = 1:length(vNames)
@@ -235,12 +247,12 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                             else
                                 s = sprintf( '%s = %s',vNames{iVar},num2str(variables.(vNames{iVar})) );
                             end
-                            Screen('DrawText', graph.window, s, 20, currentline, graph.white);
+                            %    Screen('DrawText', graph.window, s, 20, currentline, graph.white);
                             
                             currentline = currentline + 25;
                         end
                         
-                        Screen('DrawText', graph.window, sprintf('Line angle: %d Motor angle: %d', this.currentAngle, this.motorAngle), 400, 400, graph.white);
+                        % Screen('DrawText', graph.window, sprintf('Line angle: %d Motor angle: %d', this.currentAngle, this.motorAngle), 400, 400, graph.white);
                     end
                     % -----------------------------------------------------------------
                     % END DEBUG
@@ -260,16 +272,6 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                     if ( secondsElapsed > max(t1,0.200)  )
                         reverse = isequal(variables.Position,'Down');
                         response = this.CollectLeftRightResponse(reverse);
-                        
-                        %                         % REMEMBER TO REMOVE THIS LINES!!!!!!! it will make the experiment to go alone
-                        %                         if ( this.currentAngle >  0 )
-                        %                             response = 'R';
-                        %                         else
-                        %                             response = 'L';
-                        %                         end
-                        %                         % REMOVE UP TO HERE
-                            
-                        
                         if ( ~isempty( response) )
                             this.lastResponse = response;
                         end
@@ -284,7 +286,7 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                         this.endAccelerometerAngle = this.hapticDevice.getCurrentAngle();
                         errorinAngle = this.endAccelerometerAngle-this.motorAngle;
                         fprintf('\nError angle = %1.1f\n',errorinAngle);
-                        if ( abs(errorinAngle) > 1.25 ) 
+                        if ( abs(errorinAngle) > 3 )
                             disp('TRIAL ABORTED BECAUSE BAR MOVED');
                             trialResult =  Enum.trialResult.SOFTABORT;
                         end
@@ -327,6 +329,7 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             trialOutput.initialAccelerometerAngle = this.initialAccelerometerAngle;
             trialOutput.endAccelerometerAngle = this.endAccelerometerAngle;
             trialOutput.motorAngle = this.motorAngle;
+            trialOutput.visualLineAngle = this.visualLineAngle;
         end
     end
     

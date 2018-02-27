@@ -56,13 +56,13 @@ classdef HapticDevice < handle
                     delete(openport);
                 end
                 
-                this.ard = arduino('COM4', 'Uno', 'Libraries', 'Adafruit\MotorShieldV2');
+                this.ard = arduino('COM19', 'Uno', 'Libraries', 'Adafruit\MotorShieldV2');
                 shield = this.ard.addon('Adafruit\MotorShieldV2');
                 this.sm = shield.stepper(2, 200, 'stepType', 'double');
                 this.sm.RPM = 50;
                 
                 %initialize serial port and fopen
-                this.ac = serial('COM19', 'BaudRate', 9600); %ACCELEROMETER
+                this.ac = serial('COM4', 'BaudRate', 9600); %ACCELEROMETER
                 this.ac.InputBufferSize = 65536;
                 this.ac.OutputBufferSize = 65536;
                 this.ac.Timeout = 1.5;
@@ -146,7 +146,7 @@ classdef HapticDevice < handle
                 steps = -round(diffAngle/360*200,0);
                 fprintf('\nMOTOR: Moving motor from %1.1f to %1.1f angle with %d steps ...',currentAngle,finalangle, steps);
                 this.sm.move(steps);
-                pause(0.55*counterOfTurns);
+                pause(0.45*counterOfTurns);
                 currentAngle = readAcc(this.ac);
             end
             if ( counterOfTurns > 0 )

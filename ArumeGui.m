@@ -36,6 +36,7 @@ classdef ArumeGui < handle
         menuFileExportProject
         menuFileNewSession
         menuFileImportSession
+        menuFileSortSessions
         
         menuRun
         menuRunStartSession
@@ -49,6 +50,7 @@ classdef ArumeGui < handle
         
         menuPlot
         menuPlotGeneratePlots
+        menuPlotGeneratePlotsCombined
         
         % Session Contextual menu
         sessionContextMenu
@@ -100,7 +102,7 @@ classdef ArumeGui < handle
             
             this.leftPanel = uipanel ( ...
                 'Parent'    , this.figureHandle,...
-                'Title'     ,  sprintf('%-19.19s %-8.8s %-12.12s', 'Experiment', 'Subject', 'Session code'),...
+                'Title'     ,  sprintf('%-19.19s %-10.10s %-12.12s', 'Experiment', 'Subject', 'Session code'),...
                 'FontName'	, 'consolas',...
                 'FontSize'	, 9,...
                 'Units'     , 'Pixels' );
@@ -239,6 +241,10 @@ classdef ArumeGui < handle
                 'Label'     , 'Import session', ...
                 'Callback'  , @this.importSession);
             
+            this.menuFileSortSessions = uimenu(this.menuFile, ...
+                'Label'     , 'Sort sessions', ...
+                'Callback'  , @this.SortSessions);
+            
             
             this.menuRun = uimenu(this.figureHandle, ...
                 'Label'     , 'Run');
@@ -276,6 +282,10 @@ classdef ArumeGui < handle
             this.menuPlotGeneratePlots = uimenu(this.menuPlot, ...
                 'Label'     , 'Generate plots ...', ...
                 'Callback'  , @this.GeneratePlots);
+            
+            this.menuPlotGeneratePlotsCombined = uimenu(this.menuPlot, ...
+                'Label'     , 'Generate plots combined ...', ...
+                'Callback'  , @this.GeneratePlotsCombined);
             
             % session contextual menu
             % Define a context menu; it is not attached to anything
@@ -339,7 +349,7 @@ classdef ArumeGui < handle
             m = 5;      % margin between panels
             th = 60;    % top panel height
             bh = 60;    % bottom panel height
-            lw = 350;   % left panel width            
+            lw = 400;   % left panel width            
             
             set(this.topPanel, ...
                 'Position'  , [m (h-th-m) (w-m*2) th]);
@@ -549,6 +559,12 @@ classdef ArumeGui < handle
             this.updateGui();
         end 
         
+        function SortSessions( this, source, eventdata )
+            this.arumeController.currentProject.sortSessions();
+            this.updateGui();
+        end
+        
+        
         function CopySessions( this, source, eventdata )
             
             sessions = this.arumeController.selectedSessions;
@@ -728,6 +744,15 @@ classdef ArumeGui < handle
             this.updateGui();
         end
         
+        function GeneratePlotsCombined( this, source, eventdata ) 
+            
+            plots = get(this.plotsListBox,'string');
+            selection = get(this.plotsListBox,'value');
+            
+            this.arumeController.generatePlots(plots, selection,1);
+            this.updateGui();
+        end
+        
         function sessionListBoxCallBack( this, source, eventdata )
             
             sessionListBoxCurrentValue = get(this.sessionListBox,'value');
@@ -774,7 +799,7 @@ classdef ArumeGui < handle
                 % populate sessionlist
                 sessionNames = cell(length(this.arumeController.currentProject.sessions),1);
                 for i=1:length( this.arumeController.currentProject.sessions )
-                    sessionNames{i} = sprintf('%-20.20s %-8.8s %-10.10s', ...
+                    sessionNames{i} = sprintf('%-20.20s %-10.10s %-20.20s', ...
                         this.arumeController.currentProject.sessions(i).experiment.Name, ...
                         char(this.arumeController.currentProject.sessions(i).subjectCode-0), ...
                         this.arumeController.currentProject.sessions(i).sessionCode);

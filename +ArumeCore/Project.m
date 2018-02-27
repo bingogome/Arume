@@ -197,6 +197,16 @@ classdef Project < handle
             session = [];
         end
         
+        function sortSessions(this)
+            
+            sessionNames = {};
+            for i=1:length(this.sessions)
+                sessionNames{i} = [this.sessions(i).subjectCode this.sessions(i).sessionCode];
+            end
+            [b i] = sort(sessionNames);
+            this.sessions = this.sessions(i);
+        end
+        
         function mergeProject(this, projectFile)
             tempPath2 = fullfile(this.path, 'TEMPMERGE');
             p2 = ArumeCore.Project.LoadProject(projectFile, tempPath2);

@@ -1,5 +1,5 @@
-classdef SVV2AFC < ArumeCore.ExperimentDesign
-    %SVV2AFC Parent experiment design for designs of SVV experiments
+classdef VH2AFC < ArumeCore.ExperimentDesign
+    %SVH2AFC Parent experiment design for designs of SVH (haptic) experiments
     % using 2AFC two alternative forced choice task
     % all the experiments will have a variable called angle which is the
     % angle tested relative to true vertical and a response variable that
@@ -9,6 +9,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         eyeTracker = [];
         gamePad = [];
         biteBarMotor = [];
+        hapticDevice = [];
         
         lastResponse = '';
         reactionTime = '';
@@ -26,22 +27,19 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         
         function dlg = GetOptionsDialog( this )
             dlg.UseEyeTracker = { {'{0}','1'} };
-            dlg.UseGamePad = { {'0','{1}'} };
-            dlg.UseMouse = { {'{0}','1'} };
+            dlg.UseGamePad = { {'{0}','1'} };
+            dlg.UseMouse = { {'0','{1}'} };
             
-            
-            dlg.Type_of_line = { {'{Radius}','Diameter'} };
-            dlg.Length_of_line = 300;
             dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
             
             dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
             dlg.targetDistance = { 125 '* (pix)' [10 500] };
             
             dlg.fixationDuration = { 1000 '* (ms)' [1 3000] };
-            dlg.targetDuration = { 300 '* (ms)' [100 30000] };
-            dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
+            dlg.targetDuration = { 300 '* (ms)' [100 100000] };
+            dlg.responseDuration = { 1500 '* (ms)' [100 10000] };
             
-            dlg.UseBiteBarMotor = { {'0','{1}'} };
+            dlg.UseBiteBarMotor = { {'{0}','1'} };
             dlg.HeadAngle = { 0 '* (deg)' [-40 40] };
             dlg.TiltHeadAtBegining = { {'0','{1}'} };
             
@@ -52,9 +50,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             % Initialize gamepad
             if ( this.ExperimentOptions.UseGamePad )
-                
                 this.gamePad = ArumeHardware.GamePad();
-                
             end
             
             % Initialize eyetracker
@@ -69,9 +65,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             % Initialize bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor)
-                clear this.biteBarMotor;
+                this.biteBarMotor = [];
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
-                
                 if ( this.ExperimentOptions.TiltHeadAtBegining )
                     if ( length(this.Session.currentRun.pastConditions) == 0 )
                         this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
@@ -83,15 +78,12 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                 end
             end
             
-            if ( 0) % this was for the EEG experiment to output something with the parallel port
-                %initialize the inpoutx64 low-level I/O driver
-                config_io;
-                %optional step: verify that the inpoutx64 driver was successfully installed
-                global cogent;
-                if( cogent.io.status ~= 0 )
-                    error('inp/outp installation failed');
-                end
-            end
+            % Initialize HapticDevice
+            this.hapticDevice = [];
+            this.hapticDevice = ArumeHardware.HapticDevice();
+            this.hapticDevice.reset();
+            fprintf ('Finished reset, starting experiment.');
+            % end initialize HapticDevice
         end
         
         function cleanAfterRunning(this)
@@ -113,40 +105,40 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             if ( this.ExperimentOptions.UseBiteBarMotor ~= 0 )
                 if ( ~isempty(this.biteBarMotor))
                     % this.biteBarMotor.SetTiltAngle(0);
-                    this.biteBarMotor.Close();
+                    %this.biteBarMotor.Close();
                 end
             end
+            %this.hapticDevice.Close();
         end
         
         function response = CollectLeftRightResponse(this, reverse)
             response = [];
-            
             if ( this.ExperimentOptions.UseMouse )
                 [x,y,buttons] = GetMouse();
-%                 if any(buttons) %wait for release
-%                     if (buttons(1) ==1 && buttons(3)==1)
-%                         disp('both buttons pressed');
-%                     end
-                    if any(buttons) % wait for release
-                        if buttons(1) == 1
-                            response = 'L';
-                        elseif  buttons(3) == 1
-                            response = 'R';
-                        end
+                %                 if any(buttons) %wait for release
+                %                     if (buttons(1) ==1 && buttons(3)==1)
+                %                         disp('both buttons pressed');
+                %                     end
+                if any(buttons) % wait for release
+                    if buttons(1) == 1
+                        response = 'L';
+                    elseif  buttons(3) == 1
+                        response = 'R';
                     end
-                elseif ( this.ExperimentOptions.UseGamePad )
+                end
+            elseif ( this.ExperimentOptions.UseGamePad )
                 [d, l, r] = this.gamePad.Query();
                 if ( l == 1)
-                    response = 'L';
+                    response = 'R'; % REVERSED TO USE THE GAMEPAD WITH ONE HAND BACKWARDS!!!
                 elseif( r == 1)
-                    response = 'R';
+                    response = 'L';
                 end
             else
                 [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
                 if ( keyIsDown )
                     keys = find(keyCode);
                     for i=1:length(keys)
-                        KbName(keys(i));
+                        KbName(keys(i))
                         switch(KbName(keys(i)))
                             case 'RightArrow'
                                 response = 'R';
@@ -157,55 +149,15 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                 end
             end
             
-            % only reverse (for bottom trials) if the line is a radius
-            % not if it is a diameter
-            switch(this.ExperimentOptions.Type_of_line)
-                case 'Radius'
-                    if ( ~isempty( response) )
-                        if ( reverse )
-                            switch(response)
-                                case 'L'
-                                    response = 'R';
-                                case 'R'
-                                    response = 'L';
-                            end
-                        end
+            if ( ~isempty( response) )
+                if ( reverse )
+                    switch(response)
+                        case 'L'
+                            response = 'R';
+                        case 'R'
+                            response = 'L';
                     end
-                case 'Diameter'
-            end
-        end
-        
-        function DrawLine(this,variables)
-            
-            switch(this.ExperimentOptions.Type_of_line)
-                case 'Radius'
-                    lineLength = this.ExperimentOptions.Length_of_line;
-                    [mx, my] = RectCenter(this.Graph.wRect);
-                    
-                    switch(variables.Position)
-                        case 'Up'
-                            fromH = mx;
-                            fromV = my;
-                            toH = mx + lineLength*sin(this.currentAngle/180*pi);
-                            toV = my - lineLength*cos(this.currentAngle/180*pi);
-                        case 'Down'
-                            fromH = mx;
-                            fromV = my;
-                            toH = mx - lineLength*sin(this.currentAngle/180*pi);
-                            toV = my + lineLength*cos(this.currentAngle/180*pi);
-                    end
-                    
-                    Screen('DrawLine', this.Graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
-                case 'Diameter'
-                    lineLength = this.ExperimentOptions.Length_of_line;
-                    [mx, my] = RectCenter(this.Graph.wRect);
-                    
-                    fromH = mx - lineLength*sin(this.currentAngle/180*pi);
-                    fromV = my + lineLength*cos(this.currentAngle/180*pi);
-                    toH = mx + lineLength*sin(this.currentAngle/180*pi);
-                    toV = my - lineLength*cos(this.currentAngle/180*pi);
-                    
-                    Screen('DrawLine', this.Graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
+                end
             end
         end
     end
@@ -247,17 +199,15 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             respones = this.GetLeftRightResponses();
             respones(this.Session.trialDataSet.TrialResult>0) = [];
             
-%             angles = angles(101:201);
-%             respones = respones(101:201);
             [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
             
             
             figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-%             ax1=subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
+            %             ax1=subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
             ax1 = gca;
             set(ax1,'nextplot','add', 'fontsize',12);
             
-%             bar(allAngles, trialCounts/sum(trialCounts)*100, 'edgecolor','none','facecolor',[0.8 0.8 0.8])
+            %             bar(allAngles, trialCounts/sum(trialCounts)*100, 'edgecolor','none','facecolor',[0.8 0.8 0.8])
             
             plot( allAngles, allResponses,'o', 'color', [0.4 0.4 0.4], 'markersize',15,'linewidth',2, 'markerfacecolor', [0.7 0.7 0.7])
             plot(a,p, 'color', 'k','linewidth',3);
@@ -266,8 +216,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             line([0, SVV], [50 50], 'color','k','linewidth',2,'linestyle','-.');
             
             %xlabel('Angle (deg)', 'fontsize',16);
-            text(30, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
-            text(30, 60, sprintf('SVV slope: %0.2f°',SVVth), 'fontsize',16,'HorizontalAlignment','right');
+            text(30, 80, sprintf('SHV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
+            text(30, 60, sprintf('SHV slope: %0.2f°',SVVth), 'fontsize',16,'HorizontalAlignment','right');
             
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
@@ -302,7 +252,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             %xlabel('Angle (deg)', 'fontsize',16);
             ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(30, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
+            text(30, 80, sprintf('SHV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
             
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
@@ -316,7 +266,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             %xlabel('Angle (deg)', 'fontsize',16);
             ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(30, 60, sprintf('SVV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
+            text(30, 60, sprintf('SHV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
             
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
@@ -346,9 +296,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             line([SVV,SVV], [0 100], 'color','k','linewidth',2);
             plot(SVV, 0,'^', 'markersize',10, 'markerfacecolor','k', 'color','k','linewidth',2);
             
-            
             text(30, 80, sprintf('SVV UP: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
-                      
             
             subds = ds(strcmp(ds.Position,'Down'),:);
             subds((subds.Response==0 & subds.Angle<-50) | (subds.Response==1 & subds.Angle>50),:) = [];
@@ -362,7 +310,6 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             text(30, 60, sprintf('SVV DOWN: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
             
-            
             xlabel('Angle (deg)', 'fontsize',16);
             ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
             
@@ -370,24 +317,18 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             set(gca,'xgrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
         end
-        
-        
     end
-    
     
     % ---------------------------------------------------------------------
     % Data Analysis methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
-        
         function analysisResults = Analysis_SVV(this)
             analysisResults = 0;
         end
-        
         function analysisResults = Analysis_SVVUpDown(this)
             analysisResults=4;
         end
-        
     end
     
     
@@ -417,7 +358,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                 angles(end+1) = 40;
                 angles(end+1) = -40;
                 angles(end+1) = 40;
-
+                
                 responses(end+1) = 0;
                 responses(end+1) = 1;
                 responses(end+1) = 0;
@@ -427,7 +368,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             ds.Angle = angles;
             
             outliers = find((ds.Response==1 & ds.Angle<-50) | (ds.Response==0 & ds.Angle>50));
-
+            
             ds(outliers,:) = [];
             
             %             if ( length(ds.Responses) > 20 )
@@ -451,7 +392,6 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                     ds.Response(end+1) = 1;
                     ds.Angle(end) = min(ds.Angle(1:end-1))-1;
                 end
-                
                 
                 modelspec = 'Response ~ Angle';
                 mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
@@ -484,39 +424,13 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         
         function drawFrame( graph, angle, color)
             
-            lineLength = 350;
+            lineLength = 300; % changed from 350
             [mx, my] = RectCenter(graph.wRect);
             
             centerLeft = mx;
             
             width = 10;
             
-            fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
-            fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
-            toH = +cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
-            toV = sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
-            Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
-            
-            fromH = -cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
-            fromV = -sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
-            toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
-            toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
-            Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
-            
-            
-            fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
-            fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
-            toH = -cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
-            toV = -sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
-            Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
-            
-            fromH = +cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
-            fromV = sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
-            toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
-            toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
-            Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
-            
-            lineLength = 150;
             
 %             fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
 %             fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
@@ -542,6 +456,44 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
 %             toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
 %             toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
 %             Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+            
+            
+           % lineLength = this.ExperimentOptions.Length_of_line;
+            [mx, my] = RectCenter(Graph.wRect);
+            
+            fromH = mx - lineLength*sin(currentAngle/180*pi);
+            fromV = my + lineLength*cos(currentAngle/180*pi);
+            toH = mx + lineLength*sin(currentAngle/180*pi);
+            toV = my - lineLength*cos(currentAngle/180*pi);
+            Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, 4);
+
+            
+            %lineLength = 150;
+            
+            %             fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+            %             fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+            %             toH = +cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+            %             toV = sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+            %             Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+            %
+            %             fromH = -cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+            %             fromV = -sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+            %             toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+            %             toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+            %             Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+            %
+            %
+            %             fromH = +cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+            %             fromV = sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+            %             toH = -cos(angle/180*pi)*lineLength+centerLeft - lineLength*sin(angle/180*pi);
+            %             toV = -sin(angle/180*pi)*lineLength+my + lineLength*cos(angle/180*pi);
+            %             Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
+            %
+            %             fromH = +cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+            %             fromV = sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+            %             toH = -cos(angle/180*pi)*lineLength+centerLeft+ lineLength*sin(angle/180*pi);
+            %             toV = -sin(angle/180*pi)*lineLength+my - lineLength*cos(angle/180*pi);
+            %             Screen('DrawLine', graph.window, color, fromH, fromV, toH, toV, width);
             
             
         end
