@@ -222,10 +222,18 @@ classdef ArumeController < handle
             session = this.currentProject.findSession( experiment, subject_Code, session_Code);
             session.experiment.UpdateExperimentOptions(options);
         end
-        function renameCurrentSession( this, subjectCode, sessionCode)
+        function renameSession( this, session, subjectCode, sessionCode)
             % Renames the current session
             
-            this.currentSession.rename(subjectCode, sessionCode);
+            for session1 = this.currentProject.sessions
+                if ( isequal(subjectCode, session1.subjectCode) && isequal( sessionCode, session1.sessionCode) )
+                    error( 'Arume: session already exists use a diferent name' );
+                end
+            end
+            disp(['Renaming session' session.subjectCode ' - ' session.sessionCode ' to '  subjectCode ' - ' sessionCode]);
+            
+            [s i] = this.currentProject.findSession(session.experiment.Name, session.subjectCode, session.sessionCode);
+            this.currentProject.sessions(i).rename(subjectCode, sessionCode);
             this.currentProject.save();
         end
         

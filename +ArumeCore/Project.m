@@ -174,7 +174,7 @@ classdef Project < handle
             this.sessions(sessidx) = [];
         end
         
-        function session = findSession( this, experimentName, subjectCode, sessionCode)
+        function [session i] = findSession( this, experimentName, subjectCode, sessionCode)
             
             for i=1:length(this.sessions)
                 if ( exist('sessionCode','var') )
@@ -195,6 +195,7 @@ classdef Project < handle
             
             % if not found
             session = [];
+            i = 0;
         end
         
         function sortSessions(this)

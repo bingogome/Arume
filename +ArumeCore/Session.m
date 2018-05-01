@@ -379,14 +379,14 @@ classdef Session < ArumeCore.DataDB
             varNames={'TimeStamp', 'LeftHorizontal','LeftVertical','LeftTorsion','RightHorizontal','RightVertical','RightTorsion','HeadRollTilt'};
             samplesDataSet = dataset([],[],[],[],[],[],[],[],'VarNames',varNames);
             
-            [samplesDataSet, rawDataSet] = this.experiment.PrepareSamplesDataSet(samplesDataSet);
+            [samplesDataSet] = this.experiment.PrepareSamplesDataSet(samplesDataSet);
             if ( ~isempty(samplesDataSet) )
                 this.WriteVariable(samplesDataSet,'samplesDataSet');
             end
             
-            if ( ~isempty(rawDataSet) )
-                this.WriteVariable(rawDataSet,'rawDataSet');
-            end
+%             if ( ~isempty(rawDataSet) )
+%                 this.WriteVariable(rawDataSet,'rawDataSet');
+%             end
             
             %% 2) Prepare the trial dataset
             
@@ -557,12 +557,14 @@ classdef Session < ArumeCore.DataDB
             session.initExisting( sourceSession.project, newData );
             sourceSession.project.addSession(session);
             
-            if ( length(dir(sourceSession.dataAnalysisPath)) > 2 )
-                copyfile(fullfile(sourceSession.dataAnalysisPath,'*'),fullfile(session.dataAnalysisPath));
-            end
-            if ( length(dir(sourceSession.dataRawPath)) > 2 )
-                copyfile(fullfile(sourceSession.dataRawPath,'*'),fullfile(session.dataRawPath));
-            end
+            % JORGE 4/25/2018 Decided to not copy data because it was being
+            % too confusing.
+%             if ( length(dir(sourceSession.dataAnalysisPath)) > 2 )
+%                 copyfile(fullfile(sourceSession.dataAnalysisPath,'*'),fullfile(session.dataAnalysisPath));
+%             end
+%             if ( length(dir(sourceSession.dataRawPath)) > 2 )
+%                 copyfile(fullfile(sourceSession.dataRawPath,'*'),fullfile(session.dataRawPath));
+%             end
         end
         
         function session = CopySessionToDifferentProject( sourceSession, destinationProject, newSubjectCode, newSessionCode)
