@@ -28,7 +28,7 @@ classdef VOG  < handle
                 end
             end
             
-            this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClientMatlab(ip, port);
+            this.eyeTracker = VORLab.VOG.Remote.EyeTrackerClientMatlab(ip, port);
         end
         
         function result = IsRecording(this)
