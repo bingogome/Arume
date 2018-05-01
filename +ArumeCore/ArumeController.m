@@ -322,8 +322,10 @@ classdef ArumeController < handle
                         waitbar(i/n,h)
                     end
                 end
-            catch
-                disp('Error preparing a session');
+            catch ex
+                disp('Error preparing a session**************************');
+                ex.getReport();
+                disp('end Error preparing a session**************************');
             end
             
             if (useWaitBar)

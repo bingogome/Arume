@@ -1063,10 +1063,11 @@ classdef ExperimentDesign < handle
         function trialDataSet = PrepareTrialDataSet( this, trialDataSet)
         end
             
-        function samplesDataSet = PrepareSamplesDataSet(this, samplesDataSet)
+        function [samplesDataSet rawDataSet] = PrepareSamplesDataSet(this, samplesDataSet)
+            rawDataSet = [];
         end
         
-        function samplesDataSet = PrepareEventDataSet(this, eventDataset)
+        function eventDataset = PrepareEventDataSet(this, eventDataset)
         end
     end
 end
