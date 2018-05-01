@@ -56,6 +56,7 @@ classdef ArumeGui < handle
         sessionContextMenu
         sessionContextMenuEditSettings
         sessionContextMenuRename
+        sessionContextMenuRenameSubjects
         sessionContextMenuDelete
         sessionContextMenuCopy
         sessionContextMenuCopyTo
@@ -297,8 +298,11 @@ classdef ArumeGui < handle
                 'Label'     , 'Delete sessions ...', ...
                 'Callback'  , @this.DeleteSessions);
             this.sessionContextMenuRename = uimenu(this.sessionContextMenu, ...
-                'Label'     , 'Rename session ...', ...
-                'Callback'  , @this.RenameSession);
+                'Label'     , 'Rename sessions ...', ...
+                'Callback'  , @this.RenameSessions);
+            this.sessionContextMenuRenameSubjects = uimenu(this.sessionContextMenu, ...
+                'Label'     , 'Rename subjects ...', ...
+                'Callback'  , @this.RenameSubjects);
             this.sessionContextMenuEditSettings = uimenu(this.sessionContextMenu, ...
                 'Label'     , 'Edit settings ...', ...
                 'Callback'  , @this.EditSessionSettings);
@@ -600,12 +604,15 @@ classdef ArumeGui < handle
                 
                 allgood = 1;
                 for i=1:length(sessions)
-                    for session = sessions
+                    for session = this.arumeController.currentProject.sessions
                         if ( streq(session.subjectCode, newSubjectCodes{i}) &&  streq(session.sessionCode, newSessionCodes{i}) )
-                            uiwait(msgbox('One of the names has not changed. The new session cannot have the codes of an existing session.', 'Error', 'Modal'));
-                            
+                            uiwait(msgbox(['One of the names is repeated ' newSubjectCodes{i} '-' newSessionCodes{i} '.'], 'Error', 'Modal'));
                             allgood = 0;
+                            break;
                         end
+                    end
+                    if ( allgood == 0)
+                        break;
                     end
                 end
                 
@@ -655,23 +662,121 @@ classdef ArumeGui < handle
             end
         end
         
-        function RenameSession( this, source, eventdata )
+        function RenameSessions( this, source, eventdata )
             
-            sDlg.Subject_Code = this.arumeController.currentSession.subjectCode;
-            sDlg.Session_Code = this.arumeController.currentSession.sessionCode;
-            P = StructDlg(sDlg);
-            if ( isempty( P ) )
-                return
+            sessions = this.arumeController.selectedSessions;
+            
+            
+            newSubjectCodes = {};
+            newSessionCodes = {};
+            for session=sessions
+                newSubjectCodes{end+1} = session.subjectCode;
+                newSessionCodes{end+1} = session.sessionCode;
             end
             
-            if ( ~isempty( intersect({this.arumeController.currentProject.sessions.name}, {'NI'})) )
-                msgbox('Name already in use');
-                return
+            
+            while(1)
+                newNamesDlg = [];
+                for i=1:length(sessions)
+                    session = sessions(i);
+                    newNamesDlg.([session.name '_New_Session_Code' ]) = newSessionCodes{i};
+                end
+
+                P = StructDlg(newNamesDlg);
+                if ( isempty( P ) )
+                    return
+                end
+                
+                newSessionCodes = {};
+                for session=sessions
+                    newSessionCodes{end+1} = P.([session.name '_New_Session_Code' ]);
+                end
+                
+                allgood = 1;
+                for i=1:length(sessions)
+                    for session = this.arumeController.currentProject.sessions
+                        if ( streq(session.subjectCode, newSubjectCodes{i}) &&  streq(session.sessionCode, newSessionCodes{i}) )
+                            uiwait(msgbox(['One of the names is repeated ' newSubjectCodes{i} '-' newSessionCodes{i} '.'], 'Error', 'Modal'));
+                            allgood = 0;
+                            break;
+                        end
+                    end
+                    if ( allgood == 0)
+                        break;
+                    end
+                end
+                
+                if ( allgood)
+                    break;
+                end
             end
             
-            this.arumeController.renameCurrentSession(P.Subject_Code, P.Session_Code);
+            %Check that the names don't exist already
+            
+            
+            for i=1:length(sessions) 
+                this.arumeController.renameSession(sessions(i), newSubjectCodes{i}, newSessionCodes{i});
+            end
             this.updateGui();
+        end
+        
+        
+        function RenameSubjects( this, source, eventdata )
             
+            sessions = this.arumeController.selectedSessions;
+            
+            
+            newSubjectCodes = {};
+            newSessionCodes = {};
+            for session=sessions
+                newSubjectCodes{end+1} = session.subjectCode;
+                newSessionCodes{end+1} = session.sessionCode;
+            end
+            
+            
+            while(1)
+                newNamesDlg = [];
+                for i=1:length(sessions)
+                    session = sessions(i);
+                    newNamesDlg.([session.name '_New_Subject_Code' ]) = newSubjectCodes{i};
+                end
+
+                P = StructDlg(newNamesDlg);
+                if ( isempty( P ) )
+                    return
+                end
+                
+                newSubjectCodes = {};
+                for session=sessions
+                    newSubjectCodes{end+1} = P.([session.name '_New_Subject_Code' ]);
+                end
+                
+                allgood = 1;
+                for i=1:length(sessions)
+                    for session = this.arumeController.currentProject.sessions
+                        if ( streq(session.subjectCode, newSubjectCodes{i}) &&  streq(session.sessionCode, newSessionCodes{i}) )
+                            uiwait(msgbox(['One of the names is repeated ' newSubjectCodes{i} '-' newSessionCodes{i} '.'], 'Error', 'Modal'));
+                            allgood = 0;
+                            break;
+                        end
+                    end
+                    if ( allgood == 0)
+                        break;
+                    end
+                end
+                
+                if ( allgood)
+                    break;
+                end
+            end
+            
+            %Check that the names don't exist already
+            
+            
+            for i=1:length(sessions) 
+                this.arumeController.renameSession(sessions(i), newSubjectCodes{i}, newSessionCodes{i});
+            end
+            this.updateGui();
         end
         
         function EditSessionSettings(this, source, eventdata )
