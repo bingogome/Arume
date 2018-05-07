@@ -16,6 +16,7 @@ classdef ExperimentRun < matlab.mixin.Copyable
         
         Events
         Data
+        LinkedFiles
         
         SessionsToRun
         CurrentSession
@@ -97,6 +98,7 @@ classdef ExperimentRun < matlab.mixin.Copyable
             newRun.futureConditions = []; % conditions left for running (the whole list is created a priori)
             newRun.Events           = [];
             newRun.Data             = [];
+            newRun.LinkedFiles      = [];
             
             % generate the sequence of blocks, a total of
             % parameters.blocksToRun blocks will be run
@@ -169,6 +171,11 @@ classdef ExperimentRun < matlab.mixin.Copyable
             
             run.Events = data.Events;
             run.Data = data.Data;
+            if ( isfield( data, 'LinkedFiles' ) )
+                run.LinkedFiles = data.LinkedFiles;
+            else
+                run.LinkedFiles = [];
+            end
             
             run.SessionsToRun = data.SessionsToRun;
             run.CurrentSession = data.CurrentSession;
@@ -195,6 +202,7 @@ classdef ExperimentRun < matlab.mixin.Copyable
             
             runData.Events = run.Events;
             runData.Data = run.Data;
+            runData.LinkedFiles = run.LinkedFiles;
             
             runData.SessionsToRun = run.SessionsToRun;
             runData.CurrentSession = run.CurrentSession;
@@ -210,6 +218,8 @@ classdef ExperimentRun < matlab.mixin.Copyable
                 end
             end
         end
+        
+        
     end
     
 end
