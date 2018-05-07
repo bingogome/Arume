@@ -332,7 +332,7 @@ classdef ArumeController < handle
                 end
             catch ex
                 disp('Error preparing a session**************************');
-                ex.getReport();
+                ex.getReport()
                 disp('end Error preparing a session**************************');
             end
             

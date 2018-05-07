@@ -74,6 +74,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
             if ( this.ExperimentOptions.UseEyeTracker )
                 this.eyeTracker = ArumeHardware.VOG();
                 this.eyeTracker.Connect();
+                this.eyeTracker.SetSessionName(this.Session.name);
                 this.eyeTracker.StartRecording();
             end
             
@@ -83,6 +84,12 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
             
             if ( this.ExperimentOptions.UseEyeTracker )
                 this.eyeTracker.StopRecording();
+        
+                files = this.eyeTracker.DownloadFile();
+                
+                this.addFile('vogDataFile', files{1});
+                this.addFile('vogCalibrationFile', files{2});
+                this.addFile('vogEventsFile', files{3});
             end
         end
         
@@ -193,10 +200,6 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
                 end
             catch ex
                 rethrow(ex)
-                
-                if ( this.ExperimentOptions.UseEyeTracker )
-                    this.eyeTracker.StopRecording();
-                end
             end
             
         end
@@ -217,45 +220,41 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
         end
         
         function samplesDataSet = PrepareSamplesDataSet(this, trialDataSet, dataFile, calibrationFile)
-            if ( ~exist('dataFile','var') || ~exist('calibrationFile', 'var') )
-                res = questdlg('Do you want to import the eye data?', 'Import data', 'Yes', 'No', 'Yes');
-                if ( streq(res,'No'))
-                    return;
-                end
+            samplesDataSet = [];
+            
+            dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
+            calibrationFiles = this.Session.currentRun.LinkedFiles.vogCalibrationFile;
+            eventFiles = this.Session.currentRun.LinkedFiles.vogEventsFile;
+
+            
+            if (~iscell(dataFiles) )
+                dataFiles = {dataFiles};
+                calibrationFiles = {calibrationFiles};
+                eventFiles = {eventFiles};
             end
             
-            S = [];
-            
-            if ( ~exist('dataFile', 'var') )
-                S.Data_File = { {'uigetfile(''*.txt'')'} };
+            for i=1:length(dataFiles)
+                dataFile = dataFiles{i};
+                calibrationFile = calibrationFiles{i};
+                eventFile = eventFiles{i};
+             
+                dataFilePath = fullfile(this.Session.dataRawPath, dataFile);
+                calibrationFilePath = fullfile(this.Session.dataRawPath, calibrationFile);
+                eventFilesPath = fullfile(this.Session.dataRawPath, eventFile);
+                
+                % load data
+                rawData = VOG.LoadVOGdataset(dataFilePath);
+                
+                % calibrate data
+                [calibratedData leftEyeCal rightEyeCal] = VOG.CalibrateData(rawData, calibrationFilePath);
+                
+                [cleanedData, fileSamplesDataSet] = VOG.ResampleAndCleanData2(calibratedData);
             end
-            
-            if ( ~exist('calibrationFile', 'var') )
-                S.Calibration_File = { {'uigetfile(''*.cal'')'} };
+            if ( isempty(samplesDataSet) )
+                samplesDataSet = fileSamplesDataSet;
+            else
+                samplesDataSet = cat(1,samplesDataSet,fileSamplesDataSet);
             end
-            
-            S = StructDlg(S,'Select data file',[]);
-            if ( isempty(S) )
-                return;
-            end
-            
-            if ( ~exist('dataFile', 'var') )
-                dataFile = S.Data_File;
-            end
-            
-            if ( ~exist('calibrationFile', 'var') )
-                calibrationFile = S.Calibration_File;
-            end
-            
-            sessionVogDataFile = fullfile(this.Session.dataRawPath,[this.Session.name '_VOGData.txt']);
-            sessionVogCalibrationFile = fullfile(this.Session.dataRawPath,[this.Session.name '_VOGCalibration.cal']);
-            
-            copyfile(dataFile, sessionVogDataFile);
-            copyfile(calibrationFile, sessionVogCalibrationFile);
-            
-            dataset = GetCalibratedData(sessionVogDataFile, sessionVogCalibrationFile, 1);
-            
-            samplesDataSet = dataset;
         end
     end
     
@@ -264,8 +263,42 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = public )
         function plotResults = Plot_Traces(this)
+            
+            data = this.Session.samplesDataSet;
             figure
             
+            MEDIUM_BLUE =  [0.1000 0.5000 0.8000];
+            MEDIUM_RED = [0.9000 0.2000 0.2000];
+            
+            figure
+            time = (1:length(data.RightT))/500;
+            
+            lb = (boxcar(abs([0;diff(data.LeftUpperLid)])>20,10)>0) | (abs(data.LeftUpperLid-median(data.LeftUpperLid)) > 50);
+            rb = boxcar(abs([0;diff(data.RightUpperLid)])>20,10)>0 | (abs(data.RightUpperLid-median(data.RightUpperLid)) > 50);
+            
+            data.LeftX(lb) = nan;
+            data.LeftY(lb) = nan;
+            data.LeftT(lb) = nan;
+            
+            data.RightX(rb) = nan;
+            data.RightY(rb) = nan;
+            data.RightT(rb) = nan;
+            
+            subplot(3,1,1,'nextplot','add')
+            plot(time, data.LeftX, 'color', [ MEDIUM_BLUE ])
+            plot(time, data.RightX, 'color', [ MEDIUM_RED])
+            ylabel('Horizontal (deg)','fontsize', 16);
+            
+            subplot(3,1,2,'nextplot','add')
+            plot(time, data.LeftY, 'color', [ MEDIUM_BLUE ])
+            plot(time, data.RightY, 'color', [ MEDIUM_RED])
+            ylabel('Vertical (deg)','fontsize', 16);
+            
+            subplot(3,1,3,'nextplot','add')
+            plot(time, data.LeftT, 'color', [ MEDIUM_BLUE ])
+            plot(time, data.RightT, 'color', [ MEDIUM_RED])
+            ylabel('Torsion (deg)','fontsize', 16);
+            xlabel('Time (s)');
         end
     end
     

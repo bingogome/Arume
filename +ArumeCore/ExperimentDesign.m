@@ -678,6 +678,21 @@ classdef ExperimentDesign < handle
     % --------------------------------------------------------------------
     methods(Access=protected)
         
+        function addFile(this, fileTag, filePath)
+            
+            [~,fileName, ext] = fileparts(filePath);
+            copyfile(filePath, fullfile(this.Session.dataRawPath, [fileName ext] ));
+                
+            if ( ~isfield(this.Session.currentRun.LinkedFiles, fileTag) )
+                this.Session.currentRun.LinkedFiles.(fileTag) = [fileName ext];
+            else
+                if ~iscell(this.Session.currentRun.LinkedFiles.(fileTag))
+                    this.Session.currentRun.LinkedFiles.(fileTag) = {this.Session.currentRun.LinkedFiles.(fileTag)};
+                end
+                this.Session.currentRun.LinkedFiles.(fileTag) = cat(1, this.Session.currentRun.LinkedFiles.(fileTag), [fileName ext] );
+            end               
+        end
+                
         %% SaveEvent
         %--------------------------------------------------------------------------
         function SaveEvent( this, event )

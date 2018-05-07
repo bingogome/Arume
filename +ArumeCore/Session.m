@@ -306,7 +306,7 @@ classdef Session < ArumeCore.DataDB
             end
             
         end
-        
+                
         %
         %% RUNING METHODS
         %
