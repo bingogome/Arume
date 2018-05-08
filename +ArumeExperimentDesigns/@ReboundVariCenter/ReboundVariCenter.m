@@ -85,7 +85,13 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
             if ( this.ExperimentOptions.UseEyeTracker )
                 this.eyeTracker.StopRecording();
         
+                disp('Downloading files...');
                 files = this.eyeTracker.DownloadFile();
+                
+                disp(files{1});
+                disp(files{2});
+                disp(files{3});
+                disp('Finished downloading');
                 
                 this.addFile('vogDataFile', files{1});
                 this.addFile('vogCalibrationFile', files{2});
@@ -241,6 +247,9 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
                 dataFilePath = fullfile(this.Session.dataRawPath, dataFile);
                 calibrationFilePath = fullfile(this.Session.dataRawPath, calibrationFile);
                 eventFilesPath = fullfile(this.Session.dataRawPath, eventFile);
+                t= readtable(eventFilesPath);
+                t(contains(t.Var4,'KEYPRESS'),:) = [];
+                FrameNumberTrialOneStrat = t.Var3{1}(8:end-2);
                 
                 % load data
                 rawData = VOG.LoadVOGdataset(dataFilePath);
@@ -248,7 +257,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
                 % calibrate data
                 [calibratedData leftEyeCal rightEyeCal] = VOG.CalibrateData(rawData, calibrationFilePath);
                 
-                [cleanedData, fileSamplesDataSet] = VOG.ResampleAndCleanData2(calibratedData);
+                [cleanedData, fileSamplesDataSet] = VOG.ResampleAndCleanData3(calibratedData, 1000);
             end
             if ( isempty(samplesDataSet) )
                 samplesDataSet = fileSamplesDataSet;
@@ -273,30 +282,33 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
             figure
             time = (1:length(data.RightT))/500;
             
-            lb = (boxcar(abs([0;diff(data.LeftUpperLid)])>20,10)>0) | (abs(data.LeftUpperLid-median(data.LeftUpperLid)) > 50);
-            rb = boxcar(abs([0;diff(data.RightUpperLid)])>20,10)>0 | (abs(data.RightUpperLid-median(data.RightUpperLid)) > 50);
-            
-            data.LeftX(lb) = nan;
-            data.LeftY(lb) = nan;
-            data.LeftT(lb) = nan;
-            
-            data.RightX(rb) = nan;
-            data.RightY(rb) = nan;
-            data.RightT(rb) = nan;
+%             lb = (boxcar(abs([0;diff(data.LeftUpperLid)])>20,10)>0) | (abs(data.LeftUpperLid-median(data.LeftUpperLid)) > 50);
+%             rb = boxcar(abs([0;diff(data.RightUpperLid)])>20,10)>0 | (abs(data.RightUpperLid-median(data.RightUpperLid)) > 50);
+%             
+%             data.LeftX(lb) = nan;
+%             data.LeftY(lb) = nan;
+%             data.LeftT(lb) = nan;
+%             
+%             data.RightX(rb) = nan;
+%             data.RightY(rb) = nan;
+%             data.RightT(rb) = nan;
             
             subplot(3,1,1,'nextplot','add')
             plot(time, data.LeftX, 'color', [ MEDIUM_BLUE ])
             plot(time, data.RightX, 'color', [ MEDIUM_RED])
+            set(gca,'ylim',[-50 50])
             ylabel('Horizontal (deg)','fontsize', 16);
             
             subplot(3,1,2,'nextplot','add')
             plot(time, data.LeftY, 'color', [ MEDIUM_BLUE ])
             plot(time, data.RightY, 'color', [ MEDIUM_RED])
+            set(gca,'ylim',[-50 50])
             ylabel('Vertical (deg)','fontsize', 16);
             
             subplot(3,1,3,'nextplot','add')
             plot(time, data.LeftT, 'color', [ MEDIUM_BLUE ])
             plot(time, data.RightT, 'color', [ MEDIUM_RED])
+            set(gca,'ylim',[-50 50])
             ylabel('Torsion (deg)','fontsize', 16);
             xlabel('Time (s)');
         end
