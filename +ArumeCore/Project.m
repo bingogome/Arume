@@ -118,7 +118,7 @@ classdef Project < handle
             
         %
         % Save project object to file
-        %
+        %   
         function save( this )
             data = [];
             data.name = this.name;
@@ -228,6 +228,34 @@ classdef Project < handle
             end
         
         end
+        
+        %
+        % Analysis methods
+        % 
+        function dataTable = GetDataTable(this, subjectSelection, sessionSelection)
+            allSubjects = {};
+            allSessionCodes = {};
+            for session=this.sessions
+                allSubjects{end+1} = session.subjectCode;
+                allSessionCodes{end+1} = session.sessionCode;
+            end
+            if ( ~exist( 'subjectSelection', 'var' ) && ~exist( 'sessionSelection', 'var' ))
+                subjectSelection = unique(allSubjects);
+                sessionSelection = unique(allSessionCodes);
+            end
+            
+            dataTable = table();
+            for session=this.sessions
+                % if this is one of the sessions we want
+                if ( any(categorical(subjectSelection) == session.subjectCode) && any(categorical(sessionSelection)==session.sessionCode))
+                    if ( isempty(dataTable) )
+                        dataTable = session.sessionDataTable;
+                    else
+                        dataTable = [dataTable;session.sessionDataTable];
+                    end
+                end
+            end
+        end
     end
     
     
@@ -266,6 +294,5 @@ classdef Project < handle
             result = 1;
         end
     end
-    
 end
 

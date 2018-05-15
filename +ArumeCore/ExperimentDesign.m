@@ -1084,6 +1084,9 @@ classdef ExperimentDesign < handle
         
         function eventDataset = PrepareEventDataSet(this, eventDataset)
         end
+        
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+        end
     end
 end
 
