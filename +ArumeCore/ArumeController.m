@@ -321,19 +321,19 @@ classdef ArumeController < handle
                 n = length(this.selectedSessions);
             end
             
-            try
-                for i =1:n
+            for i =1:n
+                try
                     disp(['ARUME::preparing analysis for session ' sessions(i).name])
                     session = sessions(i);
                     session.prepareForAnalysis();
                     if ( useWaitBar )
                         waitbar(i/n,h)
                     end
+                catch ex
+                    disp('Error preparing a session**************************');
+                    ex.getReport()
+                    disp('end Error preparing a session**************************');
                 end
-            catch ex
-                disp('Error preparing a session**************************');
-                ex.getReport()
-                disp('end Error preparing a session**************************');
             end
             
             if (useWaitBar)

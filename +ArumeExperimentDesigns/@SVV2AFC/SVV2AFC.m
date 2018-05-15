@@ -25,6 +25,10 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     methods ( Access = protected )
         
         function dlg = GetOptionsDialog( this )
+            
+            dlg.SubjectHandedness = { {'{Unknown}','LeftHanded', 'RightHanded', 'Ambidextrous'} };
+            dlg.Task = { {'{SubjectiveVisualHead}','SubjectiveVisualHead'} };
+            
             dlg.UseEyeTracker = { {'{0}','1'} };
             dlg.UseGamePad = { {'0','{1}'} };
             dlg.UseMouse = { {'{0}','1'} };
@@ -388,6 +392,35 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             analysisResults=4;
         end
         
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+            
+            
+            angles = this.GetAngles();
+            angles(this.Session.trialDataSet.TrialResult>0) = [];
+            
+            respones = this.GetLeftRightResponses();
+            respones(this.Session.trialDataSet.TrialResult>0) = [];
+            
+%             angles = angles(101:201);
+%             respones = respones(101:201);
+            [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
+            
+            
+            data = sessionDataTable;
+            if ( contains(this.Session.sessionCode,'LED') )
+                data.TiltSide = 'LeftTilt';
+            elseif (contains(this.Session.sessionCode,'RED'))
+                data.TiltSide = 'RightTilt';
+            elseif (contains(this.Session.sessionCode,'Upright'))
+                data.TiltSide = 'Upright';
+            end
+            data.TiltSide =categorical(cellstr(data.TiltSide));
+            
+            data.SVV = SVV;
+            data.SVVth = SVVth;
+            
+            sessionDataTable = data;
+        end
     end
     
     

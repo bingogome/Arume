@@ -926,41 +926,28 @@ classdef ArumeGui < handle
             
             % update info box
             if ( ~isempty( this.arumeController.currentSession ) )
-                s = '';
-                s = [s sprintf('== EXPERIMENT ======= \n\n')];
-                s = [s sprintf('%s\n\n', this.arumeController.currentSession.experiment.Name)];
-                s = [s sprintf('== EXPERIMENT OPTIONS ======= \n\n')];
-                %                 s = [s sprintf('%25s: %s\n', 'DataRawPath', this.arumeController.currentSession.dataRawPath)];
-                %                 s = [s sprintf('%25s: %s\n', 'DataAnalysisPath', this.arumeController.currentSession.dataAnalysisPath)];
-                if ( ~isempty( this.arumeController.currentSession.experiment.ExperimentOptions ) )
-                    options = fieldnames(this.arumeController.currentSession.experiment.ExperimentOptions);
-                    for i=1:length(options)
-                        optionClass = class(this.arumeController.currentSession.experiment.ExperimentOptions.(options{i}));
+                s = '';               
+                if ( ~isempty(this.arumeController.currentSession.sessionDataTable) )
+                    dataTable = this.arumeController.currentSession.sessionDataTable;
+                else
+                    dataTable = this.arumeController.currentSession.GetBasicSessionDataTable();
+                end
+                    for i=1:length(dataTable.Properties.VariableNames)
+                        optionClass = class(dataTable{1,i});
                         switch(optionClass)
                             case 'double'
-                                optionValue = num2str(this.arumeController.currentSession.experiment.ExperimentOptions.(options{i}));
+                                if ( isscalar(dataTable{1,i}))
+                                    s = [s sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, num2str(dataTable{1,i}))];
+                                end
                             case 'char'
-                                optionValue = this.arumeController.currentSession.experiment.ExperimentOptions.(options{i});
+                                s = [s sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, dataTable{1,i})];
+                            case 'categorical'
+                                s = [s sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, string(dataTable{1,i}))];
                             otherwise
-                                optionValue = '-';
-                        end
-                        s = [s sprintf('%-25s: %s\n', options{i}, optionValue) ];
+                                s = [s sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, '-')];
+                        end         
                     end
-                end
-                
-                s = [s sprintf('\n== SESSION STATUS ======= \n\n')];
-                NoYes = {'No' 'Yes'};
-                s = [s sprintf('%-25s: %s\n', 'Started', NoYes{this.arumeController.currentSession.isStarted+1})];
-                s = [s sprintf('%-25s: %s\n', 'Finished', NoYes{this.arumeController.currentSession.isFinished+1})];
-                if ( ~isempty(this.arumeController.currentSession.currentRun) )
-                    stats = this.arumeController.currentSession.currentRun.GetStats();
-                    s = [s sprintf('%-25s: %s\n', 'Trials Good/Aborts/Left', sprintf('%d/%d/%d', stats.trialsCorrect, stats.trialsAbort, stats.totalTrials-stats.trialsCorrect))];
-                end
-                
-                if ( ~isempty(this.arumeController.currentSession.currentRun) && size(this.arumeController.currentSession.currentRun.Events,2) > 4)
-                    s = [s sprintf('%-25s: %s\n','Time first trial ', datestr(this.arumeController.currentSession.currentRun.Events(1,2)))];
-                    s = [s sprintf('%-25s: %s\n','Time last trial ',datestr(this.arumeController.currentSession.currentRun.Events(end,2)))];
-                end
+                        
                         
                 set(this.infoBox,'string', s);
             end

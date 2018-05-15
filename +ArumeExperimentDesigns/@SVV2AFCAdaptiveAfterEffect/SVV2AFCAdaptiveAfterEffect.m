@@ -10,7 +10,7 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         
-        function dlg = GetOptionsDialog( this )
+         function dlg = GetOptionsDialog( this )
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptiveLong(this);
             
             dlg.TiltHeadAtBegining = { {'{0}','1'} };
@@ -457,7 +457,89 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
             newDs = struct2dataset(newData);
             
             trialDataSet = [data newDs];
-         end
+        end
+        
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+            dataRight = this.Session.trialDataSet;
+            
+            data = sessionDataTable;
+            if ( contains(this.Session.sessionCode,'LED') )
+                data.TiltSide = 'LeftTilt';
+            elseif (contains(this.Session.sessionCode,'RED'))
+                data.TiltSide = 'RightTilt';
+            end
+            data.TiltSide =categorical(cellstr(data.TiltSide));
+                        
+            data.SVV = nan(1,15);
+            data.RT = nan(1,15);
+            data.TH = nan(1,15);
+            data.Time = nan(1,15);
+            data.Torsion = nan(1,15);
+            
+            for j=1:15
+                idx = (50:100) + (j-1)*50;
+                idx(idx>=length(dataRight.Bin100SVV)) = [];
+                if ( length(idx) > 20)
+                    data.SVV(1,j) = nanmean(dataRight.Bin100SVV(idx));
+                    data.RT(1,j) = nanmean(dataRight.ReactionTime(idx));
+                    data.TH(1,j) = nanmean(dataRight.Bin100SVVth(idx));
+                    data.Time(1,j) = nanmean(dataRight.TimeStopTrial(idx)-dataRight.TimeStopTrial(101));
+                end
+            end
+            data.SVV(:,[2 12 15]) = nan;
+            data.RT(:,[2 12 15]) = nan;
+            data.TH(:,[2 12 15]) = nan;
+            data.Torsion(:,[2 12 15]) = nan;
+            
+            
+            idx = 0:20;
+            
+            data.DriftSVV = nan(1,1);
+            data.DriftTorsion = nan(1,1);
+            data.DriftTH = nan(1,1);
+            data.DriftRT = nan(1,1);
+            
+            data.DriftRateSVV = nan(1,1);
+            data.DriftRateTorsion = nan(1,1);
+            data.DriftTotalSVV = nan(1,1);
+            data.DriftTotalTorsion = nan(1,1);
+            
+            if ( sum(~isnan(data.SVV(1,3:11)))>0 )
+                b = regress(data.SVV(1,3:11)',[ones(size(1:9))' (1:9)']);
+                data.DriftSVV(1) = b(2);
+            end
+            if ( sum(~isnan(data.Torsion(1,3:11)))>0 )
+                b = regress(data.Torsion(1,3:11)',[ones(size(1:9))' (1:9)']);
+                data.DriftTorsion(1) = b(2);
+            end
+            if ( sum(~isnan(data.TH(1,3:11)))>0 )
+                b = regress(data.TH(1,3:11)',[ones(size(1:9))' (1:9)']);
+                data.DriftTH(1) = b(2);
+            end
+            if ( sum(~isnan(data.RT(1,3:11)))>0 )
+                b = regress(data.RT(1,3:11)',[ones(size(1:9))' (1:9)']);
+                data.DriftRT(1) = b(2);
+            end
+            
+            data.DurationTilt = nan(1,1);
+            
+            data.DriftTotalSVV = data.DriftRateSVV .* data.DurationTilt;
+            data.DriftTotalTorsion = data.DriftRateTorsion .* data.DurationTilt;
+            
+            data.SVVInitial = data.SVV(:,1);
+            data.SVVInitialError = abs(data.SVV(:,1));
+            data.SVVBeginingTilt = data.SVV(:,3);
+            data.SVVEndTilt = data.SVV(:,11);
+            data.SVVAfterEffect = data.SVV(:,13)-data.SVV(:,1);
+            
+            data.TorsionInitial = data.Torsion(:,1);
+            data.TorsionInitialError = abs(data.Torsion(:,1));
+            data.TorsionBeginingTilt = data.Torsion(:,3);
+            data.TorsionEndTilt = data.Torsion(:,11);
+            data.TorsionAfterEffect = data.Torsion(:,13)-data.Torsion(:,1);
+            
+            sessionDataTable = data;
+        end
     end
     
     % ---------------------------------------------------------------------
