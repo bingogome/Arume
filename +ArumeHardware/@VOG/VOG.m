@@ -63,7 +63,11 @@ classdef VOG  < handle
         function [files]= DownloadFile(this, path)
             files = [];
             if ( ~isempty( this.eyeTracker) )
-                files = this.eyeTracker.DownloadFile();
+                try
+                    files = this.eyeTracker.DownloadFile();
+                catch ex
+                    ex
+                end
                 files = cell(files.ToArray)';
             end
         end
