@@ -130,6 +130,8 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
                 secondsRemaining    = totalDuration;
                 startLoopTime = lastFlipTime;
                 
+                    sound1 = 0;
+                    sound2 = 0;
                 while secondsRemaining > 0
                     
                     secondsElapsed      = GetSecs - startLoopTime;
@@ -144,6 +146,12 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
                         xdeg = 0;
                         ydeg = 0;
                     elseif ( secondsElapsed > this.ExperimentOptions.InitialFixaitonDuration && secondsElapsed < (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration))
+                        
+                        if (sound1==0) 
+                            sound(sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   ), 8192);
+                            sound1=1;
+                        end
+                        
                         switch(variables.Side)
                             case 'Left'
                                 xdeg = -this.ExperimentOptions.EccentricPosition;
@@ -153,6 +161,12 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
                         
                         ydeg = 0;
                     else
+                        
+                        if (sound2==0) 
+                            sound(sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   ), 8192);
+                            sound2=1;
+                        end
+                        
                         switch(variables.Side)
                             case 'Left'
                                 xdeg = -variables.CenterLocation;

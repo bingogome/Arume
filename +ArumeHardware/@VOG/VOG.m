@@ -14,19 +14,19 @@ classdef VOG  < handle
                 port = 9000;
             end
             
-            if ( exist('C:\secure\Code\EyeTracker\bin\x64\Debug','file') )
-                asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\x64\Debug\EyeTrackerRemoteClient.dll');
-
-                if ( ~exist('ip','var') )
-                    ip = '127.0.0.1';
-                end
-            else
-                asm = NET.addAssembly('D:\Code\Debug\EyeTrackerRemoteClient.dll');
+%             if ( exist('C:\secure\Code\EyeTracker\bin\x64\Debug','file') )
+%                 asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\x64\Debug\EyeTrackerRemoteClient.dll');
+% 
+%                 if ( ~exist('ip','var') )
+%                     ip = '127.0.0.1';
+%                 end
+%             else
+                asm = NET.addAssembly('C:\secure\code\Debug\EyeTrackerRemoteClient.dll');
                 
                 if ( ~exist('ip','var') )
-                    ip = '10.17.101.220';
+                     ip = '127.0.0.1';
                 end
-            end
+%             end
             
             this.eyeTracker = VORLab.VOG.Remote.EyeTrackerClient(ip, port);
         end
