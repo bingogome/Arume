@@ -237,6 +237,133 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
         
         function trialDataSet = PrepareTrialDataSet( this, ds)
             trialDataSet = ds;
+            
+            
+            eventFiles = this.Session.currentRun.LinkedFiles.vogEventsFile;
+            if (~iscell(eventFiles) )
+                eventFiles = {eventFiles};
+            end
+            
+            if (strcmp(eventFiles{1}, 'ReboundVariCenter_NGA-2018May22-154031-events.txt'))
+                eventFiles = {'ReboundVariCenter_NGA-2018May22-152034-events.txt' eventFiles{:}};
+            end
+            if (strcmp(eventFiles{1}, 'ReboundVariCenter_KCA-2018May22-134440-events.txt'))
+                eventFiles{end+1} = 'ReboundVariCenter_KCA-2018May22-144011-events.txt';
+            end
+
+            events1 = [];
+            for i=1:length(eventFiles)
+                eventFile = eventFiles{i};
+                disp(eventFile);
+                eventFilesPath = fullfile(this.Session.dataRawPath, eventFile);
+                text = fileread(eventFilesPath);
+                matches = regexp(text,'[^\n]*new trial[^\n]*','match')';
+                eventsFromFile = struct2table(cell2mat(regexp(matches,'Time=(?<DateTime>[^\s]*) FrameNumber=(?<FrameNumber>[^\s]*)','names')));
+                eventsFromFile.FrameNumber = str2double(eventsFromFile.FrameNumber);
+                eventsFromFile = [eventsFromFile table(string(repmat(eventFile,height(eventsFromFile),1)),repmat(i,height(eventsFromFile),1),'variablenames',{'File' 'FileNumber'})];
+                if ( isempty(events1) )
+                    events1 = eventsFromFile;
+                else
+                    events1 = cat(1,events1,eventsFromFile);
+                end
+            end
+            
+            trialDataSet = [dataset2table(trialDataSet) events1];
+            
+            trialData = trialDataSet(trialDataSet.TrialResult==0,:);
+            data = this.Session.samplesDataSet;
+            trialData.Side = categorical(trialData.Side);
+            
+            dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
+                        
+            if (~iscell(dataFiles) )
+                dataFiles = {dataFiles};
+            end
+            
+            if (strcmp(dataFiles{1}, 'ReboundVariCenter_NGA-2018May22-154031.txt'))
+                dataFiles = {'ReboundVariCenter_NGA-2018May22-152034.txt' dataFiles{:}};
+            end
+            if (strcmp(dataFiles{1}, 'ReboundVariCenter_KCA-2018May22-134440.txt'))
+                dataFiles{end+1} = 'ReboundVariCenter_KCA-2018May22-144011.txt';
+            end
+            
+            allRawData = {};
+            for i=1:length(dataFiles)
+                dataFile = dataFiles{i}                
+                dataFilePath = fullfile(this.Session.dataRawPath, dataFile);
+                
+                % load data
+                rawData = dataset2table(VOG.LoadVOGdataset(dataFilePath));
+                
+                allRawData{i} = rawData;
+            end
+            
+            d = this.ExperimentOptions.EccentricDuration;
+            
+            for i=1:height(trialData)
+                fileNumber = trialData.FileNumber(i);
+                idxInFile = find(data.FileNumber==fileNumber);
+                if ( isempty(idxInFile) )
+                    continue;
+                end
+                b = bins(data.Time(idxInFile)', (allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
+                if ( isempty(b))
+                    continue;
+                end
+                trialData.trialStartSample(i) =  idxInFile(1) + bins(data.Time(idxInFile)', (allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
+                trialData.StartEccentricity(i) = idxInFile(1) + bins(data.Time(idxInFile)', 11+(allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
+                trialData.StartRebound(i) = idxInFile(1) + bins(data.Time(idxInFile)', 11+d+(allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
+                trialData.EndRebound(i) = idxInFile(1) + bins(data.Time(idxInFile)', 31+d+(allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
+            end
+            
+            target = nan(size(data.LeftX));
+            for i=1:height(trialData)
+                if ( trialData.trialStartSample(i) == 0 )
+                    trialData.SPVBaseline(i) = nan;
+                    trialData.SPVBegEcc(i) = nan;
+                    trialData.SPVEndEcc(i) = nan;
+                    trialData.SPVBegRebound(i) = nan;
+                    trialData.SPVEndRebound(i) = nan;
+                    continue;
+                end
+                idx1 = trialData.trialStartSample(i):trialData.StartEccentricity(i);
+                idx2 = trialData.StartEccentricity(i):trialData.StartRebound(i);
+                idx3 = trialData.StartRebound(i):trialData.EndRebound(i);
+                
+                switch(trialData.Side(i))
+                    case 'Left'
+                        ecc = -40;
+                        cen = -trialData.CenterLocation(i);
+                    case 'Right'
+                        ecc = 40;
+                        cen = trialData.CenterLocation(i);
+                end
+                target(idx1) = 0;
+                target(idx2) = ecc;
+                target(idx3) = cen;
+                
+                if ( length(idx3)< 5*500)
+                    trialData.SPVBaseline(i) = nan;
+                    trialData.SPVBegEcc(i) = nan;
+                    trialData.SPVEndEcc(i) = nan;
+                    trialData.SPVBegRebound(i) = nan;
+                    trialData.SPVEndRebound(i) = nan;
+                    continue;
+                end
+                idxBaseline = idx1(end-6*500:end-1*500);
+                idxBegEcc = idx2(1:5*500);
+                idxEndEcc = idx2(end-6*500:end-1*500);
+                idxBegRebound = idx3(1:5*500);
+                idxEndRebound = idx3(end-6*500:end-1*500);
+                trialData.SPVBaseline(i) = nanmedian([data.LeftSPVX(idxBaseline);data.RightSPVX(idxBaseline)]);
+                trialData.SPVBegEcc(i) = nanmedian([data.LeftSPVX(idxBegEcc);data.RightSPVX(idxBegEcc)]);
+                trialData.SPVEndEcc(i) = nanmedian([data.LeftSPVX(idxEndEcc);data.RightSPVX(idxEndEcc)]);
+                trialData.SPVBegRebound(i) = nanmedian([data.LeftSPVX(idxBegRebound);data.RightSPVX(idxBegRebound)]);
+                trialData.SPVEndRebound(i) = nanmedian([data.LeftSPVX(idxEndRebound);data.RightSPVX(idxEndRebound)]);
+            end
+            
+            trialDataSet = trialData;
+            
         end
         
         function samplesDataSet = PrepareSamplesDataSet(this, trialDataSet, dataFile, calibrationFile)
@@ -244,26 +371,18 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
             
             dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
             calibrationFiles = this.Session.currentRun.LinkedFiles.vogCalibrationFile;
-            eventFiles = this.Session.currentRun.LinkedFiles.vogEventsFile;
-
-            
+                        
             if (~iscell(dataFiles) )
                 dataFiles = {dataFiles};
                 calibrationFiles = {calibrationFiles};
-                eventFiles = {eventFiles};
             end
             
             for i=1:length(dataFiles)
-                dataFile = dataFiles{i};
+                dataFile = dataFiles{i}
                 calibrationFile = calibrationFiles{i};
-                eventFile = eventFiles{i};
-             
+                
                 dataFilePath = fullfile(this.Session.dataRawPath, dataFile);
                 calibrationFilePath = fullfile(this.Session.dataRawPath, calibrationFile);
-                eventFilesPath = fullfile(this.Session.dataRawPath, eventFile);
-                t= readtable(eventFilesPath);
-                t(contains(t.Var4,'KEYPRESS'),:) = [];
-                FrameNumberTrialOneStrat = t.Var3{1}(8:end-2);
                 
                 % load data
                 rawData = VOG.LoadVOGdataset(dataFilePath);
@@ -272,12 +391,21 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
                 [calibratedData leftEyeCal rightEyeCal] = VOG.CalibrateData(rawData, calibrationFilePath);
                 
                 [cleanedData, fileSamplesDataSet] = VOG.ResampleAndCleanData3(calibratedData, 1000);
+                                
+                fileSamplesDataSet = [table(repmat(i,height(fileSamplesDataSet),1),'variablenames',{'FileNumber'}), fileSamplesDataSet];
+
+                                
+                if ( isempty(samplesDataSet) )
+                    samplesDataSet = fileSamplesDataSet;
+                else
+                    samplesDataSet = cat(1,samplesDataSet,fileSamplesDataSet);
+                end
             end
-            if ( isempty(samplesDataSet) )
-                samplesDataSet = fileSamplesDataSet;
-            else
-                samplesDataSet = cat(1,samplesDataSet,fileSamplesDataSet);
-            end
+        end
+        
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+            trialData = this.Session.trialDataSet;
+            g1 = grpstats(trialData,{'CenterLocation', 'Side'},{'mean'},'DataVars',{'SPVBaseline', 'SPVBegRebound'})
         end
     end
     
@@ -288,24 +416,13 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
         function plotResults = Plot_Traces(this)
             
             data = this.Session.samplesDataSet;
-            figure
+        
             
             MEDIUM_BLUE =  [0.1000 0.5000 0.8000];
             MEDIUM_RED = [0.9000 0.2000 0.2000];
             
             figure
             time = (1:length(data.RightT))/500;
-            
-%             lb = (boxcar(abs([0;diff(data.LeftUpperLid)])>20,10)>0) | (abs(data.LeftUpperLid-median(data.LeftUpperLid)) > 50);
-%             rb = boxcar(abs([0;diff(data.RightUpperLid)])>20,10)>0 | (abs(data.RightUpperLid-median(data.RightUpperLid)) > 50);
-%             
-%             data.LeftX(lb) = nan;
-%             data.LeftY(lb) = nan;
-%             data.LeftT(lb) = nan;
-%             
-%             data.RightX(rb) = nan;
-%             data.RightY(rb) = nan;
-%             data.RightT(rb) = nan;
             
             subplot(3,1,1,'nextplot','add')
             plot(time, data.LeftX, 'color', [ MEDIUM_BLUE ])
@@ -325,7 +442,124 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
             set(gca,'ylim',[-50 50])
             ylabel('Torsion (deg)','fontsize', 16);
             xlabel('Time (s)');
+            
         end
+        
+        function plotResults = Plot_Saccades(this)
+            data = this.Session.samplesDataSet;
+            VOG.PlotQuickPhaseDebug(data)
+        end
+        
+        function plotResults = Plot_SPV(this)
+               
+            data = this.Session.samplesDataSet;
+            trialData = this.Session.trialDataSet;
+           
+            
+            g1 = grpstats(trialData,{'CenterLocation', 'Side'},{'mean'},'DataVars',{'SPVBaseline', 'SPVBegRebound'});
+            g2 = grpstats(trialData,{'Side'},{'mean'},'DataVars',{'SPVBegEcc', 'SPVEndEcc'});
+            
+            figure
+            plot(-g1.CenterLocation(g1.Side=='Left'),g1.mean_SPVBegRebound(g1.Side=='Left'),'-o')
+            hold
+            plot(g1.CenterLocation(g1.Side=='Right'),g1.mean_SPVBegRebound(g1.Side=='Right'),'-o')
+            
+            plot(-40,g2.mean_SPVBegEcc(g2.Side=='Left'),'-o')
+            plot(40,g2.mean_SPVBegEcc(g2.Side=='Right'),'-o')
+            plot(-40,g2.mean_SPVEndEcc(g2.Side=='Left'),'-o')
+            plot(40,g2.mean_SPVEndEcc(g2.Side=='Right'),'-o')
+            a=1;
+        end
+        
+        
+        function plotResults = PlotAggregate_SPVAvg(this, sessions)
+            
+            reboundSessions = [];
+            calibrationSessions = [];
+            for i=1:length(sessions)
+                if ( strcmp(sessions(i).experiment.Name, 'ReboundCalibration'))
+                    if ( isempty(calibrationSessions) )
+                        calibrationSessions = sessions(i);
+                    else
+                        calibrationSessions(end+1) = sessions(i);
+                    end
+                end
+                if ( strcmp(sessions(i).experiment.Name, 'ReboundVariCenter'))
+                    if ( isempty(reboundSessions) )
+                        reboundSessions = sessions(i);
+                    else
+                        reboundSessions(end+1) = sessions(i);
+                    end
+                end
+            end
+             
+             figure
+             hold
+             g1 = table();
+             g2 = table();
+             for i=1:length(reboundSessions)
+                 trialData = reboundSessions(i).trialDataSet;
+                 
+                 g11 = grpstats(trialData,{'CenterLocation', 'Side'},{'mean'},'DataVars',{'SPVBaseline', 'SPVBegRebound'});
+                 g11.Properties.RowNames = {};
+                 g1 = [g1;[g11 table(repmat(i,height(g11),1))]];
+                 
+                 g22 = grpstats(trialData,{'Side'},{'mean'},'DataVars',{'SPVBegEcc', 'SPVEndEcc'});
+                 g22.Properties.RowNames = {};
+                 g2 = [g2;[g22 table(repmat(i,height(g22),1))]];
+                 
+                 plot(-g11.CenterLocation(g11.Side=='Left'),g11.mean_SPVBegRebound(g11.Side=='Left'),'r-o')
+                 plot(g11.CenterLocation(g11.Side=='Right'),g11.mean_SPVBegRebound(g11.Side=='Right'),'b-o')
+             end
+             
+             d = grpstats(g1,{'CenterLocation', 'Side'},{'mean' 'sem'},'DataVars',{'mean_SPVBaseline', 'mean_SPVBegRebound'});
+             d2 = grpstats(g2,{'Side'},{'mean' 'sem'},'DataVars',{'mean_SPVBegEcc', 'mean_SPVEndEcc'});
+             
+             
+             g1 = table();
+             g2 = table();
+             for i=1:length(calibrationSessions)
+                 
+                 data = calibrationSessions(i).samplesDataSet;
+                 trialData = calibrationSessions(i).trialDataSet;
+                 
+                 g11 = grpstats(trialData,{'Position'},{'mean'},'DataVars',{'SPVBegEcc'});
+                 g11.Properties.RowNames = {};
+                 g1 = [g1;[g11 table(repmat(i,height(g11),1))]];
+                 
+                 
+                 plot(g11.Position,g11.mean_SPVBegEcc,'k-o')
+             end
+             
+             dcali = grpstats(g1,{'Position'},{'mean' 'sem'},'DataVars',{'mean_SPVBegEcc'});
+             
+             
+             
+             
+             figure
+             h1=errorbar(-d.CenterLocation(d.Side=='Left'),d.mean_mean_SPVBegRebound(d.Side=='Left'),d.sem_mean_SPVBegRebound(d.Side=='Left'),'-o','linewidth',2)
+             hold
+             h2=errorbar(d.CenterLocation(d.Side=='Right'),d.mean_mean_SPVBegRebound(d.Side=='Right'),d.sem_mean_SPVBegRebound(d.Side=='Right'),'-o','linewidth',2)
+             
+             
+             h3=errorbar([-40 40],d2.mean_mean_SPVBegEcc,d2.sem_mean_SPVBegEcc,'ko','linewidth',2)
+             h4= errorbar(dcali.Position,dcali.mean_mean_SPVBegEcc,dcali.sem_mean_SPVBegEcc,'k-o')
+%              errorbar([-40 40],d2.mean_mean_SPVEndEcc,d2.mean_mean_SPVEndEcc,'o','color',[0.5 .5 .5],'linewidth',2)
+             set(gca,'xlim',[-42 42])
+%              legend({'Rebound after left','Rebound after right','Initial gaze evoked','Final gaze evoked'});
+             xlabel('Position (deg)');
+             ylabel('Slow phase velocity (deg/s)');
+             line([-40 40],[0 0],'linestyle','--');
+             line([0 0],[-2 2],'linestyle','--');
+%              errorbar(40,d2.mean_mean_SPVBegEcc(d2.Side=='Right'),d2.sem_mean_SPVBegEcc(d2.Side=='Right'),'-o')
+%              errorbar(-40,d2.mean_mean_SPVEndEcc(d2.Side=='Left'),d2.sem_mean_SPVEndEcc(d2.Side=='Left'),'-o')
+%              errorbar(40,d2.mean_mean_SPVEndEcc(d2.Side=='Right'),d2.sem_mean_SPVEndEcc(d2.Side=='Right'),'-o')
+             
+%              arrow([40 d2.mean_mean_SPVBegEcc(d2.Side=='Left')], [40 d2.mean_mean_SPVEndEcc(d2.Side=='Left')])
+
+             legend([h1 h2 h3 h4],{'Rebound after left','Rebound after right','Gaze evoked (rebound exp)', 'Gae evoked (calib.)'});
+         end
+        
     end
     
     % ---------------------------------------------------------------------

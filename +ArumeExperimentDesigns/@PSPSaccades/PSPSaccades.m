@@ -32,17 +32,17 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
             this.HitKeyBeforeTrial = 0;
             this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness/100*255;
             
-            this.trialDuration = 3; %seconds
+            this.trialDuration = 4; %seconds
             
             % default parameters of any experiment
             this.trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
             
             this.trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
-            this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
+            this.trialsPerSession = this.NumberOfConditions;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = this.ExperimentOptions.NumberOfRepetitions;
+            this.numberOfTimesRepeatBlockSequence = 1;
             this.blocksToRun = 1;
             this.blocks = [ ...
                 struct( 'fromCondition', 1, 'toCondition', this.NumberOfConditions, 'trialsToRun', this.NumberOfConditions  )];
@@ -56,6 +56,13 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
             i = i+1;
             conditionVars(i).name   = 'TargetLocation';
             conditionVars(i).values = {[2,0], [-2,0], [5,0], [-5,0], [8,0], [-8,0], [10,0], [-10,0], [0,2], [0,-2], [0,5], [0,-5], [0,8], [0,-8], [0,10], [0,-10]};
+            
+            i = i+1;
+            conditionVars(i).name   = 'InitialFixationDuration';
+            a = this.ExperimentOptions.FixationMaxDuration;
+            b = this.ExperimentOptions.FixationMinDuration;
+            n = this.ExperimentOptions.NumberOfRepetitions;
+            conditionVars(i).values = (a:((b-a)/(n-1)):b);
         end
         
         function initBeforeRunning( this )
@@ -63,16 +70,28 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
             if ( this.ExperimentOptions.UseEyeTracker )
                 this.eyeTracker = ArumeHardware.VOG();
                 this.eyeTracker.Connect();
+                this.eyeTracker.SetSessionName(this.Session.name);
                 this.eyeTracker.StartRecording();
             end
-                
         end
         
         function cleanAfterRunning(this)
             
-                if ( this.ExperimentOptions.UseEyeTracker )
-                    this.eyeTracker.StopRecording();
-                end
+            if ( this.ExperimentOptions.UseEyeTracker )
+                this.eyeTracker.StopRecording();
+                
+                disp('Downloading files...');
+                files = this.eyeTracker.DownloadFile();
+                
+                disp(files{1});
+                disp(files{2});
+                disp(files{3});
+                disp('Finished downloading');
+                
+                this.addFile('vogDataFile', files{1});
+                this.addFile('vogCalibrationFile', files{2});
+                this.addFile('vogEventsFile', files{3});
+            end
         end
         
         function trialResult = runPreTrial(this, variables )
@@ -88,7 +107,9 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
                 Enum = ArumeCore.ExperimentDesign.getEnum();
                 
                 if ( this.ExperimentOptions.UseEyeTracker )
-                    this.eyeTracker.RecordEvent(['new trial [' num2str(variables.TargetLocation(1)) ',' num2str(variables.TargetLocation(2)) ']'] );
+                    msg = ['new trial [' num2str(variables.TargetLocation(1)) ',' num2str(variables.TargetLocation(2)) ']'];
+                    this.eyeTracker.RecordEvent( msg );
+                    disp(msg);
                 end
                 
                 graph = this.Graph;
@@ -100,9 +121,7 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
                 
                 lastFlipTime        = GetSecs;
                 
-                
-                d = rand*(this.ExperimentOptions.FixationMaxDuration -  this.ExperimentOptions.FixationMinDuration);
-                fixDuration = (this.ExperimentOptions.FixationMinDuration + d)/1000;
+                fixDuration = (variables.InitialFixationDuration)/1000;
                 totalDuration = fixDuration + this.ExperimentOptions.EccentricDuration/1000;
                 
                 secondsRemaining    = totalDuration;

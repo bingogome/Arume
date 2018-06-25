@@ -384,12 +384,14 @@ classdef Session < ArumeCore.DataDB
         function prepareForAnalysis( this )
             
             %% 1) Prepare the sample dataset
-            varNames={'TimeStamp', 'LeftHorizontal','LeftVertical','LeftTorsion','RightHorizontal','RightVertical','RightTorsion','HeadRollTilt'};
-            samplesDataSet = dataset([],[],[],[],[],[],[],[],'VarNames',varNames);
-            
-            [samplesDataSet] = this.experiment.PrepareSamplesDataSet(samplesDataSet);
-            if ( ~isempty(samplesDataSet) )
-                this.WriteVariable(samplesDataSet,'samplesDataSet');
+            if(0)
+                varNames={'TimeStamp', 'LeftHorizontal','LeftVertical','LeftTorsion','RightHorizontal','RightVertical','RightTorsion','HeadRollTilt'};
+                samplesDataSet = dataset([],[],[],[],[],[],[],[],'VarNames',varNames);
+                
+                [samplesDataSet] = this.experiment.PrepareSamplesDataSet(samplesDataSet);
+                if ( ~isempty(samplesDataSet) )
+                    this.WriteVariable(samplesDataSet,'samplesDataSet');
+                end
             end
             
 %             if ( ~isempty(rawDataSet) )
