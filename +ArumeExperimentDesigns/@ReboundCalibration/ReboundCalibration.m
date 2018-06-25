@@ -31,7 +31,7 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
         end
         
         function initExperimentDesign( this  )
-            this.HitKeyBeforeTrial = 1;
+            this.HitKeyBeforeTrial = 0;
             this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness;
             
             this.trialDuration = this.ExperimentOptions.Duration; %seconds
@@ -137,11 +137,11 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
                         ydeg = 0;
                         flashing = 0;
                     elseif ( secondsElapsed > 2 && secondsElapsed < 5)
-                        xdeg = this.ExperimentOptions.Position;
+                        xdeg = variables.Position;
                         ydeg = 0;
                         flashing = 0;
                     elseif ( secondsElapsed > 5)
-                        xdeg = this.ExperimentOptions.Position;
+                        xdeg = variables.Position;
                         ydeg = 0;
                         flashing = 1;
                     end
