@@ -21,9 +21,9 @@ classdef PSPAntiSaccades < ArumeCore.ExperimentDesign
             
             dlg.NumberOfRepetitions = 15;
             
-            dlg.ScreenWidth = 100;
-            dlg.ScreenHeight = 100;
-            dlg.ScreenDistance =100;
+            dlg.ScreenWidth = 121;
+            dlg.ScreenHeight = 68;
+            dlg.ScreenDistance = 60;
             
             dlg.BackgroundBrightness = 50;
         end

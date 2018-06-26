@@ -21,9 +21,9 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
             
             dlg.NumberOfRepetitions = 10;
             
-            dlg.ScreenWidth = 100;
-            dlg.ScreenHeight = 100;
-            dlg.ScreenDistance =100;
+            dlg.ScreenWidth = 121;
+            dlg.ScreenHeight = 68;
+            dlg.ScreenDistance =60;
             
             dlg.BackgroundBrightness = 50;
         end
@@ -98,7 +98,7 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
             trialResult =  Enum.trialResult.CORRECT;
-        end
+        end  
         
         function trialResult = runTrial( this, variables )
                        
