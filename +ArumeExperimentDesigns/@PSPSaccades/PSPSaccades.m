@@ -29,6 +29,12 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
         end
         
         function initExperimentDesign( this  )
+            
+            % this shuffles the second column (initial durations) of the
+            % condition matrix. This will break the typical characteristics
+            % of a condition matrix
+            this.shuffleConditionMatrix(2);
+            
             this.HitKeyBeforeTrial = 0;
             this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness/100*255;
             

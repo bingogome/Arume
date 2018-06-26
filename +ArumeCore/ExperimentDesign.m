@@ -868,6 +868,9 @@ classdef ExperimentDesign < handle
             end
         end
         
+        function shuffleConditionMatrix(this, variableNumber)
+            this.ConditionMatrix(:,variableNumber) = Shuffle(this.ConditionMatrix(:,variableNumber));
+        end
         
         %% ShowDebugInfo
         function ShowDebugInfo( this, variables )
@@ -969,7 +972,7 @@ classdef ExperimentDesign < handle
                 conditionMatrix = [ repmat(conditionMatrix,nValues(iVar),1)  ceil((1:prod(nValues))/prod(nValues(1:end-1)))' ];
             end
         end
-        
+                
         function PlaySound(this,trialResult)
             
             Enum = ArumeCore.ExperimentDesign.getEnum();
