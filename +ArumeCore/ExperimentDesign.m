@@ -465,12 +465,13 @@ classdef ExperimentDesign < handle
                             if ( this.Session.currentRun.CurrentSession < this.Session.currentRun.SessionsToRun)
                                 % -- session finished
                                 this.Session.currentRun.CurrentSession = this.Session.currentRun.CurrentSession + 1;
-                                this.Graph.DlgHitKey( 'Session finished, hit a key to exit' );
+                                disp('ARUME:: Session finished! closing down and saving data ...');
+                                %this.Graph.DlgHitKey( 'Session finished, hit a key to exit' );
                             else
                                 % -- experiment finished
                                 % % %                     this.Graph.DlgHitKey( 'Experiment finished, hit a key to exit' );
-                                this.Graph.DlgHitKey( 'Finished, hit a key to exit' );
-                                
+                                %this.Graph.DlgHitKey( 'Finished, hit a key to exit' );
+                                disp('ARUME:: Session finished! closing down and saving data ...');
                             end
                             status = SAVEDATA;
                         case SAVEDATA
@@ -506,6 +507,7 @@ classdef ExperimentDesign < handle
             %% -------------------- END FREE RESOURCES ----------------------------
             % --------------------------------------------------------------------
             
+            disp('ARUME:: Done closing display and connections!');
         end
         
         % run without display

@@ -12,6 +12,8 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
         
         function dlg = GetOptionsDialog( this )
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptive(this);
+            
+            dlg.TotalNumberOfTrials = 1000;
         end
         
         function initExperimentDesign( this  )
@@ -22,11 +24,11 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
-            this.trialsPerSession   = 1000;
+            this.trialsPerSession   = this.ExperimentOptions.TotalNumberOfTrials;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 100;
+            this.numberOfTimesRepeatBlockSequence = ceil(this.ExperimentOptions.TotalNumberOfTrials/10);
             this.blocksToRun = 1;
             this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 10, 'trialsToRun', 10) ];
         end
