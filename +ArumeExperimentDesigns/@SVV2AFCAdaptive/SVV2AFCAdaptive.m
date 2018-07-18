@@ -16,10 +16,12 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
         function dlg = GetOptionsDialog( this )
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFC(this);
             
+            dlg.PreviousTrialsForRange = { {'{All}','Previous30'} };
+            dlg.RangeChanges = { {'{Slow}','Fast'} };
+            dlg.TotalNumberOfTrials = 100;
         end
         
         function initExperimentDesign( this  )
-            
             this.trialDuration = this.ExperimentOptions.fixationDuration/1000 ...
                 + this.ExperimentOptions.targetDuration/1000 ...
                 + this.ExperimentOptions.responseDuration/1000 ; %seconds
@@ -27,11 +29,11 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
-            this.trialsPerSession   = 100;
+            this.trialsPerSession   = this.ExperimentOptions.TotalNumberOfTrials;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 10;
+            this.numberOfTimesRepeatBlockSequence = ceil(this.ExperimentOptions.TotalNumberOfTrials/10);
             this.blocksToRun = 1;
             this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 10, 'trialsToRun', 10) ];
         end
@@ -48,18 +50,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             conditionVars(i).name   = 'Position';
             conditionVars(i).values = {'Up' 'Down'};
         end
-        
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
-        end
-        
-        function staircaseVars = getStaircaseVariables( this )
-            i= 0;
-            
-            i = i+1;
-            staircaseVars = [];
-        end
-        
+                
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
             % Add stuff here
@@ -89,9 +80,14 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             if ( length(previousValues)>0 )
                 if ( N == 0 )
                     ds = dataset;
-                    ds.Response = previousResponses(1:end);
-                    ds.Angle = previousValues(1:end);
-                    modelspec = 'Response ~ Angle';
+                    switch(this.ExperimentOptions.PreviousTrialsForRange)
+                        case 'All'
+                            ds.Response = previousResponses(1:end);
+                            ds.Angle = previousValues(1:end);
+                        case 'Previous30'
+                            ds.Response = previousResponses(max(1,end-30):end);
+                            ds.Angle = previousValues(max(1,end-30):end);
+                    end
                     subds = ds;
                     
                     SVV = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
@@ -106,12 +102,22 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     
                     this.currentCenterRange = SVV + this.ExperimentOptions.offset;            
 
-%                     this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
-                    this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
+                    switch(this.ExperimentOptions.RangeChanges)
+                        case 'Slow'
+                            this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
+                        case 'Fast'
+                            this.currentRange = (45)./min(9,round(2.^(Nblocks/15)));
+                    end
                 end
             else
-                this.currentCenterRange = rand(1)*30-15;
-                this.currentRange = 90;
+                switch(this.ExperimentOptions.RangeChanges)
+                    case 'Slow'
+                        this.currentCenterRange = rand(1)*30-15;
+                        this.currentRange = 90;
+                    case 'Fast'
+                        this.currentCenterRange = rand(1)*15-15;
+                        this.currentRange = 45;
+                end
             end
             
             this.currentAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
@@ -119,7 +125,8 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             
             this.currentAngle = round(this.currentAngle);
             
-            disp(['CURRENT: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(N) ' SVV : ' num2str(this.currentCenterRange) ' RANGE: ' num2str(this.currentRange)]);
+            disp(sprintf(['\nLAST RESP.: ' char(previousResponses(max(end-100,1):end)')]));
+            disp(['CURRENT TRIAL: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(Nblocks) ' RANGE: ' num2str(this.currentRange) ' SVV : ' num2str(this.currentCenterRange)]);
             
             if ( ~isempty(this.eyeTracker) )
                 if ( ~this.eyeTracker.IsRecording())
@@ -133,7 +140,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
         end
         
         function trialResult = runTrial( this, variables )
-            
+                        
             try
                 this.lastResponse = -1;
                 this.reactionTime = -1;
@@ -152,6 +159,13 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                 
                 startLoopTime = lastFlipTime;
                 
+                
+                % SEND TO PARALEL PORT TRIAL NUMBER
+                %write a value to the default LPT1 printer output port (at 0x378)
+                %nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
+                %outp(hex2dec('378'),rem(nCorrect,100)*2);
+                
+                
                 while secondsRemaining > 0
                     
                     secondsElapsed      = GetSecs - startLoopTime;
@@ -166,14 +180,16 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
 
                     t1 = this.ExperimentOptions.fixationDuration/1000;
                     t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
-                    
-                                            
+                                        
 %                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
                     if ( secondsElapsed > t1)
                         %-- Draw target
                         
                         this.DrawLine(variables);
-                       
+                        
+                        % SEND TO PARALEL PORT TRIAL NUMBER
+                        %write a value to the default LPT1 printer output port (at 0x378)
+                        %outp(hex2dec('378'),7);
                     end
                     
 %                     if (secondsElapsed < t2)
@@ -188,29 +204,29 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     % -----------------------------------------------------------------
                     
                     
-                    % -----------------------------------------------------------------
-                    % DEBUG
-                    % -----------------------------------------------------------------
-                    if (0)
-                        % TODO: it would be nice to have some call back system here
-                        Screen('DrawText', graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.white);
-                        currentline = 50 + 25;
-                        vNames = fieldnames(variables);
-                        for iVar = 1:length(vNames)
-                            if ( ischar(variables.(vNames{iVar})) )
-                                s = sprintf( '%s = %s',vNames{iVar},variables.(vNames{iVar}) );
-                            else
-                                s = sprintf( '%s = %s',vNames{iVar},num2str(variables.(vNames{iVar})) );
-                            end
-                            Screen('DrawText', graph.window, s, 20, currentline, graph.white);
-                            
-                            currentline = currentline + 25;
+                % -----------------------------------------------------------------
+                % DEBUG
+                % -----------------------------------------------------------------
+                if (0)
+                    % TODO: it would be nice to have some call back system here
+                    Screen('DrawText', graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.white);
+                    currentline = 50 + 25;
+                    vNames = fieldnames(variables);
+                    for iVar = 1:length(vNames)
+                        if ( ischar(variables.(vNames{iVar})) )
+                            s = sprintf( '%s = %s',vNames{iVar},variables.(vNames{iVar}) );
+                        else
+                            s = sprintf( '%s = %s',vNames{iVar},num2str(variables.(vNames{iVar})) );
                         end
+                        Screen('DrawText', graph.window, s, 20, currentline, graph.white);
+                        
+                        currentline = currentline + 25;
                     end
-                    % -----------------------------------------------------------------
-                    % END DEBUG
-                    % -----------------------------------------------------------------
-                    
+                end
+                % -----------------------------------------------------------------
+                % END DEBUG
+                % -----------------------------------------------------------------
+                
                     
                     % -----------------------------------------------------------------
                     % -- Flip buffers to refresh screen -------------------------------
@@ -232,11 +248,15 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     end
                     
                     if ( this.lastResponse >= 0 )
+                        
+                        % SEND TO PARALEL PORT TRIAL NUMBER
+                        %write a value to the default LPT1 printer output port (at 0x378)
+                        %outp(hex2dec('378'),9);
+                        
                         this.reactionTime = secondsElapsed-1;
                         disp(num2str(this.lastResponse));
                         break;
                     end
-                    
                     
                     % -----------------------------------------------------------------
                     % --- END Collecting responses  -----------------------------------
@@ -247,6 +267,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                 if ( ~isempty( this.eyeTracker ) )
                     this.eyeTracker.StopRecording();
                 end
+                
                 rethrow(ex)
             end
             
@@ -254,11 +275,9 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             if ( this.lastResponse < 0)
                 trialResult =  Enum.trialResult.ABORT;
             end
-            
         end
         
         function trialOutput = runPostTrial(this)
-            
             
             if ( ~isempty( this.eyeTracker ) )
                 

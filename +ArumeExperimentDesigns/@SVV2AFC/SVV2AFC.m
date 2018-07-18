@@ -257,7 +257,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             ax1 = gca;
             set(ax1,'nextplot','add', 'fontsize',12);
             
-%             bar(allAngles, trialCounts/sum(trialCounts)*100, 'edgecolor','none','facecolor',[0.8 0.8 0.8])
+             bar(allAngles, trialCounts/sum(trialCounts)*100, 'edgecolor','none','facecolor',[0.8 0.8 0.8])
             
             plot( allAngles, allResponses,'o', 'color', [0.4 0.4 0.4], 'markersize',15,'linewidth',2, 'markerfacecolor', [0.7 0.7 0.7])
             plot(a,p, 'color', 'k','linewidth',3);

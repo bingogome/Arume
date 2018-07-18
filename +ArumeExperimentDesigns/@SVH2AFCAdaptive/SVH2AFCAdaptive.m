@@ -17,6 +17,9 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
         
         function dlg = GetOptionsDialog( this )
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVH2AFC(this);
+            
+            dlg.PreviousTrialsForRange = { {'{All}','Previous30'} };
+            dlg.RangeChanges = { {'{Slow}','Fast'} };
         end
         
         function initExperimentDesign( this  )
@@ -90,13 +93,18 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             if ( length(previousValues)>0 )
                 if ( N == 0 )
                     ds = dataset;
-                    ds.Response = previousResponses(max(1,end-30):end);
-                    ds.Angle = previousValues(max(1,end-30):end);
-                    modelspec = 'Response ~ Angle';
+                    switch(this.ExperimentOptions.PreviousTrialsForRange)
+                        case 'All'
+                            ds.Response = previousResponses(1:end);
+                            ds.Angle = previousValues(1:end);
+                        case 'Previous30'
+                            ds.Response = previousResponses(max(1,end-30):end);
+                            ds.Angle = previousValues(max(1,end-30):end);
+                    end
                     subds = ds;
                     
                     SVV = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-                    
+
                     % Limit the center of the new range to the extremes of
                     % the past range of angles
                     if ( SVV > max(ds.Angle) )
@@ -105,13 +113,24 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                         SVV = min(ds.Angle);
                     end
                     
-                    this.currentCenterRange = SVV + this.ExperimentOptions.offset;
-                    
-                    this.currentRange = (90)./min(9,round(2.^(Nblocks/15)));
+                    this.currentCenterRange = SVV + this.ExperimentOptions.offset;            
+
+                    switch(this.ExperimentOptions.RangeChanges)
+                        case 'Slow'
+                            this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
+                        case 'Fast'
+                            this.currentRange = (45)./min(9,round(2.^(Nblocks/15)));
+                    end
                 end
             else
-                this.currentCenterRange = rand(1)*30-15;
-                this.currentRange = 90;
+                switch(this.ExperimentOptions.RangeChanges)
+                    case 'Slow'
+                        this.currentCenterRange = rand(1)*30-15;
+                        this.currentRange = 90;
+                    case 'Fast'
+                        this.currentCenterRange = rand(1)*15-15;
+                        this.currentRange = 45;
+                end
             end
             
             this.currentAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
@@ -119,7 +138,8 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             
             this.currentAngle = round(this.currentAngle);
             
-            disp(['CURRENT: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(N) ' SHV : ' num2str(this.currentCenterRange) ' RANGE: ' num2str(this.currentRange)]);
+            disp(sprintf(['\nLAST RESP.: ' char(previousResponses(max(end-100,1):end)')]));
+            disp(['CURRENT TRIAL: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(Nblocks) ' RANGE: ' num2str(this.currentRange) ' SVH : ' num2str(this.currentCenterRange)]);
             
             if ( ~isempty(this.eyeTracker) )
                 if ( ~this.eyeTracker.IsRecording())
