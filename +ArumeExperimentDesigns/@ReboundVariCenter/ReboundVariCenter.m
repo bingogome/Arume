@@ -471,7 +471,6 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
             a=1;
         end
         
-        
         function plotResults = PlotAggregate_SPVAvg(this, sessions)
             
             reboundSessions = [];

@@ -86,7 +86,7 @@ classdef ExperimentDesign < handle
             conditionVars = [];
         end
         
-        function  randomVars = getRandomVariables( this )
+        function randomVars = getRandomVariables( this )
             randomVars = [];
         end
         
@@ -939,7 +939,6 @@ classdef ExperimentDesign < handle
                 end
             end
         end
-        
         
         %% setUpConditionMatrix
         function conditionMatrix = getConditionMatrix( this, conditionVars )
