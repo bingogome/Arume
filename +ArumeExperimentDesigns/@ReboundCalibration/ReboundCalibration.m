@@ -31,7 +31,7 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
         end
         
         function initExperimentDesign( this  )
-            this.HitKeyBeforeTrial = 1;
+            this.HitKeyBeforeTrial = 0;
             this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness;
             
             this.trialDuration = this.ExperimentOptions.Duration; %seconds
@@ -137,11 +137,11 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
                         ydeg = 0;
                         flashing = 0;
                     elseif ( secondsElapsed > 2 && secondsElapsed < 5)
-                        xdeg = this.ExperimentOptions.Position;
+                        xdeg = variables.Position;
                         ydeg = 0;
                         flashing = 0;
                     elseif ( secondsElapsed > 5)
-                        xdeg = this.ExperimentOptions.Position;
+                        xdeg = variables.Position;
                         ydeg = 0;
                         flashing = 1;
                     end
@@ -207,33 +207,94 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
         
         function trialDataSet = PrepareTrialDataSet( this, ds)
             trialDataSet = ds;
+            
+            
+            eventFiles = this.Session.currentRun.LinkedFiles.vogEventsFile;
+            if (~iscell(eventFiles) )
+                eventFiles = {eventFiles};
+            end
+            
+            if (strcmp(eventFiles{1}, 'ReboundVariCenter_NGA-2018May22-154031-events.txt'))
+                eventFiles = {'ReboundVariCenter_NGA-2018May22-152034-events.txt' eventFiles{:}};
+            end
+            if (strcmp(eventFiles{1}, 'ReboundVariCenter_KCA-2018May22-134440-events.txt'))
+                eventFiles{end+1} = 'ReboundVariCenter_KCA-2018May22-144011-events.txt';
+            end
+
+            events1 = [];
+            for i=1:length(eventFiles)
+                eventFile = eventFiles{i};
+                disp(eventFile);
+                eventFilesPath = fullfile(this.Session.dataRawPath, eventFile);
+                text = fileread(eventFilesPath);
+                matches = regexp(text,'[^\n]*new trial[^\n]*','match')';
+                eventsFromFile = struct2table(cell2mat(regexp(matches,'Time=(?<DateTime>[^\s]*) FrameNumber=(?<FrameNumber>[^\s]*)','names')));
+                eventsFromFile.FrameNumber = str2double(eventsFromFile.FrameNumber);
+                eventsFromFile = [eventsFromFile table(string(repmat(eventFile,height(eventsFromFile),1)),repmat(i,height(eventsFromFile),1),'variablenames',{'File' 'FileNumber'})];
+                if ( isempty(events1) )
+                    events1 = eventsFromFile;
+                else
+                    events1 = cat(1,events1,eventsFromFile);
+                end
+            end
+            
+            trialDataSet = [dataset2table(trialDataSet) events1];  trialData = trialDataSet(trialDataSet.TrialResult==0,:);
+            data = this.Session.samplesDataSet;
+            
+            dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
+                        
+            if (~iscell(dataFiles) )
+                dataFiles = {dataFiles};
+            end
+            allRawData = {};
+            for i=1:length(dataFiles)
+                dataFile = dataFiles{i}                
+                dataFilePath = fullfile(this.Session.dataRawPath, dataFile);
+                
+                % load data
+                rawData = dataset2table(VOG.LoadVOGdataset(dataFilePath));
+                
+                allRawData{i} = rawData;
+            end
+            
+            
+            for i=1:height(trialData)
+                trialData.trialStartSample(i) =  bins(data.Time', (allRawData{1}.LeftSeconds(find(allRawData{1}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{1}.LeftSeconds(1))');
+                trialData.StartEccentricityCont(i) = bins(data.Time', 2+(allRawData{1}.LeftSeconds(find(allRawData{1}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{1}.LeftSeconds(1))');
+                trialData.StartEccentricity(i) = bins(data.Time', 5+(allRawData{1}.LeftSeconds(find(allRawData{1}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{1}.LeftSeconds(1))');
+                trialData.EndEccentricity(i) = bins(data.Time', 15+(allRawData{1}.LeftSeconds(find(allRawData{1}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{1}.LeftSeconds(1))');
+            end
+            
+            for i=1:height(trialData)
+                idx1 = trialData.trialStartSample(i):trialData.StartEccentricityCont(i);
+                idx2 = trialData.StartEccentricityCont(i):trialData.StartEccentricity(i);
+                idx3 = trialData.StartEccentricity(i):trialData.EndEccentricity(i);
+               
+                idxBegEcc = idx3(1:5*500);
+                trialData.SPVBegEcc(i) = nanmedian([data.LeftSPVX(idxBegEcc);data.RightSPVX(idxBegEcc)]);
+            end
+            
+            trialDataSet = trialData;
         end
         
         function samplesDataSet = PrepareSamplesDataSet(this, trialDataSet, dataFile, calibrationFile)
             samplesDataSet = [];
-            
             dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
             calibrationFiles = this.Session.currentRun.LinkedFiles.vogCalibrationFile;
-            eventFiles = this.Session.currentRun.LinkedFiles.vogEventsFile;
 
             
             if (~iscell(dataFiles) )
                 dataFiles = {dataFiles};
                 calibrationFiles = {calibrationFiles};
-                eventFiles = {eventFiles};
             end
             
             for i=1:length(dataFiles)
                 dataFile = dataFiles{i};
+                disp(dataFile); 
                 calibrationFile = calibrationFiles{i};
-                eventFile = eventFiles{i};
              
                 dataFilePath = fullfile(this.Session.dataRawPath, dataFile);
                 calibrationFilePath = fullfile(this.Session.dataRawPath, calibrationFile);
-                eventFilesPath = fullfile(this.Session.dataRawPath, eventFile);
-                t= readtable(eventFilesPath);
-                t(contains(t.Var4,'KEYPRESS'),:) = [];
-                FrameNumberTrialOneStrat = t.Var3{1}(8:end-2);
                 
                 % load data
                 rawData = VOG.LoadVOGdataset(dataFilePath);
@@ -258,24 +319,13 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
         function plotResults = Plot_Traces(this)
             
             data = this.Session.samplesDataSet;
-            figure
+        
             
             MEDIUM_BLUE =  [0.1000 0.5000 0.8000];
             MEDIUM_RED = [0.9000 0.2000 0.2000];
             
             figure
             time = (1:length(data.RightT))/500;
-            
-%             lb = (boxcar(abs([0;diff(data.LeftUpperLid)])>20,10)>0) | (abs(data.LeftUpperLid-median(data.LeftUpperLid)) > 50);
-%             rb = boxcar(abs([0;diff(data.RightUpperLid)])>20,10)>0 | (abs(data.RightUpperLid-median(data.RightUpperLid)) > 50);
-%             
-%             data.LeftX(lb) = nan;
-%             data.LeftY(lb) = nan;
-%             data.LeftT(lb) = nan;
-%             
-%             data.RightX(rb) = nan;
-%             data.RightY(rb) = nan;
-%             data.RightT(rb) = nan;
             
             subplot(3,1,1,'nextplot','add')
             plot(time, data.LeftX, 'color', [ MEDIUM_BLUE ])
@@ -295,7 +345,43 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
             set(gca,'ylim',[-50 50])
             ylabel('Torsion (deg)','fontsize', 16);
             xlabel('Time (s)');
+            
+            VOG.PlotQuickPhaseDebug(data)
         end
+        
+        function plotResults = Plot_Saccades(this)
+            data = this.Session.samplesDataSet;
+            VOG.PlotQuickPhaseDebug(data)
+        end
+        
+        
+         function plotResults = PlotAggregate_SPVAvg(this, sessions)
+             
+             figure
+             hold
+             g1 = table();
+             g2 = table();
+             for i=1:length(sessions)
+                 
+                 data = sessions(i).samplesDataSet;
+                 trialData = sessions(i).trialDataSet;
+                 
+                 g11 = grpstats(trialData,{'Position'},{'mean'},'DataVars',{'SPVBegEcc'});
+                 g11.Properties.RowNames = {};
+                 g1 = [g1;[g11 table(repmat(i,height(g11),1))]];
+                 
+                 
+                 plot(g11.Position,g11.mean_SPVBegEcc,'k-o')
+             end
+             
+             d = grpstats(g1,{'Position'},{'mean' 'sem'},'DataVars',{'mean_SPVBegEcc'});
+%              d2 = grpstats(g2,{'CenterLocation', 'Side'},{'mean' 'sem'},'DataVars',{'SPVBegEcc', 'SPVEndEcc'});
+             
+             
+             
+             figure
+             errorbar(d.Position,d.mean_mean_SPVBegEcc,d.sem_mean_SPVBegEcc,'ko')
+         end
     end
     
     % ---------------------------------------------------------------------

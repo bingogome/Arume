@@ -31,6 +31,8 @@ classdef ArumeGui < handle
         menuFile
         menuFileNewProject
         menuFileLoadProject
+        menuFileNewProjectFolder
+        menuFileLoadProjectFolder
         menuFileLoadRecentProject
         menuFileCloseProject
         menuFileExportProject
@@ -224,6 +226,12 @@ classdef ArumeGui < handle
             this.menuFileLoadProject = uimenu(this.menuFile, ...
                 'Label'     , 'Load project ...', ...
                 'Callback'  , @this.loadProject);
+            this.menuFileNewProjectFolder = uimenu(this.menuFile, ...
+                'Label'     , 'New project folder ...', ...
+                'Callback'  , @this.newProjectFolder);
+            this.menuFileLoadProjectFolder = uimenu(this.menuFile, ...
+                'Label'     , 'Load project folder...', ...
+                'Callback'  , @this.loadProjectFolder);
             this.menuFileLoadRecentProject = uimenu(this.menuFile, ...
                 'Label'     , 'Load recent project');
             
@@ -266,7 +274,7 @@ classdef ArumeGui < handle
             
             this.menuAnalyzePrepare = uimenu(this.menuAnalyze, ...
                 'Label'     , 'Prepare ...', ...
-                'Callback'  , @this.PrepareAnalysis);
+                 'Callback'  , @this.PrepareAnalysis);
             
             this.menuAnalyzeRunAnalyses = uimenu(this.menuAnalyze, ...
                 'Label'     , 'Run analyses ...', ...
@@ -383,11 +391,7 @@ classdef ArumeGui < handle
                 sDlg.Path = { {['uigetdir(''' this.arumeController.defaultDataFolder ''')']} };
                 sDlg.Name = 'ProjectName';
                 sDlg.Default_Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
-                
-%                 for i=1:length(ArumeCore.ExperimentDesign.GetExperimentList)
-%                     sessionDlg.(ArumeCore.ExperimentDesign.GetExperimentList{i}) = { {'0','{1}'} };
-%                 end
-                
+
                 P = StructDlg(sDlg, 'New project');
                 if ( isempty( P ) )
                     return
@@ -397,6 +401,25 @@ classdef ArumeGui < handle
                 end
                 
                 this.arumeController.newProject( P.Path, P.Name, P.Default_Experiment);
+                this.updateGui();
+            end
+        end
+        
+        function newProjectFolder(this, source, eventdata )           
+            if ( this.closeProjectQuestdlg() )
+                sDlg.Path = { {['uigetdir(''' this.arumeController.defaultDataFolder ''')']} };
+                sDlg.Name = 'ProjectName';
+                sDlg.Default_Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
+               
+                P = StructDlg(sDlg, 'New project');
+                if ( isempty( P ) )
+                    return
+                end
+                if ( ~isempty( this.arumeController.currentProject ) )
+                    this.arumeController.currentProject.save();
+                end
+                
+                this.arumeController.newProjectFolder( P.Path, P.Name, P.Default_Experiment);
                 this.updateGui();
             end
         end
@@ -429,6 +452,41 @@ classdef ArumeGui < handle
                 
                 waitbar(1/2)
                 this.arumeController.loadProject(fullfile(pathname, filename));
+                waitbar(2/2)
+                this.updateGui();
+            end
+            
+            close(h)
+        end
+        
+        function loadProjectFolder(this, source, eventdata )
+             
+            h=waitbar(0,'Please wait..');
+            
+            if ( this.closeProjectQuestdlg() )
+                if ( this.menuFileLoadProjectFolder == source ) 
+                    [filename, pathname] = uigetfile([this.arumeController.defaultDataFolder '/Project.mat'], 'Pick a project file');
+                    if ( ~filename  )
+                        close(h)
+                        return
+                    end
+                    if ( ~isempty(this.arumeController.currentProject) )
+                        this.arumeController.currentProject.save();
+                    end
+                else % load a recent project
+                    fullname = get(source,'Label');
+                    if ( exist(fullname,'file') )
+                        [pathname, file, extension] = fileparts(fullname);
+                        filename = [file extension];
+                    else
+                        close(h)
+                        msgbox('File does not exist');
+                        return;
+                    end
+                end
+                
+                waitbar(1/2)
+                this.arumeController.loadProjectFolder(pathname);
                 waitbar(2/2)
                 this.updateGui();
             end
@@ -605,7 +663,7 @@ classdef ArumeGui < handle
                 allgood = 1;
                 for i=1:length(sessions)
                     for session = this.arumeController.currentProject.sessions
-                        if ( streq(session.subjectCode, newSubjectCodes{i}) &&  streq(session.sessionCode, newSessionCodes{i}) )
+                        if ( strcmp(session.subjectCode, newSubjectCodes{i}) &&  strcmp(session.sessionCode, newSessionCodes{i}) )
                             uiwait(msgbox(['One of the names is repeated ' newSubjectCodes{i} '-' newSessionCodes{i} '.'], 'Error', 'Modal'));
                             allgood = 0;
                             break;
