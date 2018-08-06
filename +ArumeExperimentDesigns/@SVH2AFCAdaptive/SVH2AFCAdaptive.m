@@ -20,6 +20,7 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             
             dlg.PreviousTrialsForRange = { {'{All}','Previous30'} };
             dlg.RangeChanges = { {'{Slow}','Fast'} };
+            dlg.TotalNumberOfTrials = 100;
         end
         
         function initExperimentDesign( this  )
@@ -31,11 +32,11 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
-            this.trialsPerSession   = 100;
+            this.trialsPerSession   = this.ExperimentOptions.TotalNumberOfTrials;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 10;
+            this.numberOfTimesRepeatBlockSequence = ceil(this.ExperimentOptions.TotalNumberOfTrials/10);
             this.blocksToRun = 1;
             this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 5, 'trialsToRun', 10) ];
         end
