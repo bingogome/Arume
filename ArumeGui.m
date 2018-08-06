@@ -875,8 +875,15 @@ classdef ArumeGui < handle
         end
         
         function restartSession( this, source, eventdata ) 
-            this.arumeController.restartSession();
-            this.updateGui();
+            
+            choice = questdlg('Are you sure you want to restart the sessions?', ...
+                'Closing', ...
+                'Yes','No','No');
+            switch choice
+                case 'Yes'
+                    this.arumeController.restartSession();
+                    this.updateGui();
+            end
         end
         
         function PrepareAnalysis( this, source, eventdata ) 

@@ -175,9 +175,14 @@ classdef ExperimentDesign < handle
         end
         
         function init(this, session, options)
-            this.Project            = session.project;
-            this.Session            = session;
-            this.ExperimentOptions  = options;
+            if ( exist( 'session', 'var') && exist('options', 'var') )
+                this.Project            = session.project;
+                this.Session            = session;
+                this.ExperimentOptions  = options;
+            end
+            
+            % set up options
+            this.initOptions();
             
             % load variables
             this.initVariables();
@@ -355,7 +360,14 @@ classdef ExperimentDesign < handle
                                 %------------------------------------------------------------
                                 %% -- TRIAL ---------------------------------------------------
                                 %------------------------------------------------------------
-                                fprintf('\nTRIAL START: N=%d Cond=%d ...', trialnumber , currentCondition );
+                                fprintf('\nTRIAL START: ...\n');
+                                ct1 = table();
+                                ct1.TrialNumber = trialnumber;
+                                ct1.TotalTrials = size(this.Session.currentRun.originalFutureConditions,1);
+                                ct1.Condition = currentCondition;
+                                ct2 = this.GetConditionTable();
+                                ct = [ct1 ct2(currentCondition,:)];
+                                disp(ct)
                                 
                                 clear data;
                                 data.variables = variables;
@@ -646,11 +658,30 @@ classdef ExperimentDesign < handle
             throw(MException('PSYCORTEX:USERQUIT', ''));
         end
         
-        function DisplayConditionMatrix(this)
-            c = this.ConditionMatrix;
-            for i=1:size(c,1)
-                disp(c(i,:))
+        function conditionTable = GetConditionTable(this)
+            cm = table();
+            for i=1:size(this.ConditionMatrix,1)
+                for j=1:size(this.ConditionMatrix,2)
+                    var = this.ConditionVars(j);
+                    if ( iscell(var.values) )
+                        if ( width(cm) < j )
+                            cm.(var.name) = cell(size(this.ConditionMatrix(:,j)));
+                        end
+                        cm{i,j} = {var.values{this.ConditionMatrix(i,j)}};
+                    else
+                        if ( width(cm) < j )
+                            cm.(var.name) = nan(size(this.ConditionMatrix(:,j)));
+                        end
+                        cm{i,j} = var.values(this.ConditionMatrix(i,j));
+                    end
+                end
             end
+            conditionTable = cm;
+        end
+        
+        function DisplayConditionMatrix(this)
+            
+            this.GetConditionTable();
         end
         
         %% function psyCortex_defaultConfig
@@ -910,21 +941,12 @@ classdef ExperimentDesign < handle
         function initVariables(this)
             this.ConditionVars = this.getConditionVariables();
             this.RandomVars = this.getRandomVariables();
-            this.StaircaseVars = this.getStaircaseVariables();
+            this.StaircaseVars = this.getStaircaseVariables(); % NOT IMPLEMENTED
             
             this.ConditionMatrix = this.getConditionMatrix( this.ConditionVars );
         end
         
-        %% setUpParameters
-        function initParameters(this)
-            
-            % default parameters of any experiment
-            this.trialsPerSession = this.NumberOfConditions;
-            
-            %%-- Blocking
-            this.blocks(1).toCondition    = this.NumberOfConditions;
-            this.blocks(1).trialsToRun    = this.NumberOfConditions;
-            
+        function initOptions(this)
             %%-- Check if all the options are there, if not add the default
             %%values. This is important to mantain past compatibility if
             %%options are added in the future.
@@ -938,6 +960,18 @@ classdef ExperimentDesign < handle
                     end
                 end
             end
+        end
+        
+        %% setUpParameters
+        function initParameters(this)
+            
+            % default parameters of any experiment
+            this.trialsPerSession = this.NumberOfConditions;
+            
+            %%-- Blocking
+            this.blocks(1).toCondition    = this.NumberOfConditions;
+            this.blocks(1).trialsToRun    = this.NumberOfConditions;
+            
         end
         
         %% setUpConditionMatrix

@@ -22,10 +22,13 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
             
             dlg.EccentricPosition = 40;
             dlg.EccentricFlashing = {{'{Yes}' 'No'}};
-            dlg.FlashingPeriodMs = 500;
+            dlg.FlashingPeriodMs = 750;
             dlg.FlashingOnDurationFrames = 1;
             
             dlg.NumberOfRepetitions = 5;
+            
+            dlg.CenterLocationRange = {{'{Minus20to30}' 'Minus40to40'}};
+            dlg.InterleaveCalibration = {{'{No}' 'Yes'}};
             
             dlg.ScreenWidth = 100;
             dlg.ScreenHeight = 100;
@@ -47,11 +50,26 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
             this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
             
             %%-- Blocking
-            this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = this.ExperimentOptions.NumberOfRepetitions;
-            this.blocksToRun = 1;
-            this.blocks = [ ...
-                struct( 'fromCondition', 1, 'toCondition', this.NumberOfConditions, 'trialsToRun', this.NumberOfConditions  )];
+            this.blockSequence = 'Sequential';	% Sequential, Random, ...
+            
+            if (strcmp(this.ExperimentOptions.InterleaveCalibration , 'Yes') )
+                this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
+                this.blocksToRun = 7;
+                this.blocks = [ ...
+                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
+                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
+                    struct( 'fromCondition', 19,    'toCondition', 36, 'trialsToRun', 18 )...
+                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
+                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
+                    struct( 'fromCondition', 19,    'toCondition', 36, 'trialsToRun', 18 )...
+                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )];
+            else
+                this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
+                this.numberOfTimesRepeatBlockSequence = this.ExperimentOptions.NumberOfRepetitions;
+                this.blocksToRun = 1;
+                this.blocks = [ ...
+                    struct( 'fromCondition', 1, 'toCondition', this.NumberOfConditions, 'trialsToRun', this.NumberOfConditions  )];
+            end
             
         end
         
@@ -59,14 +77,25 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
             %-- condition variables ---------------------------------------
             i= 0;
             
-            
-            i = i+1;
-            conditionVars(i).name   = 'CenterLocation';
-            conditionVars(i).values = [-20:10:30];
+            if (strcmp(this.ExperimentOptions.CenterLocationRange , 'Minus20to30') )
+                i = i+1;
+                conditionVars(i).name   = 'CenterLocation';
+                conditionVars(i).values = [-20:10:30];
+            elseif (strcmp(this.ExperimentOptions.CenterLocationRange , 'Minus40to40') )
+                i = i+1;
+                conditionVars(i).name   = 'CenterLocation';
+                conditionVars(i).values = [-40:10:40];
+            end
             
             i = i+1;
             conditionVars(i).name   = 'Side';
             conditionVars(i).values = {'Left' 'Right'};
+            
+            if (strcmp(this.ExperimentOptions.InterleaveCalibration , 'Yes') )
+                i = i+1;
+                conditionVars(i).name   = 'TypeOfTrial';
+                conditionVars(i).values = {'Rebound' 'Calibration'};
+            end
         end
         
         function initBeforeRunning( this )
@@ -125,7 +154,11 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
                 
                 %-- add here the trial code
                 
-                totalDuration = this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration + this.ExperimentOptions.CenterDuration;
+                if (strcmp(variables.TypeOfTrial , 'Rebound') )
+                    totalDuration = this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration + this.ExperimentOptions.CenterDuration;
+                else
+                    totalDuration = this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.CenterDuration;
+                end
                 lastFlipTime        = GetSecs;
                 secondsRemaining    = totalDuration;
                 startLoopTime = lastFlipTime;
@@ -142,10 +175,19 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
                     % --- Drawing of stimulus -----------------------------------------
                     % -----------------------------------------------------------------
                     
-                    if (secondsElapsed < this.ExperimentOptions.InitialFixaitonDuration )
+                    initialFixationPeriod = secondsElapsed < this.ExperimentOptions.InitialFixaitonDuration;
+                    if ( strcmp(variables.TypeOfTrial , 'Rebound') )
+                        eccentricFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration && secondsElapsed < (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
+                        variCenterFixationPeriod = secondsElapsed >= (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
+                    else
+                        eccentricFixationPeriod = 0;
+                        variCenterFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration;
+                    end
+                                        
+                    if ( initialFixationPeriod )
                         xdeg = 0;
                         ydeg = 0;
-                    elseif ( secondsElapsed > this.ExperimentOptions.InitialFixaitonDuration && secondsElapsed < (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration))
+                    elseif ( eccentricFixationPeriod )
                         
                         if (sound1==0) 
                             sound(sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   ), 8192);
@@ -160,7 +202,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
                         end
                         
                         ydeg = 0;
-                    else
+                    elseif ( variCenterFixationPeriod )
                         
                         if (sound2==0) 
                             sound(sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   ), 8192);
