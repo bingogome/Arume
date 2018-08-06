@@ -81,6 +81,10 @@ classdef MVSTorsion < ArumeCore.ExperimentDesign
             VOG.PlotVelocityWithHead(this.Session.samplesDataSet, this.Session.rawDataSet);
         end
 
+        function plotResults = Plot_TestJing(this)
+            this.Session.samplesDataSet
+        end
+        
         function plotMainSeq = Plot_PlotMainSequence(this)
             
             props = VOG.GetQuickPhaseProperties(this.Session.samplesDataSet);

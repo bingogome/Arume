@@ -24,7 +24,7 @@ classdef VOG  < handle
                 asm = NET.addAssembly('C:\secure\code\Debug\EyeTrackerRemoteClient.dll');
                 
                 if ( ~exist('ip','var') )
-                     ip = '127.0.0.1';
+                    ip = '10.17.101.12';
                 end
 %             end
             
