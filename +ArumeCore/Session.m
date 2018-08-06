@@ -102,6 +102,10 @@ classdef Session < ArumeCore.DataDB
         
         % Results of the experiment specific analysis
         analysisResults 
+        
+        % single row data table that will be used to create a multisession
+        % table
+        sessionDataTable
     end
     
     %
@@ -176,6 +180,10 @@ classdef Session < ArumeCore.DataDB
                     analysisResults.(analysisList{i}) = var;
                 end
             end
+        end
+        
+        function sessionDataTable = get.sessionDataTable(this)
+            sessionDataTable = this.ReadVariable('sessionDataTable');
         end
     end
     
@@ -306,7 +314,7 @@ classdef Session < ArumeCore.DataDB
             end
             
         end
-        
+                
         %
         %% RUNING METHODS
         %
@@ -376,12 +384,14 @@ classdef Session < ArumeCore.DataDB
         function prepareForAnalysis( this )
             
             %% 1) Prepare the sample dataset
-            varNames={'TimeStamp', 'LeftHorizontal','LeftVertical','LeftTorsion','RightHorizontal','RightVertical','RightTorsion','HeadRollTilt'};
-            samplesDataSet = dataset([],[],[],[],[],[],[],[],'VarNames',varNames);
-            
-            [samplesDataSet] = this.experiment.PrepareSamplesDataSet(samplesDataSet);
-            if ( ~isempty(samplesDataSet) )
-                this.WriteVariable(samplesDataSet,'samplesDataSet');
+            if(0)
+                varNames={'TimeStamp', 'LeftHorizontal','LeftVertical','LeftTorsion','RightHorizontal','RightVertical','RightTorsion','HeadRollTilt'};
+                samplesDataSet = dataset([],[],[],[],[],[],[],[],'VarNames',varNames);
+                
+                [samplesDataSet] = this.experiment.PrepareSamplesDataSet(samplesDataSet);
+                if ( ~isempty(samplesDataSet) )
+                    this.WriteVariable(samplesDataSet,'samplesDataSet');
+                end
             end
             
 %             if ( ~isempty(rawDataSet) )
@@ -486,6 +496,11 @@ classdef Session < ArumeCore.DataDB
             if ( ~isempty(trialDataSet) )
                 this.WriteVariable(trialDataSet,'trialDataSet');
             end
+            newSessionDataTable = this.GetBasicSessionDataTable();
+            newSessionDataTable = this.experiment.PrepareSessionDataTable(newSessionDataTable);
+            if ( ~isempty(newSessionDataTable) )
+                this.WriteVariable(newSessionDataTable,'sessionDataTable');
+            end
             
             %% Finally prepare the event dataset
 %             varNames={' StartSample','EndSample','TrialNumber','Duration', ...
@@ -493,6 +508,30 @@ classdef Session < ArumeCore.DataDB
 %                 'PeakVelocity','PeakVelocityLeft','PeakVelocityRight','HorizontalPeakVelocityLeft','VerticalPeakVelocityRight','TorsionalPeakVelocityRight','HorizontalPeakVelocityLeft','VerticalPeakVelocityRight','TorsionalPeakVelocityRight', ...
 %                 'MeanVelocity','MeanVelocityLeft','MeanVelocityRight','HorizontalMeanVelocityLeft','VerticalMeanVelocityRight','TorsionalMeanVelocityRight','HorizontalMeanVelocityLeft','VerticalMeanVelocityRight','TorsionalMeanVelocityRight'};
 %             trialDataSet = dataset([],[],[],[],[],'VarNames',varNames);
+        end
+        
+        function newSessionDataTable = GetBasicSessionDataTable(this)
+            
+            newSessionDataTable = table();
+            newSessionDataTable.Subject = categorical(cellstr(this.subjectCode));
+            newSessionDataTable.SessionCode = categorical(cellstr(this.sessionCode));
+            newSessionDataTable.Experiment = categorical(cellstr(this.experiment.Name));
+            
+            NoYes = {'No' 'Yes'};
+            newSessionDataTable.Started = NoYes{this.isStarted+1};
+            newSessionDataTable.Finished = NoYes{this.isFinished+1};
+            if (~isempty(this.currentRun) )
+                newSessionDataTable.TimeLastTrial = datestr(this.currentRun.Events(1,2));
+                newSessionDataTable.TimeFirstTrial = datestr(this.currentRun.Events(end,2));
+            else
+                newSessionDataTable.TimeLastTrial = '-';
+                newSessionDataTable.TimeFirstTrial = '-';
+            end
+            
+            opts = fieldnames(this.experiment.ExperimentOptions);
+            for i=1:length(opts)
+                newSessionDataTable.(['Option_' opts{i}]) = this.experiment.ExperimentOptions.(opts{i});
+            end
         end
         
         function RunAnalyses( this, analysisSelection )

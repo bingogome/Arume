@@ -58,7 +58,7 @@ classdef MVSTorsion < ArumeCore.ExperimentDesign
             % calibrate data
             [calibratedData leftEyeCal rightEyeCal] = VOG.CalibrateData(rawData, this.ExperimentOptions.EyeCalibrationFile);
             
-            [rawData, samplesDataSet] = VOG.ResampleAndCleanData2(calibratedData);
+            [cleanedData, samplesDataSet] = VOG.ResampleAndCleanData2(calibratedData);
 %             
             % clean data
 %             samplesDataSet = VOG.ResampleAndCleanData(calibratedData);
@@ -73,6 +73,58 @@ classdef MVSTorsion < ArumeCore.ExperimentDesign
         
         function plotResults = Plot_PlotPosition(this)
             VOG.PlotPosition(this.Session.samplesDataSet);
+        end
+        function plotResults = Plot_PlotPositionWithHead(this)
+            VOG.PlotPositionWithHead(this.Session.samplesDataSet, this.Session.rawDataSet);
+        end
+        function plotResults = Plot_PlotVelocityWithHead(this)
+            VOG.PlotVelocityWithHead(this.Session.samplesDataSet, this.Session.rawDataSet);
+        end
+
+        function plotResults = Plot_TestJing(this)
+            this.Session.samplesDataSet
+        end
+        
+        function plotMainSeq = Plot_PlotMainSequence(this)
+            
+            props = VOG.GetQuickPhaseProperties(this.Session.samplesDataSet);
+%              [qp_props,sp_props] = VOG.GetQuickAndSlowPhaseProperties(this.Session.samplesDataSet);
+             
+             figure
+             subplot(1,3,1,'nextplot','add') 
+             plot(props.Left_X_Displacement,abs(props.Left_X_PeakVelocity),'o')
+             plot(props.Right_X_Displacement,abs(props.Right_X_PeakVelocity),'o')
+             line([0 0],[0 500])
+             xlabel('H displacement (deg)');
+             ylabel('H peak vel. (deg/s)');
+             subplot(1,3,2,'nextplot','add') 
+             plot(props.Left_Y_Displacement,abs(props.Left_Y_PeakVelocity),'o')
+             plot(props.Right_Y_Displacement,abs(props.Right_Y_PeakVelocity),'o')
+             line([0 0],[0 500])
+             xlabel('V displacement (deg)');
+             ylabel('V peak vel. (deg/s)');
+             subplot(1,3,3,'nextplot','add') 
+             plot(props.Left_T_Displacement,abs(props.Left_T_PeakVelocity),'o')
+             plot(props.Right_T_Displacement,abs(props.Right_T_PeakVelocity),'o')
+             line([0 0],[0 500])
+             xlabel('T displacement (deg)');
+             ylabel('T peak vel. (deg/s)');
+             
+             set(get(gcf,'children'),'xlim',[-30 30],'ylim',[0 300])
+
+             
+             figure
+             subplot(1,3,1,'nextplot','add') 
+             plot(props.Left_X_PeakVelocity,abs(props.Left_Y_PeakVelocity),'o')
+             plot(props.Right_X_PeakVelocity,abs(props.Right_Y_PeakVelocity),'o')
+             subplot(1,3,2,'nextplot','add') 
+             plot(props.Left_X_PeakVelocity,abs(props.Left_T_PeakVelocity),'o')
+             plot(props.Right_X_PeakVelocity,abs(props.Right_T_PeakVelocity),'o')
+             subplot(1,3,3,'nextplot','add') 
+             plot(props.Left_Y_PeakVelocity,abs(props.Left_T_PeakVelocity),'o')
+             plot(props.Right_Y_PeakVelocity,abs(props.Right_T_PeakVelocity),'o')
+             
+             set(get(gcf,'children'),'xlim',[-300 300],'ylim',[0 300])
         end
         
         function plotResults = Plot_PlotSPV(this)

@@ -86,7 +86,7 @@ classdef ExperimentDesign < handle
             conditionVars = [];
         end
         
-        function  randomVars = getRandomVariables( this )
+        function randomVars = getRandomVariables( this )
             randomVars = [];
         end
         
@@ -680,6 +680,21 @@ classdef ExperimentDesign < handle
     % --------------------------------------------------------------------
     methods(Access=protected)
         
+        function addFile(this, fileTag, filePath)
+            
+            [~,fileName, ext] = fileparts(filePath);
+            copyfile(filePath, fullfile(this.Session.dataRawPath, [fileName ext] ));
+                
+            if ( ~isfield(this.Session.currentRun.LinkedFiles, fileTag) )
+                this.Session.currentRun.LinkedFiles.(fileTag) = [fileName ext];
+            else
+                if ~iscell(this.Session.currentRun.LinkedFiles.(fileTag))
+                    this.Session.currentRun.LinkedFiles.(fileTag) = {this.Session.currentRun.LinkedFiles.(fileTag)};
+                end
+                this.Session.currentRun.LinkedFiles.(fileTag) = cat(1, this.Session.currentRun.LinkedFiles.(fileTag), [fileName ext] );
+            end               
+        end
+                
         %% SaveEvent
         %--------------------------------------------------------------------------
         function SaveEvent( this, event )
@@ -855,6 +870,9 @@ classdef ExperimentDesign < handle
             end
         end
         
+        function shuffleConditionMatrix(this, variableNumber)
+            this.ConditionMatrix(:,variableNumber) = Shuffle(this.ConditionMatrix(:,variableNumber));
+        end
         
         %% ShowDebugInfo
         function ShowDebugInfo( this, variables )
@@ -924,7 +942,6 @@ classdef ExperimentDesign < handle
             end
         end
         
-        
         %% setUpConditionMatrix
         function conditionMatrix = getConditionMatrix( this, conditionVars )
             
@@ -956,7 +973,7 @@ classdef ExperimentDesign < handle
                 conditionMatrix = [ repmat(conditionMatrix,nValues(iVar),1)  ceil((1:prod(nValues))/prod(nValues(1:end-1)))' ];
             end
         end
-        
+                
         function PlaySound(this,trialResult)
             
             Enum = ArumeCore.ExperimentDesign.getEnum();
@@ -1065,10 +1082,14 @@ classdef ExperimentDesign < handle
         function trialDataSet = PrepareTrialDataSet( this, trialDataSet)
         end
             
-        function samplesDataSet = PrepareSamplesDataSet(this, samplesDataSet)
+        function [samplesDataSet rawDataSet] = PrepareSamplesDataSet(this, samplesDataSet)
+            rawDataSet = [];
         end
         
-        function samplesDataSet = PrepareEventDataSet(this, eventDataset)
+        function eventDataset = PrepareEventDataSet(this, eventDataset)
+        end
+        
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
         end
     end
 end

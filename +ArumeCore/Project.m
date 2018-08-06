@@ -59,7 +59,13 @@ classdef Project < handle
         function initNew( this, projectFilePath, projectName, tempPath, defaultExperiment )
         % Initializes a new project
             
-            this.projectFile = fullfile(projectFilePath, [projectName '.aruprj']);
+            if ( ~strcmp(projectFilePath, tempPath) )
+                this.projectFile = fullfile(projectFilePath, [projectName '.aruprj']);
+            else
+                % for project folders. There is no project file and the
+                % temp folder if the same folder containing the project
+                this.projectFile = [];
+            end
             
             if ( exist( this.projectFile, 'file' ) )
                 error( 'Arume: project file already exists' );
@@ -83,25 +89,34 @@ classdef Project < handle
         function initExisting( this, file, tempPath )
         % Initializes a project loading from a file
         
-            this.projectFile = file;
-            
-            [filePath, projectName] = fileparts(file);
-            
-            % clean the temp folder
-            if(  exist(tempPath,'dir') )
-                try
-                    rmdir(tempPath,'s');
-                catch(error)
-                    disp('ERRO: temp folder could not be removed');
+            if ( ~strcmp(file, tempPath) )
+                this.projectFile = file;
+                
+                [filePath, projectName] = fileparts(file);
+                
+                % clean the temp folder
+                if(  exist(tempPath,'dir') )
+                    try
+                        rmdir(tempPath,'s');
+                    catch(error)
+                        disp('ERRO: temp folder could not be removed');
+                    end
                 end
+                mkdir(tempPath);
+                
+                % uncompress project file into temp folder
+                untar(file, tempPath);
+            
+                projectPath = fullfile(tempPath, projectName);
+                projectMatFile = fullfile(tempPath, projectName, 'project.mat');
+            else
+                % for project folders. There is no project file and the
+                % temp folder if the same folder containing the project
+                this.projectFile = [];
+                projectPath = file;
+                projectMatFile = fullfile(projectPath, 'project.mat');
             end
-            mkdir(tempPath);
             
-            % uncompress project file into temp folder
-            untar(file, tempPath);
-            
-            projectPath = fullfile(tempPath, projectName);
-            projectMatFile = fullfile(tempPath, projectName, 'project.mat');
             
             % load project data
             data = load( projectMatFile, 'data' );
@@ -118,7 +133,7 @@ classdef Project < handle
             
         %
         % Save project object to file
-        %
+        %   
         function save( this )
             data = [];
             data.name = this.name;
@@ -135,16 +150,16 @@ classdef Project < handle
             
             filename = fullfile( this.path, 'project.mat');
             save( filename, 'data' );
-            
-            % create a backup of the last project file before overriding it
-            if ( exist(this.projectFile,'file') )
-                copyfile(this.projectFile, [this.projectFile '.aruback']);
+            if (~isempty(this.projectFile) ) 
+                % create a backup of the last project file before overriding it
+                if ( exist(this.projectFile,'file') )
+                    copyfile(this.projectFile, [this.projectFile '.aruback']);
+                end
+                
+                % compress project file and keep temp folder
+                tar(this.projectFile , this.path);
+                movefile([this.projectFile '.tar'], this.projectFile,'f');
             end
-            
-            % compress project file and keep temp folder
-            tar(this.projectFile , this.path);
-            movefile([this.projectFile '.tar'], this.projectFile,'f');
-            
             % send session variables to workspace
             arumeData = [];
             for session = this.sessions
@@ -228,6 +243,34 @@ classdef Project < handle
             end
         
         end
+        
+        %
+        % Analysis methods
+        % 
+        function dataTable = GetDataTable(this, subjectSelection, sessionSelection)
+            allSubjects = {};
+            allSessionCodes = {};
+            for session=this.sessions
+                allSubjects{end+1} = session.subjectCode;
+                allSessionCodes{end+1} = session.sessionCode;
+            end
+            if ( ~exist( 'subjectSelection', 'var' ) && ~exist( 'sessionSelection', 'var' ))
+                subjectSelection = unique(allSubjects);
+                sessionSelection = unique(allSessionCodes);
+            end
+            
+            dataTable = table();
+            for session=this.sessions
+                % if this is one of the sessions we want
+                if ( any(categorical(subjectSelection) == session.subjectCode) && any(categorical(sessionSelection)==session.sessionCode))
+                    if ( isempty(dataTable) )
+                        dataTable = session.sessionDataTable;
+                    else
+                        dataTable = [dataTable;session.sessionDataTable];
+                    end
+                end
+            end
+        end
     end
     
     
@@ -266,6 +309,5 @@ classdef Project < handle
             result = 1;
         end
     end
-    
 end
 

@@ -30,9 +30,11 @@ classdef ArumeController < handle
     properties( Access=private )
         configuration       % Configuration options saved into a mat file in the Arume folder
     end
+    
     properties
         gui                 % Current gui associated with the controller
     end
+    
     properties( SetAccess=private )
         currentProject      % Current working project 
         selectedSessions    % Current selected sessions (if multiple selected enabled)
@@ -139,6 +141,24 @@ classdef ArumeController < handle
             save(fullfile(folder,'arumeconf.mat'), 'conf'); 
         end
         
+        function newProjectFolder( this, projectFilePath, projectName, defaultExperiment )
+            % Creates a new project
+            
+            this.currentProject = ArumeCore.Project.NewProject( projectFilePath, projectName, projectFilePath, defaultExperiment);
+            this.selectedSessions = [];
+            
+            if ( ~isfield(this.configuration, 'recentProjects' ) )
+                this.configuration.recentProjects = {};
+            end
+            
+            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
+            
+            this.configuration.recentProjects = [this.currentProject.projectFile this.configuration.recentProjects];
+            conf = this.configuration;
+            [folder, name, ext] = fileparts(which('Arume'));
+            save(fullfile(folder,'arumeconf.mat'), 'conf'); 
+        end
+        
         function loadProject( this, file )  
             % Loads a project from a project file
             
@@ -152,6 +172,33 @@ classdef ArumeController < handle
             end
             
             this.currentProject = ArumeCore.Project.LoadProject( file, this.configuration.tempFolder );
+            this.selectedSessions = [];
+            
+            if ( ~isfield(this.configuration, 'recentProjects' ) )
+                this.configuration.recentProjects = {};
+            end
+            
+            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
+            
+            this.configuration.recentProjects = [file this.configuration.recentProjects];
+            conf = this.configuration;
+            [folder, name, ext] = fileparts(which('Arume'));
+            save(fullfile(folder,'arumeconf.mat'), 'conf'); 
+        end
+        
+        function loadProjectFolder( this, file )  
+            % Loads a project from a project file
+            
+            if ( ~exist( file, 'file') )
+                msgbox( 'The project file does not exist.');
+            end
+            
+            if ( ~isempty(this.currentProject) && strcmp(this.currentProject.projectFile, file))
+                disp('Loading the same project file that is currently loaded');
+                return;
+            end
+            
+            this.currentProject = ArumeCore.Project.LoadProject( file, file );
             this.selectedSessions = [];
             
             if ( ~isfield(this.configuration, 'recentProjects' ) )
@@ -321,17 +368,19 @@ classdef ArumeController < handle
                 n = length(this.selectedSessions);
             end
             
-            try
-                for i =1:n
+            for i =1:n
+                try
                     disp(['ARUME::preparing analysis for session ' sessions(i).name])
                     session = sessions(i);
                     session.prepareForAnalysis();
                     if ( useWaitBar )
                         waitbar(i/n,h)
                     end
+                catch ex
+                    disp('Error preparing a session**************************');
+                    ex.getReport()
+                    disp('end Error preparing a session**************************');
                 end
-            catch
-                disp('Error preparing a session');
             end
             
             if (useWaitBar)
