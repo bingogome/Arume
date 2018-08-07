@@ -37,7 +37,7 @@ end
 
 if ( useGui && isempty(arumeController.gui))
     % Load the GUI
-    gui = ArumeGui( arumeSingleton );
+    gui = ArumeCore.ArumeGui( arumeSingleton );
     arumeController.gui = gui;
 end
 
