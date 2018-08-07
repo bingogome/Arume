@@ -33,6 +33,7 @@ classdef ArumeController < handle
     
     properties
         gui                 % Current gui associated with the controller
+        possibleExperiments % List of possible experiments
     end
     
     properties( SetAccess=private )
@@ -81,7 +82,6 @@ classdef ArumeController < handle
         %
         
         function arumeController = ArumeController()
-            
         end
         
         function init( this)
@@ -118,6 +118,9 @@ classdef ArumeController < handle
             if ( ~exist( this.configuration.tempFolder, 'dir') )
                 mkdir(folder, 'Temp');
             end
+            
+            % Get the list of possible experiments
+            this.possibleExperiments = ArumeCore.ExperimentDesign.GetExperimentList;
         end
         %
         % Managing projects
@@ -265,10 +268,12 @@ classdef ArumeController < handle
             
             this.currentProject.save();
         end
+        
         function updateExperimentOptions( this, experiment, subject_Code, session_Code, options )
             session = this.currentProject.findSession( experiment, subject_Code, session_Code);
             session.experiment.UpdateExperimentOptions(options);
         end
+        
         function renameSession( this, session, subjectCode, sessionCode)
             % Renames the current session
             
@@ -424,11 +429,7 @@ classdef ArumeController < handle
                 end
             end
         end
-                
-        function exportAnalysesData(this)
-            a=1;
-        end
-        
+                        
         function plotList = GetPlotList( this )
             plotList = {};
             methodList = meta.class.fromName(class(this.currentSession.experiment)).MethodList;

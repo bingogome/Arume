@@ -4,24 +4,18 @@ classdef Project < handle
     
     properties( SetAccess = private)
         name        % Name of the project
-        projectFile % Actual location of the compressed project file
+        projectFile % Actual location of the compressed project file, will be empty for folder projects  
         path        % Working path of the uncompressed project (typically the temp folder)
         
         defaultExperiment % default experiment for this project
                 
         sessions    % Sessions that belong to this project
-        
-        analysis
-        figures
-        reports
     end
     
     properties(Dependent=true)
         % relative paths inside the project
-        dataRawPath
-        dataAnalysisPath
-        figuresPath
-        stimuliPath
+        dataRawPath         % raw data for added files
+        dataAnalysisPath    % matlab variables
     end
     
     %
@@ -34,14 +28,6 @@ classdef Project < handle
         
         function out = get.dataAnalysisPath( this )
             out = fullfile( this.path, 'dataAnalysis');
-        end
-        
-        function out = get.figuresPath( this )
-            out = fullfile( this.path, 'figures');
-        end
-        
-        function out = get.stimuliPath( this )
-            out = fullfile( this.path, 'stimuli');
         end
     end
     
@@ -72,15 +58,12 @@ classdef Project < handle
             end
             
             % initialize the project
-            this.init( fullfile(tempPath, projectName),projectName, defaultExperiment );
+            this.init( fullfile(tempPath, projectName), projectName, defaultExperiment );
             
             % prepare folder structure
             mkdir( tempPath, projectName );
             mkdir( this.path, 'dataRaw' );
             mkdir( this.path, 'dataAnalysis' );
-            mkdir( this.path, 'stimuli' );
-            mkdir( this.path, 'figures' );
-            mkdir( this.path, 'analysis' );
             
             % save the project
             this.save();
@@ -111,12 +94,11 @@ classdef Project < handle
                 projectMatFile = fullfile(tempPath, projectName, 'project.mat');
             else
                 % for project folders. There is no project file and the
-                % temp folder if the same folder containing the project
+                % temp folder is the same folder containing the project
                 this.projectFile = [];
                 projectPath = file;
                 projectMatFile = fullfile(projectPath, 'project.mat');
             end
-            
             
             % load project data
             data = load( projectMatFile, 'data' );
@@ -127,7 +109,7 @@ classdef Project < handle
             
             % load sessions
             for session = data.sessions
-                s = ArumeCore.Session.LoadSession( this, session );
+                ArumeCore.Session.LoadSession( this, session );
             end
         end
             
@@ -135,6 +117,9 @@ classdef Project < handle
         % Save project object to file
         %   
         function save( this )
+            % for safer storage do not save the actual matlab Project
+            % object. Instead create a struct and save that. It will be
+            % more robust to version changes.
             data = [];
             data.name = this.name;
             data.defaultExperiment = this.defaultExperiment; 
@@ -148,10 +133,15 @@ classdef Project < handle
                 end
             end
             
+            % Save the data structure
             filename = fullfile( this.path, 'project.mat');
             save( filename, 'data' );
+            
+            % If project file (not folder) compress the folder structure
+            % into a single file and save it.
             if (~isempty(this.projectFile) ) 
-                % create a backup of the last project file before overriding it
+                % create a backup of the last project file before
+                % overriding it
                 if ( exist(this.projectFile,'file') )
                     copyfile(this.projectFile, [this.projectFile '.aruback']);
                 end
@@ -160,6 +150,7 @@ classdef Project < handle
                 tar(this.projectFile , this.path);
                 movefile([this.projectFile '.tar'], this.projectFile,'f');
             end
+            
             % send session variables to workspace
             arumeData = [];
             for session = this.sessions
@@ -185,11 +176,10 @@ classdef Project < handle
         
         function deleteSession( this, session )
             session.deleteFolders();
-            sessidx = find( this.sessions == session );
-            this.sessions(sessidx) = [];
+            this.sessions(find( this.sessions == session )) = [];
         end
         
-        function [session i] = findSession( this, experimentName, subjectCode, sessionCode)
+        function [session, i] = findSession( this, experimentName, subjectCode, sessionCode)
             
             for i=1:length(this.sessions)
                 if ( exist('sessionCode','var') )
@@ -215,11 +205,11 @@ classdef Project < handle
         
         function sortSessions(this)
             
-            sessionNames = {};
+            sessionNames = cell(length(this.sessions),1);
             for i=1:length(this.sessions)
                 sessionNames{i} = [this.sessions(i).subjectCode this.sessions(i).sessionCode];
             end
-            [b i] = sort(sessionNames);
+            [~, i] = sort(sessionNames);
             this.sessions = this.sessions(i);
         end
         
@@ -248,8 +238,8 @@ classdef Project < handle
         % Analysis methods
         % 
         function dataTable = GetDataTable(this, subjectSelection, sessionSelection)
-            allSubjects = {};
-            allSessionCodes = {};
+            allSubjects = cell(length(this.sessions),1);
+            allSessionCodes = cell(length(this.sessions),1);
             for session=this.sessions
                 allSubjects{end+1} = session.subjectCode;
                 allSessionCodes{end+1} = session.sessionCode;
@@ -266,6 +256,9 @@ classdef Project < handle
                     if ( isempty(dataTable) )
                         dataTable = session.sessionDataTable;
                     else
+                        % TODO: need to deal with sessions from different
+                        % experiments. May need to add additional columns
+                        % to either table before merging
                         dataTable = [dataTable;session.sessionDataTable];
                     end
                 end

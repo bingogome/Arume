@@ -122,9 +122,9 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign
                 disp(files{3});
                 disp('Finished downloading');
                 
-                this.addFile('vogDataFile', files{1});
-                this.addFile('vogCalibrationFile', files{2});
-                this.addFile('vogEventsFile', files{3});
+                this.Session.addFile('vogDataFile', files{1});
+                this.Session.addFile('vogCalibrationFile', files{2});
+                this.Session.addFile('vogEventsFile', files{3});
             end
         end
         

@@ -46,15 +46,6 @@ classdef Session < ArumeCore.DataDB
         % Different experiments can load different columns.
         % Each experiment has to take care of preparing the dataset
         %
-        % It should at least have this columns
-        % TimeStamp
-        % LeftHorizontal
-        % LeftVertical
-        % LeftTorsion
-        % RightHorizontal
-        % RightVertical
-        % RightTorsion
-        % HeadRollTilt
         rawDataSet
         samplesDataSet
         
@@ -65,39 +56,6 @@ classdef Session < ArumeCore.DataDB
         %
         % Basic type of events will be Saccades, blinks, slow phases
         %
-        % It should at least have this columns
-        %
-        % StartSample
-        % EndSample
-        % TrialNumber
-        % Duration
-        % Amplitude
-        % AmplitudeLeft
-        % AmplitudeRight
-        % HorizontalAmplitudeLeft
-        % VerticalAmplitudeRight
-        % TorsionalAmplitudeRight
-        % HorizontalAmplitudeLeft
-        % VerticalAmplitudeRight
-        % TorsionalAmplitudeRight
-        % PeakVelocity
-        % PeakVelocityLeft
-        % PeakVelocityRight
-        % HorizontalPeakVelocityLeft
-        % VerticalPeakVelocityRight
-        % TorsionalPeakVelocityRight
-        % HorizontalPeakVelocityLeft
-        % VerticalPeakVelocityRight
-        % TorsionalPeakVelocityRight
-        % MeanVelocity
-        % MeanVelocityLeft
-        % MeanVelocityRight
-        % HorizontalMeanVelocityLeft
-        % VerticalMeanVelocityRight
-        % TorsionalMeanVelocityRight
-        % HorizontalMeanVelocityLeft
-        % VerticalMeanVelocityRight
-        % TorsionalMeanVelocityRight
         eventsDataSet
         
         % Results of the experiment specific analysis
@@ -314,7 +272,22 @@ classdef Session < ArumeCore.DataDB
             end
             
         end
+        
+        function addFile(this, fileTag, filePath)
+            
+            [~,fileName, ext] = fileparts(filePath);
+            copyfile(filePath, fullfile(this.dataRawPath, [fileName ext] ));
                 
+            if ( ~isfield(this.currentRun.LinkedFiles, fileTag) )
+                this.currentRun.LinkedFiles.(fileTag) = [fileName ext];
+            else
+                if ~iscell(this.currentRun.LinkedFiles.(fileTag))
+                    this.currentRun.LinkedFiles.(fileTag) = {this.currentRun.LinkedFiles.(fileTag)};
+                end
+                this.currentRun.LinkedFiles.(fileTag) = cat(1, this.currentRun.LinkedFiles.(fileTag), [fileName ext] );
+            end               
+        end
+        
         %
         %% RUNING METHODS
         %
@@ -520,12 +493,17 @@ classdef Session < ArumeCore.DataDB
             NoYes = {'No' 'Yes'};
             newSessionDataTable.Started = NoYes{this.isStarted+1};
             newSessionDataTable.Finished = NoYes{this.isFinished+1};
-            if (~isempty(this.currentRun) )
-                newSessionDataTable.TimeLastTrial = datestr(this.currentRun.Events(1,2));
-                newSessionDataTable.TimeFirstTrial = datestr(this.currentRun.Events(end,2));
+            if (~isempty(this.currentRun) && ~isempty(this.currentRun.Events))
+                newSessionDataTable.TimeFirstTrial = datestr(this.currentRun.Events(1,2));
+                newSessionDataTable.TimeLastTrial = datestr(this.currentRun.Events(end,2));
             else
                 newSessionDataTable.TimeLastTrial = '-';
                 newSessionDataTable.TimeFirstTrial = '-';
+            end
+            if (~isempty(this.currentRun) && ~isempty(this.currentRun.pastConditions) && ~isempty(this.currentRun.futureConditions))
+                newSessionDataTable.NumberOfTrialsCompleted = sum(this.currentRun.pastConditions(:,2)==0);
+                newSessionDataTable.NumberOfTrialsAborted   = sum(this.currentRun.pastConditions(:,2)~=0);
+                newSessionDataTable.NumberOfTrialsPending   = length(this.currentRun.futureConditions(:,1));
             end
             
             opts = fieldnames(this.experiment.ExperimentOptions);
