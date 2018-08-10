@@ -72,6 +72,7 @@ classdef ArumeGui < handle
               
             % Ensure singleton behavior
             h = findall(0,'tag','Arume');
+            
             if ( ~isempty( h ) )
                 figure(h);
                 return
@@ -92,7 +93,7 @@ classdef ArumeGui < handle
                 'NumberTitle'   , 'off',... % Do not show figure number
                 'Position'      , [400,800,w,h], ...
                 'CloseRequestFcn', @this.figureCloseRequest, ...
-                'ResizeFcn'     , @this.figureResizeFcn);
+                'SizeChangedFcn' , @this.figureResizeFcn); %Jing, change 'ResizeFcn' to 'SizeChangedFcn', becuase it might be removed in future
             
             %  Construct panels
             

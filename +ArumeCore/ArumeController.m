@@ -284,7 +284,7 @@ classdef ArumeController < handle
             end
             disp(['Renaming session' session.subjectCode ' - ' session.sessionCode ' to '  subjectCode ' - ' sessionCode]);
             
-            [s i] = this.currentProject.findSession(session.experiment.Name, session.subjectCode, session.sessionCode);
+            [~, i] = this.currentProject.findSession(session.experiment.Name, session.subjectCode, session.sessionCode);
             this.currentProject.sessions(i).rename(subjectCode, sessionCode);
             this.currentProject.save();
         end
@@ -363,14 +363,16 @@ classdef ArumeController < handle
             % trial dataset and the samples dataset
             
             useWaitBar = 0;
+                       
             if ( ~exist('sessions','var') )
                 sessions = this.selectedSessions;
                 useWaitBar = 1;
             end
             
+            n = length(sessions);
+            
             if (useWaitBar)
                 h = waitbar(0,'Please wait...');
-                n = length(this.selectedSessions);
             end
             
             for i =1:n
@@ -458,8 +460,8 @@ classdef ArumeController < handle
                             end
                         else 
                             
-                            nplot1 = [1 2 1 2 2 2 2 2 3 2 4 4 4 4 4 5 5 5 5 5 5 5 5 5];
-                            nplot2 = [1 1 3 2 3 3 4 4 3 5 3 3 4 4 4 4 4 4 4 5 5 5 5 5];
+                            nplot1 = [1 2 1 2 2 2 2 2 3 2 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5];
+                            nplot2 = [1 1 3 2 3 3 4 4 3 5 3 3 4 4 4 4 4 4 4 4 5 5 5 5 5];
                             combinedFigures = [];
                             nSessions = length(this.selectedSessions);
                             p1 = nplot1(nSessions);
@@ -488,8 +490,8 @@ classdef ArumeController < handle
                                         % copy all including legend
                                         axcopy = copyobj(axorig(:), combinedFigures(iplot));
                                     end
-                                    ax = subplot(p1,p2,iSession,axcopy(end))
-                                    title(ax,theTitle)
+                                    ax = subplot(p1,p2,iSession,axcopy(end));
+                                    title(ax,theTitle);
                                 end
 
                                 close(setdiff( newhandles,handles))

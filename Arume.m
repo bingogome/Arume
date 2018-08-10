@@ -9,8 +9,7 @@ useGui = 1;
 % option to clear the singleton
 if ( exist('command','var') )
     switch (command )
-        case 'clear'
-            % clear the persistent variable
+        case 'clear'             % clear the persistent variable
             clear arumeSingleton;
             arumeController = [];
             return;
@@ -20,6 +19,9 @@ if ( exist('command','var') )
                 projectPath = param;
             end
         case 'nogui'
+            if ( exist('param','var') )
+                projectPath = param;
+            end
             useGui = 0;
     end
 end
@@ -43,5 +45,8 @@ end
 
 if ( exist('projectPath','var') )
     arumeSingleton.loadProject( projectPath )
+end
+
+if ( useGui )
     gui.updateGui();
 end

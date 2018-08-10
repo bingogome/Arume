@@ -238,8 +238,8 @@ classdef Project < handle
         % Analysis methods
         % 
         function dataTable = GetDataTable(this, subjectSelection, sessionSelection)
-            allSubjects = cell(length(this.sessions),1);
-            allSessionCodes = cell(length(this.sessions),1);
+            allSubjects = {};
+            allSessionCodes = {};
             for session=this.sessions
                 allSubjects{end+1} = session.subjectCode;
                 allSessionCodes{end+1} = session.sessionCode;
