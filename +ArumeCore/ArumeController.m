@@ -120,7 +120,7 @@ classdef ArumeController < handle
             end
             
             % Get the list of possible experiments
-            this.possibleExperiments = ArumeCore.ExperimentDesign.GetExperimentList;
+            this.possibleExperiments = sort(ArumeCore.ExperimentDesign.GetExperimentList());
         end
         %
         % Managing projects

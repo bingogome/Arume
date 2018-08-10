@@ -83,12 +83,12 @@ classdef ExperimentRun < matlab.mixin.Copyable
     methods(Static=true)
         
         %% setUpNewRun
-        function newRun = SetUpNewRun( experiment )
+        function newRun = SetUpNewRun( experimentDesign )
             
             % create the new object
             newRun = ArumeCore.ExperimentRun();
             
-            newRun.ExperimentDesign = experiment;
+            newRun.ExperimentDesign = experimentDesign;
             
             % use predictable randomization saving state
             newRun.Info.globalStream   = RandStream.getGlobalStream;
@@ -102,21 +102,21 @@ classdef ExperimentRun < matlab.mixin.Copyable
             
             % generate the sequence of blocks, a total of
             % parameters.blocksToRun blocks will be run
-            nBlocks = length(experiment.blocks);
+            nBlocks = length(experimentDesign.blocks);
             blockSequence = [];
-            switch(experiment.blockSequence)
+            switch(experimentDesign.blockSequence)
                 case 'Sequential'
-                    blockSequence = mod( (1:experiment.blocksToRun)-1,  nBlocks ) + 1;
+                    blockSequence = mod( (1:experimentDesign.blocksToRun)-1,  nBlocks ) + 1;
                 case 'Random'
-                    [junk blocks] = sort( rand(1,experiment.blocksToRun) ); % get a random shuffle of 1 ... blocks to run
+                    [~, blocks] = sort( rand(1,experimentDesign.blocksToRun) ); % get a random shuffle of 1 ... blocks to run
                     blockSequence = mod( blocks-1,  nBlocks ) + 1; % limit the random sequence to 1 ... nBlocks
                 case 'Random with repetition'
-                    blockSequence = ceil( rand(1,experiment.blocksToRun) * nBlocks ); % just get random block numbers
+                    blockSequence = ceil( rand(1,experimentDesign.blocksToRun) * nBlocks ); % just get random block numbers
                 case 'Manual'
                     blockSequence = [];
                     
-                    while length(blockSequence) ~= experiment.blocksToRun
-                        S.Block_Sequence = [1:experiment.blocksToRun];
+                    while length(blockSequence) ~= experimentDesign.blocksToRun
+                        S.Block_Sequence = [1:experimentDesign.blocksToRun];
                         S = StructDlg( S, ['Block Sequence'], [],  CorrGui.get_default_dlg_pos() );
                         blockSequence =  S.Block_Sequence;
                     end
@@ -127,16 +127,16 @@ classdef ExperimentRun < matlab.mixin.Copyable
                     %                         disp(['Error with the manual block sequence. Please fix.']);
                     %                     end
             end
-            blockSequence = repmat( blockSequence,1,experiment.numberOfTimesRepeatBlockSequence);
+            blockSequence = repmat( blockSequence,1,experimentDesign.numberOfTimesRepeatBlockSequence);
             
             newRun.futureConditions = [];
             for iblock=1:length(blockSequence)
                 i = blockSequence(iblock);
-                possibleConditions = experiment.blocks(i).fromCondition : experiment.blocks(i).toCondition; % the possible conditions to select from in this block
+                possibleConditions = experimentDesign.blocks(i).fromCondition : experimentDesign.blocks(i).toCondition; % the possible conditions to select from in this block
                 nConditions = length(possibleConditions);
-                nTrials = experiment.blocks(i).trialsToRun;
+                nTrials = experimentDesign.blocks(i).trialsToRun;
                 
-                switch( experiment.trialSequence )
+                switch( experimentDesign.trialSequence )
                     case 'Sequential'
                         trialSequence = possibleConditions( mod( (1:nTrials)-1,  nConditions ) + 1 );
                     case 'Random'
@@ -150,7 +150,7 @@ classdef ExperimentRun < matlab.mixin.Copyable
             end
             
             newRun.pastConditions = zeros(0,5);
-            newRun.SessionsToRun    = ceil(size(newRun.futureConditions,1) / experiment.trialsPerSession);
+            newRun.SessionsToRun    = ceil(size(newRun.futureConditions,1) / experimentDesign.trialsPerSession);
             newRun.originalFutureConditions = newRun.futureConditions;
             
             newRun.CurrentSession = 1;
