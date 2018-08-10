@@ -1,4 +1,4 @@
-classdef SVV2AFC < ArumeCore.ExperimentDesign
+classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
     %SVV2AFC Parent experiment design for designs of SVV experiments
     % using 2AFC two alternative forced choice task
     % all the experiments will have a variable called angle which is the
@@ -6,7 +6,6 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     % can 'R' or 'L'.
     
     properties
-        eyeTracker = [];
         gamePad = [];
         biteBarMotor = [];
         
@@ -16,7 +15,6 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         fixColor = [255 0 0];
         
         targetColor = [255 0 0];
-        
     end
     
     % ---------------------------------------------------------------------
@@ -26,7 +24,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         
         function dlg = GetOptionsDialog( this )
             
-            dlg.UseEyeTracker = { {'{0}','1'} };
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
+            
             dlg.UseGamePad = { {'0','{1}'} };
             dlg.UseMouse = { {'{0}','1'} };
             
@@ -51,21 +50,14 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         
         function initBeforeRunning( this )
             
+            % Initialize eyetracker
+            initBeforeRunning@ArumeExperimentDesigns.EyeTracking(this);
+            
             % Initialize gamepad
             if ( this.ExperimentOptions.UseGamePad )
                 
                 this.gamePad = ArumeHardware.GamePad();
                 
-            end
-            
-            % Initialize eyetracker
-            if ( this.ExperimentOptions.UseEyeTracker )
-                
-                this.eyeTracker = ArumeHardware.VOG();
-                this.eyeTracker.Connect();
-                
-                this.eyeTracker.SetSessionName(this.Session.name);
-                this.eyeTracker.StartRecording();
             end
             
             % Initialize bitebar
@@ -97,19 +89,13 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         
         function cleanAfterRunning(this)
             
-            % ose gamepad
+            % Close eyetracker
+            cleanAfterRunning@ArumeExperimentDesigns.EyeTracking(this);
+            
+            % close gamepad
             if ( this.ExperimentOptions.UseGamePad )
             end
-            
-            % Close eyetracker
-            if ( this.ExperimentOptions.UseEyeTracker )
-                if ( ~isempty(this.eyeTracker))
-                    if ( this.eyeTracker.IsRecording)
-                        this.eyeTracker.StopRecording();
-                    end
-                end
-            end
-            
+                        
             % Close bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor ~= 0 )
                 if ( ~isempty(this.biteBarMotor))

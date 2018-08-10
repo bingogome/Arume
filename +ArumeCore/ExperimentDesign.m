@@ -683,7 +683,7 @@ classdef ExperimentDesign < handle
         
         function DisplayConditionMatrix(this)
             
-            this.GetConditionTable();
+            this.GetConditionTable()
         end
         
         %% function psyCortex_defaultConfig
@@ -1018,9 +1018,10 @@ classdef ExperimentDesign < handle
             experimentList = {};
             
             expPackage = meta.package.fromName('ArumeExperimentDesigns');
-            
+            disp('Setting up experiments...')
             for i=1:length(expPackage.ClassList)
                 experimentList{i} = strrep( expPackage.ClassList(i).Name, 'ArumeExperimentDesigns.','');
+                disp(experimentList{i});
             end
         end
         
