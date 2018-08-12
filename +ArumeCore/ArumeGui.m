@@ -15,8 +15,6 @@ classdef ArumeGui < handle
         defaultExperimentTextLabel
         pathTextLabel
         sessionListBox
-        analysisListBox
-        plotsListBox
         
         infoBox
         commentsTextBox
@@ -46,11 +44,11 @@ classdef ArumeGui < handle
         
         menuAnalyze
         menuAnalyzePrepare
-        menuAnalyzeRunAnalyses
         
         menuPlot
         menuPlotGeneratePlots
         menuPlotGeneratePlotsCombined
+        menuPlotGeneratePlotsAggregated
         
         % Session Contextual menu
         sessionContextMenu
@@ -164,19 +162,19 @@ classdef ArumeGui < handle
                 'Parent'    , this.rightPanel,...
                 'Style'     , 'edit',...
                 'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
+                'FontSize'	, 8,...
                 'Max'       , 10, ...
                 'Enable'    , 'inactive', ...
                 'HorizontalAlignment'   , 'Left',...
                 'FontName'	, 'consolas',...
                 'String'    , 'INFO:',...
                 'Units'     ,'normalized',...
-                'Position'  , [0.01 0.01 0.48 0.97], ...
+                'Position'  , [0.01 0.01 0.97 0.97], ...
                 'BackgroundColor'     , 'w', ...
                 'Callback'  , @this.sessionListBoxCallBack);
             
             this.commentsTextBox = uicontrol( ...
-                'Parent'    , this.rightPanel,...
+                'Parent'    , this.bottomPanel,...
                 'Style'     , 'edit',...
                 'FontName'	, 'consolas',...
                 'FontSize'	, 9,...
@@ -184,33 +182,9 @@ classdef ArumeGui < handle
                 'HorizontalAlignment'   , 'Left',...
                 'String'    , '',...
                 'Units'     ,'normalized',...
-                'Position'  , [0.5 0.61 0.48 0.37], ...
+                'Position'  , [0 0 1 1], ...
                 'BackgroundColor'     , [1 1 0.8], ...
                 'Callback'  , @this.commentsTextBoxCallBack);
-            
-            this.analysisListBox = uicontrol( ...
-                'Parent'    , this.rightPanel,...
-                'Style'     , 'listbox',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
-                'Max'       , 20, ...
-                'String'    , '',...
-                'Units'     ,'normalized',...
-                'Position'  , [0.5 0.01 0.48 0.17], ...
-                'BackgroundColor'     , 'w', ...
-                'Callback'  , @this.analysisListBoxCallBack);
-            
-            this.plotsListBox = uicontrol( ...
-                'Parent'    , this.rightPanel,...
-                'Style'     , 'listbox',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
-                'Max'       , 20, ...
-                'String'    , '',...
-                'Units'     ,'normalized',...
-                'Position'  , [0.5 0.20 0.48 0.38], ...
-                'BackgroundColor'     , 'w', ...
-                'Callback'  , @this.plotsListBoxCallBack);
             
             % menu
             set(this.figureHandle,'MenuBar','none'); 
@@ -272,21 +246,20 @@ classdef ArumeGui < handle
                 'Label'     , 'Prepare ...', ...
                  'Callback'  , @this.PrepareAnalysis);
             
-            this.menuAnalyzeRunAnalyses = uimenu(this.menuAnalyze, ...
-                'Label'     , 'Run analyses ...', ...
-                'Callback'  , @this.RunAnalyses);
-            
             
             this.menuPlot = uimenu(this.figureHandle, ...
-                'Label'     , 'Plot');
+                'Label'     , 'Plot', ...
+                 'Callback'  , @this.Plot);
             
             this.menuPlotGeneratePlots = uimenu(this.menuPlot, ...
-                'Label'     , 'Generate plots ...', ...
-                'Callback'  , @this.GeneratePlots);
+                'Label'     , 'Generate plots');
             
             this.menuPlotGeneratePlotsCombined = uimenu(this.menuPlot, ...
-                'Label'     , 'Generate plots combined ...', ...
-                'Callback'  , @this.GeneratePlotsCombined);
+                'Label'     , 'Generate plots combined');
+            
+            this.menuPlotGeneratePlotsAggregated = uimenu(this.menuPlot, ...
+                'Label'     , 'Generate plots aggregated');
+            
             
             % session contextual menu
             % Define a context menu; it is not attached to anything
@@ -311,13 +284,6 @@ classdef ArumeGui < handle
                 'Callback'  , @this.CopySessionsTo);
             set(this.sessionListBox, 'uicontextmenu', this.sessionContextMenu)
             
-            % session contextual menu
-            % Define a context menu; it is not attached to anything
-            this.analysisContextMenu = uicontextmenu;
-            this.analysisContextMenuSendToWorkspace = uimenu(this.analysisContextMenu, ...
-                'Label'     , 'Send data to matlab workspace ...', ...
-                'Callback'  , @this.SendToWorkspace);
-            set(this.analysisListBox, 'uicontextmenu', this.analysisContextMenu)
             
             % Move the GUI to the center of the screen.
             movegui(this.figureHandle,'center')
@@ -883,30 +849,61 @@ classdef ArumeGui < handle
             this.updateGui();
         end
         
-        function RunAnalyses( this, source, eventdata ) 
+        function Plot( this, source, eventdata )
             
-            analyses = get(this.analysisListBox,'string');
-            selection = get(this.analysisListBox,'value');
+            delete(get(this.menuPlotGeneratePlots,'children'));
+            delete(get(this.menuPlotGeneratePlotsCombined,'children'));
+            delete(get(this.menuPlotGeneratePlotsAggregated,'children'));
             
-            this.arumeController.runAnalyses(analyses, selection);
-            this.updateGui();
+            
+            if ( ~isempty( this.arumeController.currentSession ) && this.arumeController.currentSession.isReadyForAnalysis)
+            
+                plotsList = {};
+                plotsListAgg = {};
+                for session = this.arumeController.selectedSessions
+                    if ( isempty (plotsList) )
+                        plotsList = this.arumeController.GetPlotList();
+                    else
+                        plotsList =  intersect(plotsList, this.arumeController.GetPlotList());
+                    end
+                    if ( isempty (plotsListAgg) )
+                        plotsListAgg = this.arumeController.GetAggregatePlotList();
+                    else
+                        plotsListAgg =  intersect(plotsListAgg, this.arumeController.GetAggregatePlotList());
+                    end
+                end
+            else
+                plotsList = {};
+                plotsListAgg = {};
+            end
+            
+            for i=1:length(plotsList)
+                uimenu(this.menuPlotGeneratePlots, ...
+                    'Label'     , plotsList{i}, ...
+                    'Callback'  , @this.GeneratePlots);
+                uimenu(this.menuPlotGeneratePlotsCombined, ...
+                    'Label'     , plotsList{i}, ...
+                    'Callback'  , @this.GeneratePlotsCombined);
+            end
+            
+            for i=1:length(plotsListAgg)
+                uimenu(this.menuPlotGeneratePlotsAggregated, ...
+                    'Label'     , plotsListAgg{i}, ...
+                    'Callback'  , @this.GeneratePlots);
+            end
+            
+            
+            % update plots listbox
         end
         
-        function GeneratePlots( this, source, eventdata ) 
-            
-            plots = get(this.plotsListBox,'string');
-            selection = get(this.plotsListBox,'value');
-            
-            this.arumeController.generatePlots(plots, selection);
+        function GeneratePlots( this, source, eventdata )
+                        
+            this.arumeController.generatePlots({source.Text}, 1);
             this.updateGui();
         end
         
         function GeneratePlotsCombined( this, source, eventdata ) 
-            
-            plots = get(this.plotsListBox,'string');
-            selection = get(this.plotsListBox,'value');
-            
-            this.arumeController.generatePlots(plots, selection,1);
+            this.arumeController.generatePlots(plots, {source.Text}, 1);
             this.updateGui();
         end
         
@@ -922,15 +919,6 @@ classdef ArumeGui < handle
         
         function commentsTextBoxCallBack( this, source, eventdata )
             this.arumeController.currentSession.updateComment(get(this.commentsTextBox, 'string'));
-        end
-        
-        
-        function analysisListBoxCallBack( this, source, eventdata )
-            
-        end
-        
-        function plotsListBoxCallBack( this, source, eventdata )
-            
         end
         
         function SendToWorkspace( this, source, eventdata)
@@ -1011,45 +999,6 @@ classdef ArumeGui < handle
             else
                 set(this.commentsTextBox, 'Enable','off')
                 set(this.commentsTextBox,'string','');
-            end
-            
-            % update analysis listbox
-            if ( ~isempty( this.arumeController.currentSession ) && this.arumeController.currentSession.isReadyForAnalysis)
-                anlysisList =  this.arumeController.GetAnalysisList();
-                set(this.analysisListBox, 'String', anlysisList);
-                set(this.analysisListBox, 'Value', min(1,length(anlysisList)) )
-            else
-                set(this.analysisListBox, 'String', {});
-                set(this.analysisListBox, 'Value', 0 )
-                set(this.analysisListBox, 'Enable', 'on');
-            end
-            
-            % update plots listbox
-            if ( ~isempty( this.arumeController.currentSession ) && this.arumeController.currentSession.isReadyForAnalysis)
-                plots = get(this.plotsListBox,'string');
-                selection = get(this.plotsListBox,'value');
-            
-                plotsList = {};
-                for session = this.arumeController.selectedSessions
-                    if ( isempty (plotsList) )
-                        plotsList = this.arumeController.GetPlotList();
-                    else
-                        plotsList =  intersect(plotsList, this.arumeController.GetPlotList());
-                    end
-                end
-                
-                if ( ~isempty(selection) && selection(1) > 0 )
-                    [a newselection] = intersect(plotsList,plots(selection));
-                else
-                    newselection = min(1,length(plotsList));
-                end
-                
-                set(this.plotsListBox, 'String', plotsList);
-                set(this.plotsListBox, 'Value', newselection );
-            else
-                set(this.plotsListBox, 'String', {});
-                set(this.plotsListBox, 'Value', 0 )
-                set(this.plotsListBox, 'Enable', 'on');
             end
                 
             % update menu 

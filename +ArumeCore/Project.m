@@ -11,26 +11,7 @@ classdef Project < handle
                 
         sessions    % Sessions that belong to this project
     end
-    
-    properties(Dependent=true)
-        % relative paths inside the project
-        dataRawPath         % raw data for added files
-        dataAnalysisPath    % matlab variables
-    end
-    
-    %
-    % Get methods for dependent variables
-    %
-    methods
-        function out = get.dataRawPath( this )
-            out = fullfile( this.path, 'dataRaw');
-        end
         
-        function out = get.dataAnalysisPath( this )
-            out = fullfile( this.path, 'dataAnalysis');
-        end
-    end
-    
     methods
         %
         % Initialization methods
@@ -62,8 +43,6 @@ classdef Project < handle
             
             % prepare folder structure
             mkdir( tempPath, projectName );
-            mkdir( this.path, 'dataRaw' );
-            mkdir( this.path, 'dataAnalysis' );
             
             % save the project
             this.save();
@@ -89,16 +68,21 @@ classdef Project < handle
                 
                 % uncompress project file into temp folder
                 untar(file, tempPath);
-            
                 projectPath = fullfile(tempPath, projectName);
-                projectMatFile = fullfile(tempPath, projectName, 'project.mat');
+                projectMatFile = fullfile(tempPath, projectName, [projectName '_ArumeProject.mat']);
+                
             else
+                % TODO: this must not work for folders. How does it get
+                % projectName??
+                
                 % for project folders. There is no project file and the
                 % temp folder is the same folder containing the project
                 this.projectFile = [];
                 projectPath = file;
-                projectMatFile = fullfile(projectPath, 'project.mat');
+                projectMatFile = fullfile(projectPath, [projectName '_ArumeProject.mat']);
             end
+            
+            this.updateFileStructure(projectPath, projectName);
             
             % load project data
             data = load( projectMatFile, 'data' );
@@ -110,6 +94,33 @@ classdef Project < handle
             % load sessions
             for session = data.sessions
                 ArumeCore.Session.LoadSession( this, session );
+            end
+        end
+        
+        function updateFileStructure(this, path, projectName)
+            
+            if ( exist(fullfile(path, 'project.mat'),'file') )
+                movefile(fullfile(path, 'project.mat'), fullfile(path, [projectName '_ArumeProject.mat']),'f');
+                movefile(fullfile(fullfile(path,'dataAnalysis'),'*'), path,'f');
+                movefile(fullfile(fullfile(path,'dataRaw'),'*'), path,'f');
+                
+                
+                if ( exist( fullfile(path, 'analysis'),'dir') )
+                    rmdir(fullfile(path, 'analysis'),'s');
+                end
+                if ( exist( fullfile(path, 'dataAnalysis'),'dir') )
+                    rmdir(fullfile(path, 'dataAnalysis'),'s');
+                end
+                if ( exist( fullfile(path, 'dataRaw'),'dir') )
+                    rmdir(fullfile(path, 'dataRaw'),'s');
+                end
+                if ( exist( fullfile(path, 'figures'),'dir') )
+                    rmdir(fullfile(path, 'figures'),'s');
+                end
+                if ( exist( fullfile(path, 'stimuli'),'dir') )
+                    rmdir(fullfile(path, 'stimuli'),'s');
+                end
+                
             end
         end
             
@@ -134,7 +145,7 @@ classdef Project < handle
             end
             
             % Save the data structure
-            filename = fullfile( this.path, 'project.mat');
+            filename = fullfile( this.path, [this.name '_ArumeProject.mat']);
             save( filename, 'data' );
             
             % If project file (not folder) compress the folder structure
@@ -150,16 +161,7 @@ classdef Project < handle
                 tar(this.projectFile , this.path);
                 movefile([this.projectFile '.tar'], this.projectFile,'f');
             end
-            
-            % send session variables to workspace
-            arumeData = [];
-            for session = this.sessions
-                arumeData.(session.name).trialDataSet = session.trialDataSet;
-                arumeData.(session.name).analysisResults = session.analysisResults;
-            end
-            
-            assignin ('base','arumeData',arumeData);
-            
+                        
             disp('========== ARUME PROJECT SAVED TO DISK =================================')
         end
         

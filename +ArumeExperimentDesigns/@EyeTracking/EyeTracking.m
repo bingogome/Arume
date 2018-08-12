@@ -13,33 +13,33 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             dlg.UseEyeTracker = { {'0' '{1}'} };
         end
         
-%         function initBeforeRunning( this )            
-%             if ( this.ExperimentOptions.UseEyeTracker )
-%                 this.eyeTracker = ArumeHardware.VOG();
-%                 this.eyeTracker.Connect();
-%                 this.eyeTracker.SetSessionName(this.Session.name);
-%                 this.eyeTracker.StartRecording();
-%             end
-%         end
-%         
-%         function cleanAfterRunning(this)
-%             
-%             if ( this.ExperimentOptions.UseEyeTracker )
-%                 this.eyeTracker.StopRecording();
-%         
-%                 disp('Downloading files...');
-%                 files = this.eyeTracker.DownloadFile();
-%                 
-%                 disp(files{1});
-%                 disp(files{2});
-%                 disp(files{3});
-%                 disp('Finished downloading');
-%                 
-%                 this.Session.addFile('vogDataFile', files{1});
-%                 this.Session.addFile('vogCalibrationFile', files{2});
-%                 this.Session.addFile('vogEventsFile', files{3});
-%             end
-%         end
+        function initBeforeRunning( this )            
+            if ( this.ExperimentOptions.UseEyeTracker )
+                this.eyeTracker = ArumeHardware.VOG();
+                this.eyeTracker.Connect();
+                this.eyeTracker.SetSessionName(this.Session.name);
+                this.eyeTracker.StartRecording();
+            end
+        end
+        
+        function cleanAfterRunning(this)
+            
+            if ( this.ExperimentOptions.UseEyeTracker )
+                this.eyeTracker.StopRecording();
+        
+                disp('Downloading files...');
+                files = this.eyeTracker.DownloadFile();
+                
+                disp(files{1});
+                disp(files{2});
+                disp(files{3});
+                disp('Finished downloading');
+                
+                this.Session.addFile('vogDataFile', files{1});
+                this.Session.addFile('vogCalibrationFile', files{2});
+                this.Session.addFile('vogEventsFile', files{3});
+            end
+        end
     end
             
     % ---------------------------------------------------------------------
@@ -191,9 +191,7 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
 %              arrow([40 d2.mean_mean_SPVBegEcc(d2.Side=='Left')], [40 d2.mean_mean_SPVEndEcc(d2.Side=='Left')])
 
              legend([h1 h2 h3 h4],{'Rebound after left','Rebound after right','Gaze evoked (rebound exp)', 'Gae evoked (calib.)'});
-         end
-        
-        
+        end
     end
     
 end

@@ -396,41 +396,6 @@ classdef ArumeController < handle
             
             this.currentProject.save();
         end
-        
-        function runAnalyses( this, analysis, selection )
-            % Runs the selected analysis
-            
-            analysisSelection = {};
-            if ( ~isempty( selection ) )
-                for i=1:length(selection)
-                    if ( ismethod( this.currentSession.experiment, [this.AnalysisMethodPrefix analysis{selection(i)}] ))
-                        analysisSelection{end+1} = analysis{selection(i)};
-                    end
-                end
-                
-                h = waitbar(0,'Please wait...');
-                n = length(this.selectedSessions);
-                i=0;
-                % Single sessions plot
-                for session = this.selectedSessions
-                    i = i+1;
-                    session.RunAnalyses(analysisSelection);
-                    waitbar(i/n,h)
-                end
-                close(h);
-                this.currentProject.save();
-            end
-        end
-        
-        function analysisList = GetAnalysisList( this )
-            analysisList = {};
-            methodList = meta.class.fromName(class(this.currentSession.experiment)).MethodList;
-            for i=1:length(methodList)
-                if ( strfind( methodList(i).Name, this.AnalysisMethodPrefix) )
-                    analysisList{end+1} = strrep( methodList(i).Name, this.AnalysisMethodPrefix ,'');
-                end
-            end
-        end
                         
         function plotList = GetPlotList( this )
             plotList = {};
@@ -439,6 +404,13 @@ classdef ArumeController < handle
                 if ( strfind( methodList(i).Name, this.PlotsMethodPrefix) )
                     plotList{end+1} = strrep(methodList(i).Name, this.PlotsMethodPrefix ,'');
                 end
+            end
+        end
+        
+        function plotList = GetAggregatePlotList( this )
+            plotList = {};
+            methodList = meta.class.fromName(class(this.currentSession.experiment)).MethodList;
+            for i=1:length(methodList)
                 if ( strfind( methodList(i).Name, this.PlotsAggregateMethodPrefix) )
                     plotList{end+1} = strrep(methodList(i).Name, this.PlotsAggregateMethodPrefix ,'');
                 end

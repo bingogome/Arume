@@ -24,8 +24,7 @@ classdef Session < ArumeCore.DataDB
         
         isReadyForAnalysis
         
-        dataRawPath
-        dataAnalysisPath
+        dataPath
     end
     
     %% properties from analysis
@@ -75,12 +74,8 @@ classdef Session < ArumeCore.DataDB
             name = [this.experiment.Name '_' this.subjectCode this.sessionCode];
         end
         
-        function name = get.dataRawPath(this)
-            name = fullfile( this.project.dataRawPath, this.name);
-        end
-        
-        function name = get.dataAnalysisPath(this)
-            name = fullfile( this.project.dataAnalysisPath, this.name);
+        function name = get.dataPath(this)
+            name = fullfile( this.project.path, this.name);
         end
         
         function result = get.isStarted(this)
@@ -162,36 +157,7 @@ classdef Session < ArumeCore.DataDB
             % to create stand alone sessions that do not belong to a
             % project and don't save data
             if ( ~isempty( this.project) ) 
-                
-                % Analysis folders
-                
-                if ( ~exist(fullfile(this.project.dataAnalysisPath,this.name), 'dir') )
-                    
-                    % fix for backwards compatibility, convert session
-                    % folders to full name including experiment
-                    oldStyleFolder = fullfile(this.project.dataAnalysisPath,strrep(this.name, [this.experiment.Name '_'],''));
-                    newStyleFolder = fullfile(this.project.dataAnalysisPath,this.name);
-                    if ( exist(oldStyleFolder, 'dir') )
-                        movefile(oldStyleFolder, newStyleFolder);
-                    end
-                end
-                
-                this.InitDB( this.project.dataAnalysisPath, this.name );
-                
-                % Raw data folders
-                
-                if ( ~exist(fullfile(this.project.dataRawPath,this.name), 'dir') )
-                    
-                    % fix for backwards compatibility, convert session
-                    % folders to full name including experiment
-                    oldStyleFolder = fullfile(this.project.dataRawPath,strrep(this.name, [this.experiment.Name '_'],''));
-                    newStyleFolder = fullfile(this.project.dataRawPath,this.name);
-                    if ( exist(oldStyleFolder, 'dir') )
-                        movefile(oldStyleFolder, newStyleFolder);
-                    else
-                        mkdir( project.dataRawPath, this.name );
-                    end
-                end
+                this.InitDB( this.project.path, this.name );
             end
         end
         
@@ -218,17 +184,14 @@ classdef Session < ArumeCore.DataDB
             this.sessionCode = sessionCode;
             this.RenameDB( this.name );
             
-            if ( ~strcmp(fullfile(this.project.dataRawPath, oldname),  fullfile(this.project.dataRawPath , this.name) ))
-                movefile( fullfile(this.project.dataRawPath, oldname), fullfile(this.project.dataRawPath , this.name));
+            if ( ~strcmp(fullfile(this.project.path, oldname),  fullfile(this.project.path , this.name) ))
+                movefile( fullfile(this.project.path, oldname), fullfile(this.project.path , this.name));
             end
         end
         
         function deleteFolders( this )
-            if ( exist(this.dataRawPath, 'dir') )
-                rmdir(this.dataRawPath,'s');
-            end
-            if ( exist(this.dataAnalysisPath, 'dir') )
-                rmdir(this.dataAnalysisPath,'s');
+            if ( exist(this.dataPath, 'dir') )
+                rmdir(this.dataPath,'s');
             end
         end
         
@@ -356,37 +319,58 @@ classdef Session < ArumeCore.DataDB
         %
         function prepareForAnalysis( this )
             
-            %% 1) Prepare the sample dataset
-            if(0)
-                varNames={'TimeStamp', 'LeftHorizontal','LeftVertical','LeftTorsion','RightHorizontal','RightVertical','RightTorsion','HeadRollTilt'};
-                samplesDataSet = dataset([],[],[],[],[],[],[],[],'VarNames',varNames);
-                
-                [samplesDataSet] = this.experiment.PrepareSamplesDataSet(samplesDataSet);
-                if ( ~isempty(samplesDataSet) )
-                    this.WriteVariable(samplesDataSet,'samplesDataSet');
-                end
+            %% 0) Create the basic trial dataaset (without custom experiment stuff)
+            newTrialsDataTable = this.GetBasicTrialsDataTable();
+            if ( ~isempty(newTrialsDataTable) )
+                this.WriteVariable(newTrialsDataTable,'trialDataSet');
             end
             
-%             if ( ~isempty(rawDataSet) )
-%                 this.WriteVariable(rawDataSet,'rawDataSet');
-%             end
+            %% 1) Prepare the sample dataset
+            [samples, rawData] = this.experiment.PrepareSamplesDataSet(table());
+            
+            if ( ~isempty(samples) )
+                this.WriteVariable(samples,'samplesDataSet');
+            end
+            
+            if ( ~isempty(rawData) )
+                this.WriteVariable(rawData,'rawDataSet');
+            end
             
             %% 2) Prepare the trial dataset
+            newTrialsDataTable = this.experiment.PrepareTrialDataSet(newTrialsDataTable);
+            if ( ~isempty(newTrialsDataTable) )
+                this.WriteVariable(newTrialsDataTable,'trialDataSet');
+            end
             
-            Enum = ArumeCore.ExperimentDesign.getEnum();
+            %% 3) Prepare events datasets
+            events = this.experiment.PrepareTrialDataSet([]);
+            if ( ~isempty(events) )
+                this.WriteVariable(events,'eventsDataSet');
+            end
             
-            ds = dataset;
+            %% 4) Prepare session dataTable
+            newSessionDataTable = this.GetBasicSessionDataTable();
+            newSessionDataTable = this.experiment.PrepareSessionDataTable(newSessionDataTable);
+            if ( ~isempty(newSessionDataTable) )
+                this.WriteVariable(newSessionDataTable,'sessionDataTable');
+            end
+        end
+        
+        function newTrialsDataTable = GetBasicTrialsDataTable(this)
+             Enum = ArumeCore.ExperimentDesign.getEnum();
+            
+            trials = dataset;
             if ( ~isempty( this.currentRun) )
                 
-                ds.TrialNumber = (1:length(this.currentRun.pastConditions(:,1)))';
-                ds.ConditionNumber = this.currentRun.pastConditions(:,Enum.pastConditions.condition);
-                ds.TrialResult = this.currentRun.pastConditions(:,Enum.pastConditions.trialResult);
-                ds.BlockNumber = this.currentRun.pastConditions(:,Enum.pastConditions.blocknumber);
-                ds.BlockID = this.currentRun.pastConditions(:,Enum.pastConditions.blockid);
-                ds.Session = this.currentRun.pastConditions(:,Enum.pastConditions.session);
+                trials.TrialNumber = (1:length(this.currentRun.pastConditions(:,1)))';
+                trials.ConditionNumber = this.currentRun.pastConditions(:,Enum.pastConditions.condition);
+                trials.TrialResult = this.currentRun.pastConditions(:,Enum.pastConditions.trialResult);
+                trials.BlockNumber = this.currentRun.pastConditions(:,Enum.pastConditions.blocknumber);
+                trials.BlockID = this.currentRun.pastConditions(:,Enum.pastConditions.blockid);
+                trials.Session = this.currentRun.pastConditions(:,Enum.pastConditions.session);
                 
-                ds.TimeStartTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_START,1);
-                ds.TimeStopTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_STOP,1);
+                trials.TimeStartTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_START,1);
+                trials.TimeStopTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_STOP,1);
                 
                 % find all the possible output variables
                 outputVars = {};
@@ -452,35 +436,16 @@ classdef Session < ArumeCore.DataDB
                     for j=1:length(fields)
                         field = fields{j};
                         if ( ischar(var.(field){1} ))
-                            ds.(field)  = var.(field)';
+                            trials.(field)  = var.(field)';
                         else
-                            ds.(field)  = cell2mat(var.(field)');
+                            trials.(field)  = cell2mat(var.(field)');
                         end
                     end
                 end
-                trialDataSet = ds;
             else
-                varNames={'TrialNumber', 'Condition','TrialResult','StartTrialSample', 'EndTrialSample'};
-                trialDataSet = dataset([],[],[],[],[],'VarNames',varNames);
+                trials = dataset();
             end
-            
-            % save the datasets
-            trialDataSet = this.experiment.PrepareTrialDataSet(trialDataSet);
-            if ( ~isempty(trialDataSet) )
-                this.WriteVariable(trialDataSet,'trialDataSet');
-            end
-            newSessionDataTable = this.GetBasicSessionDataTable();
-            newSessionDataTable = this.experiment.PrepareSessionDataTable(newSessionDataTable);
-            if ( ~isempty(newSessionDataTable) )
-                this.WriteVariable(newSessionDataTable,'sessionDataTable');
-            end
-            
-            %% Finally prepare the event dataset
-%             varNames={' StartSample','EndSample','TrialNumber','Duration', ...
-%                 'Amplitude','AmplitudeLeft','AmplitudeRight','HorizontalAmplitudeLeft','VerticalAmplitudeRight','TorsionalAmplitudeRight','HorizontalAmplitudeLeft','VerticalAmplitudeRight','TorsionalAmplitudeRight', ...
-%                 'PeakVelocity','PeakVelocityLeft','PeakVelocityRight','HorizontalPeakVelocityLeft','VerticalPeakVelocityRight','TorsionalPeakVelocityRight','HorizontalPeakVelocityLeft','VerticalPeakVelocityRight','TorsionalPeakVelocityRight', ...
-%                 'MeanVelocity','MeanVelocityLeft','MeanVelocityRight','HorizontalMeanVelocityLeft','VerticalMeanVelocityRight','TorsionalMeanVelocityRight','HorizontalMeanVelocityLeft','VerticalMeanVelocityRight','TorsionalMeanVelocityRight'};
-%             trialDataSet = dataset([],[],[],[],[],'VarNames',varNames);
+            newTrialsDataTable = trials;
         end
         
         function newSessionDataTable = GetBasicSessionDataTable(this)
@@ -509,24 +474,6 @@ classdef Session < ArumeCore.DataDB
             opts = fieldnames(this.experiment.ExperimentOptions);
             for i=1:length(opts)
                 newSessionDataTable.(['Option_' opts{i}]) = this.experiment.ExperimentOptions.(opts{i});
-            end
-        end
-        
-        function RunAnalyses( this, analysisSelection )
-            if ( exist( 'analysisSelection', 'var') )
-                for i=1:length(analysisSelection)
-                    analysis = analysisSelection{i};
-                    data = this.experiment.(['Analysis_' analysisSelection{i}])();
-                    this.WriteVariable(data, analysisSelection{i});
-                end
-            else
-                methodList = meta.class.fromName(class(this.experiment)).MethodList;
-                for i=1:length(methodList)
-                    if ( strfind( methodList(i).Name, 'Analysis_') )
-                        data = this.experiment.(methodList(i).Name)();
-                        this.WriteVariable(data, strrep(methodList(i).Name,'Analysis_',''));
-                    end
-                end
             end
         end
     end
@@ -597,11 +544,8 @@ classdef Session < ArumeCore.DataDB
             
             destinationProject.addSession(session);
             
-            if ( length(dir(sourceSession.dataAnalysisPath)) > 2 )
-                copyfile(fullfile(sourceSession.dataAnalysisPath,'*'),fullfile(session.dataAnalysisPath));
-            end
-            if ( length(dir(sourceSession.dataRawPath)) > 2 )
-                copyfile(fullfile(sourceSession.dataRawPath,'*'),fullfile(session.dataRawPath));
+            if ( length(dir(sourceSession.dataPath)) > 2 )
+                copyfile(fullfile(sourceSession.dataPath,'*'),fullfile(session.dataPath));
             end
         end
     end
