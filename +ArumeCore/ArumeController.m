@@ -122,49 +122,40 @@ classdef ArumeController < handle
             % Get the list of possible experiments
             this.possibleExperiments = sort(ArumeCore.ExperimentDesign.GetExperimentList());
         end
+        
         %
         % Managing projects
         %
         
-        function newProject( this, projectFilePath, projectName, defaultExperiment )
+        function newProject( this, parentPath, projectName, defaultExperiment )
             % Creates a new project
             
-            this.currentProject = ArumeCore.Project.NewProject( projectFilePath, projectName, this.configuration.tempFolder, defaultExperiment);
+            this.currentProject = ArumeCore.Project.NewProject( parentPath, projectName, defaultExperiment);
             this.selectedSessions = [];
             
-            if ( ~isfield(this.configuration, 'recentProjects' ) )
-                this.configuration.recentProjects = {};
-            end
-            
-            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
-            
-            this.configuration.recentProjects = [this.currentProject.projectFile this.configuration.recentProjects];
-            conf = this.configuration;
-            [folder, name, ext] = fileparts(which('Arume'));
-            save(fullfile(folder,'arumeconf.mat'), 'conf'); 
+            this.updteRecentProjects(this, this.currentProject.path);
         end
         
-        function newProjectFolder( this, projectFilePath, projectName, defaultExperiment )
-            % Creates a new project
+        function loadProject( this, folder )  
+            % Loads a project from a project folder
             
-            this.currentProject = ArumeCore.Project.NewProject( projectFilePath, projectName, projectFilePath, defaultExperiment);
+            if ( ~exist( folder, 'dir') )
+                msgbox( 'The project folder does not exist.');
+            end
+            
+            if ( ~isempty(this.currentProject) && strcmp(this.currentProject.path, folder))
+                disp('Loading the same project folder that is currently loaded');
+                return;
+            end
+            
+            this.currentProject = ArumeCore.Project.LoadProject( folder );
             this.selectedSessions = [];
             
-            if ( ~isfield(this.configuration, 'recentProjects' ) )
-                this.configuration.recentProjects = {};
-            end
-            
-            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
-            
-            this.configuration.recentProjects = [this.currentProject.projectFile this.configuration.recentProjects];
-            conf = this.configuration;
-            [folder, name, ext] = fileparts(which('Arume'));
-            save(fullfile(folder,'arumeconf.mat'), 'conf'); 
+            this.updteRecentProjects(this, this.currentProject.path)
         end
         
-        function loadProject( this, file )  
+        function loadProjectBackup( this, file, parentPath )  
             % Loads a project from a project file
-            
             if ( ~exist( file, 'file') )
                 msgbox( 'The project file does not exist.');
             end
@@ -174,42 +165,29 @@ classdef ArumeController < handle
                 return;
             end
             
-            this.currentProject = ArumeCore.Project.LoadProject( file, this.configuration.tempFolder );
+            this.currentProject = ArumeCore.Project.LoadProjectBackup( file, parentPath );
             this.selectedSessions = [];
             
-            if ( ~isfield(this.configuration, 'recentProjects' ) )
-                this.configuration.recentProjects = {};
-            end
-            
-            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
-            
-            this.configuration.recentProjects = [file this.configuration.recentProjects];
-            conf = this.configuration;
-            [folder, name, ext] = fileparts(which('Arume'));
-            save(fullfile(folder,'arumeconf.mat'), 'conf'); 
+            this.updteRecentProjects(this, this.currentProject.path)
         end
         
-        function loadProjectFolder( this, file )  
-            % Loads a project from a project file
-            
-            if ( ~exist( file, 'file') )
-                msgbox( 'The project file does not exist.');
+        function saveProjectBackup(this, file)
+            if ( exist( file, 'file') )
+                msgbox( 'The file already exists.');
             end
             
-            if ( ~isempty(this.currentProject) && strcmp(this.currentProject.projectFile, file))
-                disp('Loading the same project file that is currently loaded');
-                return;
-            end
-            
-            this.currentProject = ArumeCore.Project.LoadProject( file, file );
-            this.selectedSessions = [];
+            this.currentProject.backup(file);
+        end
+
+        function updteRecentProjects(this, currentProjectFile)
             
             if ( ~isfield(this.configuration, 'recentProjects' ) )
                 this.configuration.recentProjects = {};
             end
             
-            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
-            
+            % remove the current file
+            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, currentProjectFile))) = [];
+            % add it again at the top
             this.configuration.recentProjects = [file this.configuration.recentProjects];
             conf = this.configuration;
             [folder, name, ext] = fileparts(which('Arume'));
@@ -291,10 +269,8 @@ classdef ArumeController < handle
         
         function copySelectedSessions( this, newSubjectCodes, newSessionCodes)
             
-            sessions = this.selectedSessions;
-            
-            for i =1:length(sessions)
-                newSession = ArumeCore.Session.CopySession( sessions(i), newSubjectCodes{i}, newSessionCodes{i});
+            for i =1:length(this.selectedSessions)
+                ArumeCore.Session.CopySession( this.selectedSessions(i), newSubjectCodes{i}, newSessionCodes{i});
             end
                         
             this.currentProject.save();
@@ -307,11 +283,9 @@ classdef ArumeController < handle
             end
             
             secondProject = ArumeCore.Project.LoadProject( newProjectFile, [this.configuration.tempFolder '2'] );
-          
-            sessions = this.selectedSessions;
-            
-            for i =1:length(sessions)
-                newSession = ArumeCore.Session.CopySessionToDifferentProject( sessions(i),secondProject, sessions(i).subjectCode, sessions(i).sessionCode);
+                      
+            for i =1:length(this.selectedSessions)
+                ArumeCore.Session.CopySessionToDifferentProject( this.selectedSessions(i), secondProject, this.selectedSessions(i).subjectCode, this.selectedSessions(i).sessionCode);
             end
             
             secondProject.save();

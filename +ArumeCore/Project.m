@@ -4,7 +4,6 @@ classdef Project < handle
     
     properties( SetAccess = private)
         name        % Name of the project
-        projectFile % Actual location of the compressed project file, will be empty for folder projects  
         path        % Working path of the uncompressed project (typically the temp folder)
         
         defaultExperiment % default experiment for this project
@@ -16,80 +15,42 @@ classdef Project < handle
         %
         % Initialization methods
         %
-        function init ( this, tempPath, name, defaultExperiment )
+        function init ( this, path, name, defaultExperiment )
             this.name               = name;
-            this.path               = tempPath;
+            this.path               = path;
             this.defaultExperiment  = defaultExperiment;
             this.sessions           = [];
         end
         
-        function initNew( this, projectFilePath, projectName, tempPath, defaultExperiment )
+        function initNew( this, parentPath, projectName, defaultExperiment )
         % Initializes a new project
             
-            if ( ~strcmp(projectFilePath, tempPath) )
-                this.projectFile = fullfile(projectFilePath, [projectName '.aruprj']);
-            else
-                % for project folders. There is no project file and the
-                % temp folder if the same folder containing the project
-                this.projectFile = [];
-            end
-            
-            if ( exist( this.projectFile, 'file' ) )
+            if ( exist( fullfile(this.path, projectName), 'dir' ) )
                 error( 'Arume: project file already exists' );
             end
             
             % initialize the project
-            this.init( fullfile(tempPath, projectName), projectName, defaultExperiment );
+            this.init( fullfile(parentPath, projectName), projectName, defaultExperiment );
             
             % prepare folder structure
-            mkdir( tempPath, projectName );
+            mkdir( path, projectName );
             
             % save the project
             this.save();
         end
         
-        function initExisting( this, file, tempPath )
-        % Initializes a project loading from a file
+        function initExisting( this, path )
+        % Initializes a project loading from a folder
         
-            if ( ~strcmp(file, tempPath) )
-                this.projectFile = file;
-                
-                [filePath, projectName] = fileparts(file);
-                
-                % clean the temp folder
-                if(  exist(tempPath,'dir') )
-                    try
-                        rmdir(tempPath,'s');
-                    catch(error)
-                        disp('ERRO: temp folder could not be removed');
-                    end
-                end
-                mkdir(tempPath);
-                
-                % uncompress project file into temp folder
-                untar(file, tempPath);
-                projectPath = fullfile(tempPath, projectName);
-                projectMatFile = fullfile(tempPath, projectName, [projectName '_ArumeProject.mat']);
-                
-            else
-                % TODO: this must not work for folders. How does it get
-                % projectName??
-                
-                % for project folders. There is no project file and the
-                % temp folder is the same folder containing the project
-                this.projectFile = [];
-                projectPath = file;
-                projectMatFile = fullfile(projectPath, [projectName '_ArumeProject.mat']);
-            end
-            
-            this.updateFileStructure(projectPath, projectName);
-            
+            [~, projectName] = fileparts(path);
+            projectMatFile = fullfile(path, [projectName '_ArumeProject.mat']);
+                        
             % load project data
             data = load( projectMatFile, 'data' );
             data = data.data;
             
             % initialize the project
-            this.init( projectPath, data.name, data.defaultExperiment );
+            this.init( path, projectName, data.defaultExperiment );
             
             % load sessions
             for session = data.sessions
@@ -132,7 +93,6 @@ classdef Project < handle
             % object. Instead create a struct and save that. It will be
             % more robust to version changes.
             data = [];
-            data.name = this.name;
             data.defaultExperiment = this.defaultExperiment; 
             
             data.sessions = [];
@@ -147,24 +107,23 @@ classdef Project < handle
             % Save the data structure
             filename = fullfile( this.path, [this.name '_ArumeProject.mat']);
             save( filename, 'data' );
-            
-            % If project file (not folder) compress the folder structure
-            % into a single file and save it.
-            if (~isempty(this.projectFile) ) 
+                        
+            disp('======= ARUME PROJECT SAVED TO DISK REMEMBER TO BACKUP ==============================')
+        end
+        
+        function backup(this, file)
+            if (~isempty(file) )
                 % create a backup of the last project file before
                 % overriding it
-                if ( exist(this.projectFile,'file') )
-                    copyfile(this.projectFile, [this.projectFile '.aruback']);
+                if ( exist(file,'file') )
+                    copyfile(file, [file '.aruback']);
                 end
                 
                 % compress project file and keep temp folder
-                tar(this.projectFile , this.path);
-                movefile([this.projectFile '.tar'], this.projectFile,'f');
+                tar(file , this.path);
             end
-                        
-            disp('========== ARUME PROJECT SAVED TO DISK =================================')
         end
-        
+                
         %
         % Other methods
         %
@@ -178,22 +137,22 @@ classdef Project < handle
         
         function deleteSession( this, session )
             session.deleteFolders();
-            this.sessions(find( this.sessions == session )) = [];
+            this.sessions( this.sessions == session ) = [];
         end
         
         function [session, i] = findSession( this, experimentName, subjectCode, sessionCode)
             
             for i=1:length(this.sessions)
                 if ( exist('sessionCode','var') )
-                    if ( strcmp(upper(this.sessions(i).experiment.Name), upper(experimentName)) &&  ...
-                        strcmp(upper(this.sessions(i).subjectCode), upper(subjectCode)) &&  ...
-                           strcmp(upper(this.sessions(i).sessionCode), upper(sessionCode)))
+                    if ( strcmpi(this.sessions(i).experiment.Name, upper(experimentName)) &&  ...
+                        strcmpi(this.sessions(i).subjectCode, upper(subjectCode)) &&  ...
+                           strcmpi(this.sessions(i).sessionCode, upper(sessionCode)))
                        session = this.sessions(i);
                        return;
                     end
                 else
-                    if ( strcmp(upper(this.sessions(i).experiment.Name), upper(experimentName)) &&  ...
-                        strcmp([upper(this.sessions(i).subjectCode) upper(this.sessions(i).sessionCode),], upper(subjectCode)))
+                    if ( strcmpi(this.sessions(i).experiment.Name, upper(experimentName)) &&  ...
+                        strcmpi([upper(this.sessions(i).subjectCode) upper(this.sessions(i).sessionCode),], subjectCode))
                        session = this.sessions(i);
                        return;
                     end
@@ -274,10 +233,10 @@ classdef Project < handle
         %
         % Factory methods
         %
-        function project = NewProject( projectFilePath, projectName, tempPath, defaultExperiment)            
+        function project = NewProject( parentPath, projectName, defaultExperiment)            
             
             % check if parentFolder exists
-            if ( ~exist( projectFilePath, 'dir' ) )
+            if ( ~exist( parentPath, 'dir' ) )
                 error('Arume: parent folder does not exist');
             end
             
@@ -288,13 +247,30 @@ classdef Project < handle
             
             % create project object
             project = ArumeCore.Project();
-            project.initNew( projectFilePath, projectName, tempPath, defaultExperiment );
+            project.initNew( parentPath, projectName, defaultExperiment );
         end
         
-        function project = LoadProject( projectFile, tempPath )
+        function project = LoadProject( projectPath )
             % read project info
             project = ArumeCore.Project();
-            project.initExisting( projectFile, tempPath );
+            project.initExisting( projectPath );
+        end
+        
+        function project = LoadProjectBackup(file, parentPath)
+            
+            project = ArumeCore.Project();
+            project.projectFile = file;
+            
+            [~, projectName] = fileparts(file);
+            
+            projectPath = fullfile(parentPath, projectName);
+            
+            mkdir(projectPath);
+            
+            % uncompress project file into temp folder
+            untar(file, newPath);
+            project.updateFileStructure(projectPath, projectName);
+            project.initExisting(projectPath);
         end
         
         %
