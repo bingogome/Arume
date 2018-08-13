@@ -66,8 +66,7 @@ classdef Session < ArumeCore.DataDB
     end
     
     %
-    % Methods for dependent variables
-    %
+    %% Methods for dependent variables
     methods
         
         function name = get.name(this)
@@ -140,7 +139,7 @@ classdef Session < ArumeCore.DataDB
         end
     end
     
-    %% methods
+    %% Main Session methods
     methods
         %
         % INIT METHODS
@@ -250,10 +249,11 @@ classdef Session < ArumeCore.DataDB
                 this.currentRun.LinkedFiles.(fileTag) = cat(1, this.currentRun.LinkedFiles.(fileTag), [fileName ext] );
             end               
         end
-        
-        %
-        %% RUNING METHODS
-        %
+    end
+    
+    %
+    %% RUNING METHODS
+    methods
         function start( this )
             if ( this.isFinished )
                 error( 'This is session is finished it cannot be run' )
@@ -313,10 +313,11 @@ classdef Session < ArumeCore.DataDB
             % Start the experiment
             this.experiment.run();
         end
-        
-        %
-        %% ANALYSIS METHODS
-        %
+    end
+    
+    %
+    %% ANALYSIS METHODS
+    methods
         function prepareForAnalysis( this )
             
             %% 0) Create the basic trial dataaset (without custom experiment stuff)
@@ -343,7 +344,7 @@ classdef Session < ArumeCore.DataDB
             end
             
             %% 3) Prepare events datasets
-            events = this.experiment.PrepareTrialDataSet([]);
+            events = this.experiment.PrepareEventDataSet([]);
             if ( ~isempty(events) )
                 this.WriteVariable(events,'eventsDataSet');
             end
@@ -357,7 +358,7 @@ classdef Session < ArumeCore.DataDB
         end
         
         function newTrialsDataTable = GetBasicTrialsDataTable(this)
-             Enum = ArumeCore.ExperimentDesign.getEnum();
+            Enum = ArumeCore.ExperimentDesign.getEnum();
             
             trials = dataset;
             if ( ~isempty( this.currentRun) )
@@ -401,7 +402,7 @@ classdef Session < ArumeCore.DataDB
                     fields = fieldnames(output);
                     for j=1:length(fields)
                         field = fields{j};
-                        ds.(field)  = output.(field)';
+                        trials.(field)  = output.(field)';
                     end
                 end
                 
@@ -465,10 +466,19 @@ classdef Session < ArumeCore.DataDB
                 newSessionDataTable.TimeLastTrial = '-';
                 newSessionDataTable.TimeFirstTrial = '-';
             end
-            if (~isempty(this.currentRun) && ~isempty(this.currentRun.pastConditions) && ~isempty(this.currentRun.futureConditions))
-                newSessionDataTable.NumberOfTrialsCompleted = sum(this.currentRun.pastConditions(:,2)==0);
-                newSessionDataTable.NumberOfTrialsAborted   = sum(this.currentRun.pastConditions(:,2)~=0);
-                newSessionDataTable.NumberOfTrialsPending   = length(this.currentRun.futureConditions(:,1));
+            if (~isempty(this.currentRun))
+                newSessionDataTable.NumberOfTrialsCompleted = 0;
+                newSessionDataTable.NumberOfTrialsAborted = 0;
+                newSessionDataTable.NumberOfTrialsPending = 0;
+                
+                if ( ~isempty(this.currentRun.pastConditions) )
+                    newSessionDataTable.NumberOfTrialsCompleted = sum(this.currentRun.pastConditions(:,2)==0);
+                    newSessionDataTable.NumberOfTrialsAborted   = sum(this.currentRun.pastConditions(:,2)~=0);
+                end
+                
+                if ( ~isempty(this.currentRun.futureConditions) )
+                    newSessionDataTable.NumberOfTrialsPending   = length(this.currentRun.futureConditions(:,1));
+                end
             end
             
             opts = fieldnames(this.experiment.ExperimentOptions);

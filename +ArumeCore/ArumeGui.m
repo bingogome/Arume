@@ -386,7 +386,6 @@ classdef ArumeGui < handle
                 else % load a recent project
                     pathname = get(source,'Label');
                     if ( ~exist(pathname,'dir') )
-                        close(h)
                         msgbox('File does not exist');
                         return;
                     end
@@ -407,7 +406,7 @@ classdef ArumeGui < handle
             if ( this.closeProjectQuestdlg() )
                 
                 [filename, pathname] = uigetfile({'*.zip;*.aruprj', 'Arume backup files (*.zip, *.aruprj'}, 'Pick a project backup');
-                if ( ~filename )
+                if ( isempty(filename) )
                     return
                 end
                 
@@ -434,7 +433,7 @@ classdef ArumeGui < handle
         function saveProjectBackup(this, source, eventdata )
             
             [filename, pathname] = uiputfile([this.arumeController.defaultDataFolder '/*.zip'], 'Pick a project backup');
-            if ( ~filename )
+            if ( ~isempty(filename) )
                 return
             end
             
