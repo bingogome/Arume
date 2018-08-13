@@ -133,7 +133,7 @@ classdef ArumeController < handle
             this.currentProject = ArumeCore.Project.NewProject( parentPath, projectName, defaultExperiment);
             this.selectedSessions = [];
             
-            this.updteRecentProjects(this, this.currentProject.path);
+            this.updteRecentProjects(this.currentProject.path);
         end
         
         function loadProject( this, folder )  
@@ -151,7 +151,7 @@ classdef ArumeController < handle
             this.currentProject = ArumeCore.Project.LoadProject( folder );
             this.selectedSessions = [];
             
-            this.updteRecentProjects(this, this.currentProject.path)
+            this.updteRecentProjects(this.currentProject.path)
         end
         
         function loadProjectBackup( this, file, parentPath )  
@@ -168,7 +168,7 @@ classdef ArumeController < handle
             this.currentProject = ArumeCore.Project.LoadProjectBackup( file, parentPath );
             this.selectedSessions = [];
             
-            this.updteRecentProjects(this, this.currentProject.path)
+            this.updteRecentProjects(this.currentProject.path)
         end
         
         function saveProjectBackup(this, file)
@@ -188,7 +188,7 @@ classdef ArumeController < handle
             % remove the current file
             this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, currentProjectFile))) = [];
             % add it again at the top
-            this.configuration.recentProjects = [file this.configuration.recentProjects];
+            this.configuration.recentProjects = [currentProjectFile this.configuration.recentProjects];
             conf = this.configuration;
             [folder, name, ext] = fileparts(which('Arume'));
             save(fullfile(folder,'arumeconf.mat'), 'conf'); 

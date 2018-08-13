@@ -199,18 +199,19 @@ classdef ArumeGui < handle
             this.menuFileLoadProject = uimenu(this.menuFile, ...
                 'Label'     , 'Load project ...', ...
                 'Callback'  , @this.loadProject);
-            this.menuFileLoadProjectBackup = uimenu(this.menuFile, ...
-                'Label'     , 'Load project backup ...', ...
-                'Callback'  , @this.loadProjectBackup);
-            this.menuFileSaveProjectBackup = uimenu(this.menuFile, ...
-                'Label'     , 'Save project backup...', ...
-                'Callback'  , @this.saveProjectBackup);
             this.menuFileLoadRecentProject = uimenu(this.menuFile, ...
                 'Label'     , 'Load recent project');
-            
             this.menuFileCloseProject = uimenu(this.menuFile, ...
                 'Label'     , 'Close project', ...
                 'Callback'  , @this.closeProject);
+            
+            this.menuFileSaveProjectBackup = uimenu(this.menuFile, ...
+                'Label'     , 'Backup project ...', ...
+                'Separator' , 'on', ...
+                'Callback'  , @this.saveProjectBackup);
+            this.menuFileLoadProjectBackup = uimenu(this.menuFile, ...
+                'Label'     , 'Restore project backup ...', ...
+                'Callback'  , @this.loadProjectBackup);
             
             this.menuFileNewSession = uimenu(this.menuFile, ...
                 'Label'     , 'New session', ...
@@ -369,9 +370,16 @@ classdef ArumeGui < handle
             if ( this.closeProjectQuestdlg() )
                 if ( this.menuFileLoadProject == source ) 
                     pathname = uigetdir(this.arumeController.defaultDataFolder, 'Pick a project folder');
-                    if ( ~pathname || ~exist(pathname,'dir')  )
+                    if ( isempty(pathname) || ~exist(pathname,'dir')  )
                         return
                     end
+                    
+                    [~,projectName] = fileparts(pathname);
+                    if (  ~exist(fullfile(pathname, [projectName '_ArumeProject.mat']),'file'))
+                        msgbox('This folder does not appear to be an Arume project folder');
+                        return;
+                    end
+                    
                     if ( ~isempty(this.arumeController.currentProject) )
                         this.arumeController.currentProject.save();
                     end
@@ -398,7 +406,7 @@ classdef ArumeGui < handle
             
             if ( this.closeProjectQuestdlg() )
                 
-                [filename, pathname] = uigetfile([this.arumeController.defaultDataFolder '/*.zip'], 'Pick a project backup');
+                [filename, pathname] = uigetfile({'*.zip;*.aruprj', 'Arume backup files (*.zip, *.aruprj'}, 'Pick a project backup');
                 if ( ~filename )
                     return
                 end
@@ -917,7 +925,7 @@ classdef ArumeGui < handle
             % update top box info
             if ( ~isempty( this.arumeController.currentProject ) )
                 set(this.projectTextLabel,              'String', ['Project: ' this.arumeController.currentProject.name] );
-                set(this.pathTextLabel,                 'String', ['Path: ' this.arumeController.currentProject.projectFile] );
+                set(this.pathTextLabel,                 'String', ['Path: ' this.arumeController.currentProject.path] );
                 set(this.defaultExperimentTextLabel,    'String', ['Default experiment: ' this.arumeController.currentProject.defaultExperiment] );
             else
                 set(this.projectTextLabel,              'String', 'Project: -' );

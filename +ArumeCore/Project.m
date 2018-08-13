@@ -120,7 +120,7 @@ classdef Project < handle
                 end
                 
                 % compress project file and keep temp folder
-                tar(file , this.path);
+                zip(file , this.path);
             end
         end
                 
@@ -174,9 +174,8 @@ classdef Project < handle
             this.sessions = this.sessions(i);
         end
         
-        function mergeProject(this, projectFile)
-            tempPath2 = fullfile(this.path, 'TEMPMERGE');
-            p2 = ArumeCore.Project.LoadProject(projectFile, tempPath2);
+        function mergeProject(this, projectPath)
+            p2 = ArumeCore.Project.LoadProject(projectPath);
             
             for session = p2.sessions
                 repeated = false;
@@ -259,16 +258,19 @@ classdef Project < handle
         function project = LoadProjectBackup(file, parentPath)
             
             project = ArumeCore.Project();
-            project.projectFile = file;
             
-            [~, projectName] = fileparts(file);
+            [~, projectName, ext] = fileparts(file);
             
             projectPath = fullfile(parentPath, projectName);
             
             mkdir(projectPath);
             
             % uncompress project file into temp folder
-            untar(file, newPath);
+            if ( strcmp(ext, '.aruprj' ) )
+                untar(file, parentPath);
+            else
+                unzip(file, parentPath);
+            end
             project.updateFileStructure(projectPath, projectName);
             project.initExisting(projectPath);
         end
