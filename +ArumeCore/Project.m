@@ -25,7 +25,7 @@ classdef Project < handle
         function initNew( this, parentPath, projectName, defaultExperiment )
         % Initializes a new project
             
-            if ( exist( fullfile(this.path, projectName), 'dir' ) )
+            if ( exist( fullfile(parentPath, projectName), 'dir' ) )
                 error( 'Arume: project file already exists' );
             end
             
@@ -33,7 +33,7 @@ classdef Project < handle
             this.init( fullfile(parentPath, projectName), projectName, defaultExperiment );
             
             % prepare folder structure
-            mkdir( path, projectName );
+            mkdir( parentPath, projectName );
             
             % save the project
             this.save();
@@ -107,8 +107,19 @@ classdef Project < handle
             % Save the data structure
             filename = fullfile( this.path, [this.name '_ArumeProject.mat']);
             save( filename, 'data' );
-                        
+            
             disp('======= ARUME PROJECT SAVED TO DISK REMEMBER TO BACKUP ==============================')
+            try
+                tbl = this.GetDataTable;
+                if (~isempty(tbl) )
+                    writetable(tbl,fullfile(this.path, [this.name '_ArumeSessionTable.xlsx']))
+                end
+                
+                disp('======= ARUME EXCEL DATA SAVED TO DISK ==============================')
+            catch err
+                disp('ERROR saving excel data');
+                disp(err.getReport);
+            end
         end
         
         function backup(this, file)
@@ -209,20 +220,38 @@ classdef Project < handle
                 sessionSelection = unique(allSessionCodes);
             end
             
-            dataTable = table();
-            for session=this.sessions
-                % if this is one of the sessions we want
-                if ( any(categorical(subjectSelection) == session.subjectCode) && any(categorical(sessionSelection)==session.sessionCode))
-                    if ( isempty(dataTable) )
-                        dataTable = session.sessionDataTable;
-                    else
-                        % TODO: need to deal with sessions from different
-                        % experiments. May need to add additional columns
-                        % to either table before merging
-                        dataTable = [dataTable;session.sessionDataTable];
+                dataTable = table();
+                for isess=1:length(this.sessions)
+                    session=this.sessions(isess);
+                    % if this is one of the sessions we want
+                    if ( any(categorical(subjectSelection) == session.subjectCode) && any(categorical(sessionSelection)==session.sessionCode))
+                        if ( isempty(dataTable) )
+                            dataTable = session.sessionDataTable;
+                        else
+%                             t1 = dataTable;
+%                             t2 = session.sessionDataTable;
+%                             if ( ~isempty(t2) )
+%                                 t1colmissing = setdiff(t2.Properties.VariableNames, t1.Properties.VariableNames);
+%                                 t2colmissing = setdiff(t1.Properties.VariableNames, t2.Properties.VariableNames);
+%                                 t1 = [t1 array2table(nan(height(t1), numel(t1colmissing)), 'VariableNames', t1colmissing)];
+%                                 t2 = [t2 array2table(nan(height(t2), numel(t2colmissing)), 'VariableNames', t2colmissing)];
+%                                 for colname = t1colmissing
+%                                     if iscell(t2.(colname{1}))
+%                                         t1.(colname{1}) = cell(height(t1), 1);
+%                                     end
+%                                 end
+%                                 for colname = t2colmissing
+%                                     if iscell(t1.(colname{1}))
+%                                         t2.(colname{1}) = cell(height(t2), 1);
+%                                     end
+%                                 end
+%                                 dataTable = [t1; t2]
+%                             end
+
+                            dataTable = [dataTable;session.sessionDataTable]
+                        end
                     end
                 end
-            end
         end
     end
     

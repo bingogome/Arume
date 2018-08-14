@@ -238,7 +238,7 @@ classdef Session < ArumeCore.DataDB
         function addFile(this, fileTag, filePath)
             
             [~,fileName, ext] = fileparts(filePath);
-            copyfile(filePath, fullfile(this.dataRawPath, [fileName ext] ));
+            copyfile(filePath, fullfile(this.dataPath, [fileName ext] ));
                 
             if ( ~isfield(this.currentRun.LinkedFiles, fileTag) )
                 this.currentRun.LinkedFiles.(fileTag) = [fileName ext];
@@ -248,6 +248,14 @@ classdef Session < ArumeCore.DataDB
                 end
                 this.currentRun.LinkedFiles.(fileTag) = cat(1, this.currentRun.LinkedFiles.(fileTag), [fileName ext] );
             end               
+        end
+        
+        function importSession(this)
+            this.experiment.ImportSession();
+        end
+
+        function importCurrentRun(this, newRun)
+            this.currentRun = newRun;
         end
     end
     
@@ -319,48 +327,58 @@ classdef Session < ArumeCore.DataDB
     %% ANALYSIS METHODS
     methods
         function prepareForAnalysis( this )
+            SHOULD_DO_TRIALS = 1;
+            SHOULD_DO_SAMPLES = 1;
+            SHOULD_DO_EVENTS = 0;
+            SHOULD_DO_SESSION = 1;
             
             %% 0) Create the basic trial dataaset (without custom experiment stuff)
             newTrialsDataTable = this.GetBasicTrialsDataTable();
-            if ( ~isempty(newTrialsDataTable) )
-                this.WriteVariable(newTrialsDataTable,'trialDataSet');
+            this.WriteVariable(newTrialsDataTable,'trialDataSet');
+            
+            if (SHOULD_DO_SAMPLES)
+                %% 1) Prepare the sample dataset
+                [samples, rawData] = this.experiment.PrepareSamplesDataSet();
+                
+                if ( ~isempty(samples) )
+                    this.WriteVariable(samples,'samplesDataSet');
+                end
+                
+                if ( ~isempty(rawData) )
+                    this.WriteVariable(rawData,'rawDataSet');
+                end
+            end
+
+            if (SHOULD_DO_TRIALS)
+                %% 2) Prepare the trial dataset
+                newTrialsDataTable = this.experiment.PrepareTrialDataSet(newTrialsDataTable);
+                if ( ~isempty(newTrialsDataTable) )
+                    this.WriteVariable(newTrialsDataTable,'trialDataSet');
+                end
+            end
+
+            if (SHOULD_DO_EVENTS)
+                %% 3) Prepare events datasets
+                events = this.experiment.PrepareEventDataSet([]);
+                if ( ~isempty(events) )
+                    this.WriteVariable(events,'eventsDataSet');
+                end
             end
             
-            %% 1) Prepare the sample dataset
-            [samples, rawData] = this.experiment.PrepareSamplesDataSet(table());
-            
-            if ( ~isempty(samples) )
-                this.WriteVariable(samples,'samplesDataSet');
-            end
-            
-            if ( ~isempty(rawData) )
-                this.WriteVariable(rawData,'rawDataSet');
-            end
-            
-            %% 2) Prepare the trial dataset
-            newTrialsDataTable = this.experiment.PrepareTrialDataSet(newTrialsDataTable);
-            if ( ~isempty(newTrialsDataTable) )
-                this.WriteVariable(newTrialsDataTable,'trialDataSet');
-            end
-            
-            %% 3) Prepare events datasets
-            events = this.experiment.PrepareEventDataSet([]);
-            if ( ~isempty(events) )
-                this.WriteVariable(events,'eventsDataSet');
-            end
-            
-            %% 4) Prepare session dataTable
-            newSessionDataTable = this.GetBasicSessionDataTable();
-            newSessionDataTable = this.experiment.PrepareSessionDataTable(newSessionDataTable);
-            if ( ~isempty(newSessionDataTable) )
-                this.WriteVariable(newSessionDataTable,'sessionDataTable');
+            if (SHOULD_DO_SESSION)
+                %% 4) Prepare session dataTable
+                newSessionDataTable = this.GetBasicSessionDataTable();
+                newSessionDataTable = this.experiment.PrepareSessionDataTable(newSessionDataTable);
+                if ( ~isempty(newSessionDataTable) )
+                    this.WriteVariable(newSessionDataTable,'sessionDataTable');
+                end
             end
         end
         
         function newTrialsDataTable = GetBasicTrialsDataTable(this)
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
-            trials = dataset;
+            trials = table;
             if ( ~isempty( this.currentRun) )
                 
                 trials.TrialNumber = (1:length(this.currentRun.pastConditions(:,1)))';
@@ -370,8 +388,10 @@ classdef Session < ArumeCore.DataDB
                 trials.BlockID = this.currentRun.pastConditions(:,Enum.pastConditions.blockid);
                 trials.Session = this.currentRun.pastConditions(:,Enum.pastConditions.session);
                 
-                trials.TimeStartTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_START,1);
-                trials.TimeStopTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_STOP,1);
+                if ( ~isempty( this.currentRun.Events) )
+                    trials.TimeStartTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_START,1);
+                    trials.TimeStopTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_STOP,1);
+                end
                 
                 % find all the possible output variables
                 outputVars = {};
@@ -483,38 +503,33 @@ classdef Session < ArumeCore.DataDB
             
             opts = fieldnames(this.experiment.ExperimentOptions);
             for i=1:length(opts)
-                newSessionDataTable.(['Option_' opts{i}]) = this.experiment.ExperimentOptions.(opts{i});
+                newSessionDataTable.(['Option_' opts{i}]) = {this.experiment.ExperimentOptions.(opts{i})};
             end
         end
     end
     
+    %% SESSION FACTORY METHODS
     methods (Static = true )
         
-        %
-        % Factory methods
-        %
         function session = NewSession( project, experimentName, subjectCode, sessionCode, experimentOptions )
             
             session = project.findSession( experimentName, subjectCode, sessionCode);
             
-            if ( isempty(session) )
-                
-                % TODO add factory for multiple types of experimentNames
-                session = ArumeCore.Session();
-                session.init(project, experimentName, subjectCode, sessionCode, experimentOptions);
-                project.addSession(session);
-            else
-                warning('Session already exists ... overriding');
-                session.init(project, experimentName, subjectCode, sessionCode, experimentOptions);
+            if ( ~isempty(session) )
+                error('Session already exists with the same name and code.');
             end
+            
+            session = ArumeCore.Session();
+            session.init(project, experimentName, subjectCode, sessionCode, experimentOptions);
+            project.addSession(session);
         end
         
         function session = LoadSession( project, data )
-            % TODO add factory for multiple types of experimentNames
             
             session = ArumeCore.Session();
             session.initExisting( project, data );
             project.addSession(session);
+            
         end
         
         function session = CopySession( sourceSession, newSubjectCode, newSessionCode)
@@ -533,12 +548,12 @@ classdef Session < ArumeCore.DataDB
             
             % JORGE 4/25/2018 Decided to not copy data because it was being
             % too confusing.
-%             if ( length(dir(sourceSession.dataAnalysisPath)) > 2 )
-%                 copyfile(fullfile(sourceSession.dataAnalysisPath,'*'),fullfile(session.dataAnalysisPath));
-%             end
-%             if ( length(dir(sourceSession.dataRawPath)) > 2 )
-%                 copyfile(fullfile(sourceSession.dataRawPath,'*'),fullfile(session.dataRawPath));
-%             end
+            %             if ( length(dir(sourceSession.dataAnalysisPath)) > 2 )
+            %                 copyfile(fullfile(sourceSession.dataAnalysisPath,'*'),fullfile(session.dataAnalysisPath));
+            %             end
+            %             if ( length(dir(sourceSession.dataPath)) > 2 )
+            %                 copyfile(fullfile(sourceSession.dataPath,'*'),fullfile(session.dataPath));
+            %             end
         end
         
         function session = CopySessionToDifferentProject( sourceSession, destinationProject, newSubjectCode, newSessionCode)

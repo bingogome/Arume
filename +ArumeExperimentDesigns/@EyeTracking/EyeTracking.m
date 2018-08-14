@@ -4,13 +4,27 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         eyeTracker
     end
     
-    
     % ---------------------------------------------------------------------
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods (Access=protected)
-        function dlg = GetOptionsDialog( this )
+        function dlg = GetOptionsDialog( this, importing )
             dlg.UseEyeTracker = { {'0' '{1}'} };
+            
+            if ( exist('importing','var') && importing )
+                dlg.DataFiles = { {['uigetfile(''' fullfile(pwd,'*.txt') ''',''MultiSelect'', ''on'')']} };
+                dlg.EventFiles = { {['uigetfile(''' fullfile(pwd,'*.txt') ''',''MultiSelect'', ''on'')']} };
+                dlg.CalibrationFiles = { {['uigetfile(''' fullfile(pwd,'*.cal') ''',''MultiSelect'', ''on'')']} };
+            end
+        end
+        
+        function [conditionVars] = getConditionVariables( this )
+            %-- condition variables ---------------------------------------
+            i= 0;
+            
+            i = i+1;
+            conditionVars(i).name   = 'Recording';
+            conditionVars(i).values = 1;
         end
         
         function initBeforeRunning( this )            
@@ -40,6 +54,95 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 this.Session.addFile('vogEventsFile', files{3});
             end
         end
+        
+    end
+    
+    methods( Access = public)
+        
+        %% ImportSession
+        function ImportSession( this )
+            newRun = ArumeCore.ExperimentRun.SetUpNewRun( this );
+            this.Session.importCurrentRun(newRun);
+            
+            
+            dataFiles = this.ExperimentOptions.DataFiles;
+            eventFiles = this.ExperimentOptions.EventFiles;
+            calibrationFiles = this.ExperimentOptions.CalibrationFiles;
+            if ( ~iscell(dataFiles) )
+                dataFiles = {dataFiles};
+            end
+            if ( ~iscell(eventFiles) )
+                eventFiles = {eventFiles};
+            end
+            if ( ~iscell(calibrationFiles) )
+                calibrationFiles = {calibrationFiles};
+            end
+            
+            for i=1:length(dataFiles)
+                if (exist(dataFiles{i},'file') )
+                    this.Session.addFile('vogDataFile', dataFiles{i});
+                end
+            end
+            for i=1:length(eventFiles)
+                if (exist(eventFiles{i},'file') )
+                    this.Session.addFile('vogEventsFile', eventFiles{i});
+                end
+            end
+            for i=1:length(calibrationFiles)
+                if (exist(calibrationFiles{i},'file') )
+                    this.Session.addFile('vogCalibrationFile', calibrationFiles{i});
+                end
+            end
+        end
+        
+        
+        function [samplesDataSet, rawData] = PrepareSamplesDataSet(this)
+            samplesDataSet = [];
+            
+            dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
+            calibrationFiles = this.Session.currentRun.LinkedFiles.vogCalibrationFile;
+                        
+            if (~iscell(dataFiles) )
+                dataFiles = {dataFiles};
+            end
+            
+            if (~iscell(calibrationFiles) )
+                calibrationFiles = {calibrationFiles};
+            end
+            
+            if (length(calibrationFiles) == 1)
+                calibrationFiles = repmat(calibrationFiles,size(dataFiles));
+            elseif length(calibrationFiles) ~= length(dataFiles)
+                error('ERROR preparing sample data set: The session should have the same number of calibration files as data files or 1 calibration file');
+            end
+            
+            for i=1:length(dataFiles)
+                dataFile = dataFiles{i}
+                calibrationFile = calibrationFiles{i};
+                
+                dataFilePath = fullfile(this.Session.dataPath, dataFile);
+                calibrationFilePath = fullfile(this.Session.dataPath, calibrationFile);
+                
+                % load data
+                rawData = VOG.LoadVOGdataset(dataFilePath);
+                
+                % calibrate data
+                [calibratedData leftEyeCal rightEyeCal] = VOG.CalibrateData(rawData, calibrationFilePath);
+                
+                [cleanedData, fileSamplesDataSet] = VOG.ResampleAndCleanData3(calibratedData, 1000);
+                                
+                fileSamplesDataSet = [table(repmat(i,height(fileSamplesDataSet),1),'variablenames',{'FileNumber'}), fileSamplesDataSet];
+
+                                
+                if ( isempty(samplesDataSet) )
+                    samplesDataSet = fileSamplesDataSet;
+                else
+                    samplesDataSet = cat(1,samplesDataSet,fileSamplesDataSet);
+                end
+            end
+        end
+        
+        
     end
             
     % ---------------------------------------------------------------------

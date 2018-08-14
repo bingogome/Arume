@@ -105,16 +105,21 @@ classdef ArumeGui < handle
                 'Title'     ,  sprintf('%-19.19s %-10.10s %-12.12s', 'Experiment', 'Subject', 'Session code'),...
                 'FontName'	, 'consolas',...
                 'FontSize'	, 9,...
+                'BorderType', 'none',...
                 'Units'     , 'Pixels' );
             
             this.rightPanel = uipanel ( ...
                 'Parent'    , this.figureHandle,...
-                'Title'     , '',...
+                'Title'     , 'Session info',...
+                'FontName'	, 'consolas',...
+                'FontSize'	, 9,...
+                'BorderType', 'none',...
                 'Units'     , 'Pixels' );
             
             this.bottomPanel = uipanel ( ...
                 'Parent'    , this.figureHandle,... 
                 'Title'     , '',...
+                'BorderType', 'none',...
                 'Units'     , 'Pixels' );
                             
             
@@ -124,18 +129,9 @@ classdef ArumeGui < handle
                 'Style'     , 'text',...
                 'String'    , 'Project: ',...
                 'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
+                'FontSize'	, 11,...
                 'HorizontalAlignment', 'left',...
-                'Position'  , [10,36,500,15]);
-            
-            this.defaultExperimentTextLabel = uicontrol( ...
-                'Parent'    , this.topPanel,...
-                'Style'     , 'text',...
-                'String'    , 'Default experiment: ',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
-                'HorizontalAlignment', 'left',...
-                'Position'  , [10,21,500,15]);
+                'Position'  , [5,18,500,15]);
             
             this.pathTextLabel = uicontrol( ...
                 'Parent'    , this.topPanel,...
@@ -144,7 +140,7 @@ classdef ArumeGui < handle
                 'FontSize'	, 9,...
                 'String'    , 'Project: ',...
                 'HorizontalAlignment', 'left',...
-                'Position'  , [10,3,500,15]);
+                'Position'  , [5,0,500,15]);
             
             this.sessionListBox = uicontrol( ...
                 'Parent'    , this.leftPanel,...
@@ -153,7 +149,7 @@ classdef ArumeGui < handle
                 'FontSize'	, 9,...
                 'String'    , '',...
                 'Units'     ,'normalized',...
-                'Position'  , [0.02 0.01 0.96 0.98], ...
+                'Position'  , [0 0 1 1], ...
                 'BackgroundColor'     , 'w', ...
                 'Max'       , 20, ...
                 'Callback'  , @this.sessionListBoxCallBack);
@@ -169,7 +165,7 @@ classdef ArumeGui < handle
                 'FontName'	, 'consolas',...
                 'String'    , 'INFO:',...
                 'Units'     ,'normalized',...
-                'Position'  , [0.01 0.01 0.97 0.97], ...
+                'Position'  , [0 0 1 1], ...
                 'BackgroundColor'     , 'w', ...
                 'Callback'  , @this.sessionListBoxCallBack);
             
@@ -317,8 +313,8 @@ classdef ArumeGui < handle
             w = figurePosition(3);  % figure width
             h = figurePosition(4);  % figure height
             
-            m = 5;      % margin between panels
-            th = 60;    % top panel height
+            m = 8;      % margin between panels
+            th = 40;    % top panel height
             bh = 60;    % bottom panel height
             lw = 400;   % left panel width            
             
@@ -370,7 +366,7 @@ classdef ArumeGui < handle
             if ( this.closeProjectQuestdlg() )
                 if ( this.menuFileLoadProject == source ) 
                     pathname = uigetdir(this.arumeController.defaultDataFolder, 'Pick a project folder');
-                    if ( isempty(pathname) || ~exist(pathname,'dir')  )
+                    if ( isempty(pathname) || (isscalar(pathname) && (~pathname)) || ~exist(pathname,'dir')  )
                         return
                     end
                     
@@ -554,11 +550,11 @@ classdef ArumeGui < handle
             
             % Show the dialog for experiment options if necessary
             experiment = ArumeCore.ExperimentDesign.Create([], session.Experiment);
-            optionsDlg = experiment.GetExperimentOptionsDialog( );
+            optionsDlg = experiment.GetExperimentOptionsDialog( 1 );
             if ( ~isempty( optionsDlg) )
                 options = StructDlg(optionsDlg, 'Edit experiment options');
                 if ( isempty( options ) )
-                    options = StructDlg(optionsDlg,'',[],[],'off');
+                    return;
                 end
             else
                 options = [];
@@ -888,12 +884,12 @@ classdef ArumeGui < handle
         
         function GeneratePlots( this, source, eventdata )
                         
-            this.arumeController.generatePlots({source.Text}, 1);
+            this.arumeController.generatePlots({source.Label}, 1);
             this.updateGui();
         end
         
         function GeneratePlotsCombined( this, source, eventdata ) 
-            this.arumeController.generatePlots(plots, {source.Text}, 1);
+            this.arumeController.generatePlots({source.Label}, 1);
             this.updateGui();
         end
         
@@ -921,6 +917,7 @@ classdef ArumeGui < handle
             if ( isempty( this.arumeController ))
                 return;
             end
+            
             % update top box info
             if ( ~isempty( this.arumeController.currentProject ) )
                 set(this.projectTextLabel,              'String', ['Project: ' this.arumeController.currentProject.name] );
@@ -967,18 +964,36 @@ classdef ArumeGui < handle
                 end
                     for i=1:length(dataTable.Properties.VariableNames)
                         optionClass = class(dataTable{1,i});
+                        row = '';
                         switch(optionClass)
                             case 'double'
                                 if ( isscalar(dataTable{1,i}))
-                                    s = [s sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, num2str(dataTable{1,i}))];
+                                   row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, num2str(dataTable{1,i}));
                                 end
                             case 'char'
-                                s = [s sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, dataTable{1,i})];
+                                fieldText = dataTable{1,i};
+                                if ( length(fieldText) > 50 )
+                                    fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
+                                end
+                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, fieldText);
                             case 'categorical'
-                                s = [s sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, string(dataTable{1,i}))];
+                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, string(dataTable{1,i}));
+                            case 'cell'
+                                if ( length(size(dataTable{1,i}))<=2 && min(size(dataTable{1,i}))==1 && ischar(dataTable{1,i}{1}) && ~isempty(dataTable{1,i}) )
+                                    for j=1:length(dataTable{1,i})
+                                        fieldText = dataTable{1,i}{j};
+                                        if ( length(fieldText) > 50 )
+                                            fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
+                                        end
+                                        row = [row sprintf('%-25s: %s\n', [dataTable.Properties.VariableNames{i} num2str(j)], fieldText)];
+                                    end
+                                else
+                                    row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, 'CELL');
+                                end
                             otherwise
-                                s = [s sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, '-')];
-                        end         
+                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, '-');
+                        end   
+                         s = [s row];
                     end
                         
                         

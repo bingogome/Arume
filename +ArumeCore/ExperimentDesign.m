@@ -158,20 +158,15 @@ classdef ExperimentDesign < handle
         % one it is a good idea to first call GetExperimentDesignOptions from
         % the parent class to get the options and then add new ones.
         %
-        % It needs to be static because it is called before the experimental
-        % session and the experiment design is created
-        function dlg = GetExperimentOptionsDialog( this )
-            
-%             experimentOptions = [];
-%             myclass = meta.class.fromName(class(this));
-%             while( ~isempty( myclass.SuperClasses ) )
-%                 if ( ismethod( eval(myclass.Name), 'GetOptionsDialog') )
-%                     experimentOptions = mergestructs( feval([myclass.Name '.GetOptionsDialog']), experimentOptions);
-%                 end
-%                 myclass = myclass.SuperClasses{1};
-%             end
-            
-            dlg = this.GetOptionsDialog();
+        % This options may also appear when importing a session and it is
+        % possible that the parameters that want to be displaied in that
+        % case are different
+        function dlg = GetExperimentOptionsDialog( this, importing )
+            if ( ~exist( 'importing', 'var') )
+                dlg = this.GetOptionsDialog();
+            else
+                dlg = this.GetOptionsDialog(importing);
+            end
         end
         
         function init(this, session, options)
@@ -194,7 +189,7 @@ classdef ExperimentDesign < handle
             this.initExperimentDesign( );
             
             this.Config = this.psyCortex_DefaultConfig();
-            this.Config.Debug = 1;
+            this.Config.Debug = 1; 
         end
         
         function run(this)
