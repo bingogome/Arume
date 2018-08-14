@@ -893,7 +893,7 @@ classdef ArumeGui < handle
         end
         
         function GeneratePlotsCombined( this, source, eventdata ) 
-            this.arumeController.generatePlots(plots, {source.Text}, 1);
+            this.arumeController.generatePlots({source.Text}, 1, 1);
             this.updateGui();
         end
         

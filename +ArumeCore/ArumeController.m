@@ -149,7 +149,11 @@ classdef ArumeController < handle
             end
             
             this.currentProject = ArumeCore.Project.LoadProject( folder );
-            this.selectedSessions = [];
+            if ~isempty(this.currentProject.sessions) 
+                this.selectedSessions = this.currentProject.sessions(1);
+            else
+                this.selectedSessions = [];
+            end            
             
             this.updteRecentProjects(this.currentProject.path)
         end
@@ -160,13 +164,19 @@ classdef ArumeController < handle
                 msgbox( 'The project file does not exist.');
             end
             
-            if ( ~isempty(this.currentProject) && strcmp(this.currentProject.projectFile, file))
+            [~,projectName] = fileparts(file);
+            
+            if ( ~isempty(this.currentProject) && strcmp(this.currentProject.name, projectName))
                 disp('Loading the same project file that is currently loaded');
                 return;
             end
             
             this.currentProject = ArumeCore.Project.LoadProjectBackup( file, parentPath );
-            this.selectedSessions = [];
+            if ~isempty(this.currentProject.sessions)
+                this.selectedSessions = this.currentProject.sessions(1);
+            else
+                this.selectedSessions = [];
+            end
             
             this.updteRecentProjects(this.currentProject.path)
         end
