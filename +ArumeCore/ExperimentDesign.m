@@ -235,7 +235,7 @@ classdef ExperimentDesign < handle
                 disp(['PSYCORTEX: Hardware set up failed: ' err.message ]);
                 disp(err.stack(1));
                 
-                if ( this.Config.UsingVideo )
+                if ( this.Config.UsingVideoGraphics )
                     ShowCursor;
                     ListenChar(0);
                     Priority(0);
@@ -356,13 +356,11 @@ classdef ExperimentDesign < handle
                                 %% -- TRIAL ---------------------------------------------------
                                 %------------------------------------------------------------
                                 fprintf('\nTRIAL START: ...\n');
+                                
                                 ct1 = table();
                                 ct1.TrialNumber = trialnumber;
                                 ct1.TotalTrials = size(this.Session.currentRun.originalFutureConditions,1);
-                                ct1.Condition = currentCondition;
-                                ct2 = this.GetConditionTable();
-                                ct = [ct1 ct2(currentCondition,:)];
-                                disp(ct)
+                                disp([ct1 struct2table(variables)])
                                 
                                 clear data;
                                 data.variables = variables;
@@ -372,7 +370,7 @@ classdef ExperimentDesign < handle
                                 trialResult = this.runTrial( variables );
                                 this.SaveEvent( Enum.Events.TRIAL_STOP);
                                                                 
-                                fprintf(' TRIAL END ');
+                                fprintf(' TRIAL END \n');
                                 
                                 %------------------------------------------------------------
                                 %% -- POST TRIAL ----------------------------------------------
@@ -385,6 +383,11 @@ classdef ExperimentDesign < handle
                                 this.SaveEvent( Enum.Events.POST_TRIAL_STOP);
                                 
                                 data.trialOutput  = trialOutput;
+                                
+                                ct1 = table();
+                                ct1.TrialNumber = trialnumber;
+                                ct1.TotalTrials = size(this.Session.currentRun.originalFutureConditions,1);
+                                disp([ct1 struct2table(data.trialOutput)])
                                 
                               catch
                                 err = psychlasterror;

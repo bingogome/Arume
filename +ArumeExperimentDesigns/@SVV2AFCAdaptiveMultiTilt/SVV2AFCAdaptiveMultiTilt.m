@@ -10,7 +10,7 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         
-         function dlg = GetOptionsDialog( this )
+        function dlg = GetOptionsDialog( this )
              
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptive(this);
             
@@ -45,10 +45,10 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence =  ceil(this.trialsPerSession/this.NumberOfConditions/10);
-            this.blocksToRun = 2;
-            
+            this.numberOfTimesRepeatBlockSequence =  1;
             NblocksPerTilt = ceil(this.ExperimentOptions.TrialsPerTilt/10);
+            this.blocksToRun = NblocksPerTilt*(length(this.ExperimentOptions.Tilts)+1)*2;
+            
               
             this.blocks = [];
             
@@ -100,37 +100,11 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
         
         function trialResult = runPreTrial(this, variables )
             
-            % call the SVV adaptive run pre trial to set the current range
-            % and angle appropriately
-            runPreTrial@ArumeExperimentDesigns.SVV2AFCAdaptive(this);
-            
-            
             Enum = ArumeCore.ExperimentDesign.getEnum();
-            % Add stuff here
             
-            if ( ~isempty( this.Session.currentRun ) )
-                nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
-                
-                previousValues = zeros(nCorrect,1);
-                previousResponses = zeros(nCorrect,1);
-                
-                n = 1;
-                for i=1:length(this.Session.currentRun.pastConditions(:,1))
-                    if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
-                        previousValues(n) = this.Session.currentRun.Data{i}.trialOutput.Angle;
-                        previousResponses(n) = this.Session.currentRun.Data{i}.trialOutput.Response;
-                        n = n+1;
-                    end
-                end
-            else
-                trialResult = Enum.trialResult.ABORT;
-                return;
-            end
-            
-             % Initialize bitebar
+            % Change the angle of the bitebar if necessary
             if ( this.ExperimentOptions.UseBiteBarMotor )
-                if ( nCorrect == this.ExperimentOptions.BaselineTrials )
-                                        
+                if ( variables.Tilt ~= this.biteBarMotor.CurrentAngle )       
                     result = 'n';
                     while( result ~= 'y' )
                         result = this.Graph.DlgSelect( ...
@@ -143,96 +117,53 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
                     fixRect = [0 0 10 10];
                     fixRect = CenterRectOnPointd( fixRect, mx, my );
                     Screen('FillOval', this.Graph.window,  255, fixRect);
-                    fliptime = Screen('Flip', this.Graph.window);
+                    Screen('Flip', this.Graph.window);
                     
                     if ( this.ExperimentOptions.UseBiteBarMotor)
                         pause(2);
-                        this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
+                        if ( this.ExperimentOptions.UseEyeTracker )
+                            this.eyeTracker.RecordEvent('Tilt begin');
+                        end
+                        this.biteBarMotor.SetTiltAngle(variables.Tilt);
+                        if ( this.ExperimentOptions.UseEyeTracker )
+                            this.eyeTracker.RecordEvent('Tilt end');
+                        end
                         disp('30 s pause');
                         pause(30);
-                        disp('done');
-                    end
-                end
-                
-                if ( nCorrect == this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials)
-                    
-                    [mx, my] = RectCenter(this.Graph.wRect);
-                    fixRect = [0 0 10 10];
-                    fixRect = CenterRectOnPointd( fixRect, mx, my );
-                    Screen('FillOval', this.Graph.window,  255, fixRect);
-                    fliptime = Screen('Flip', this.Graph.window);
-                    
-                    if ( this.ExperimentOptions.UseBiteBarMotor)
-                        pause(2);
-                        this.biteBarMotor.GoUpright();
-                        disp('30 s pause');
-                        pause(30);
+                        if ( this.ExperimentOptions.UseEyeTracker )
+                            this.eyeTracker.RecordEvent('Tilt 30 second pause end');
+                        end
                         disp('done');
                     end
                 end
             end
             
+            % adaptive paradigm
             
+            nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
+            previousValues = zeros(nCorrect,1);
+            previousResponses = zeros(nCorrect,1);
             
-            if ( length(previousResponses) > this.ExperimentOptions.BaselineTrials && ...
-                length(previousResponses) < this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials && ...
-                this.ExperimentOptions.RestartAfterBaseline)
-                previousResponses(1:this.ExperimentOptions.BaselineTrials ) = [];
-                previousValues(1:this.ExperimentOptions.BaselineTrials ) = [];
-            end
-            
-            if ( length(previousResponses) > this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials && ...
-                this.ExperimentOptions.RestartAfterTilt)
-                previousResponses(1:(this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) ) = [];
-                previousValues(1:(this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) ) = [];
-            end
-            
-            NtrialPerBlock = 10;
-            
-            % recalculate every 10 trials
-            N = mod(length(previousValues),NtrialPerBlock);
-            Nblocks = floor(length(previousValues)/NtrialPerBlock)*NtrialPerBlock+1;
-            
-            if ( length(previousValues)>0 )
-                if ( N == 0 )
-                    ds = dataset;
-                    ds.Response = previousResponses(max(1,end-30):end);
-                    ds.Angle = previousValues(max(1,end-30):end);
-                    subds = ds;
-                    
-                    SVV = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-                    
-                    % Limit the center of the new range to the extremes of
-                    % the past range of angles
-                    if ( SVV > max(ds.Angle) )
-                        SVV = max(ds.Angle);
-                    elseif( SVV < min(ds.Angle))
-                        SVV = min(ds.Angle);
-                    end
-                    
-                    this.currentCenterRange = SVV + this.ExperimentOptions.offset;
-                    
-                    this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
+            n = 1;
+            for i=1:length(this.Session.currentRun.pastConditions(:,1))
+                if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
+                    previousValues(n) = this.Session.currentRun.Data{i}.trialOutput.Angle;
+                    previousResponses(n) = this.Session.currentRun.Data{i}.trialOutput.Response;
+                    n = n+1;
                 end
-            else
-                this.currentCenterRange = rand(1)*30-15;
-                this.currentRange = 90;
             end
             
-            this.currentAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
-            this.currentAngle = mod(this.currentAngle+90,180)-90;
-            
-            this.currentAngle = round(this.currentAngle);
-            
-            disp(['CURRENT: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(N) ' SVV : ' num2str(this.currentCenterRange) ' RANGE: ' num2str(this.currentRange)]);
-            
-            if ( ~isempty(this.eyeTracker) )
-                if ( ~this.eyeTracker.IsRecording())
-                    this.eyeTracker.StartRecording();
-                    pause(1);
-                end
-                this.eyeTracker.RecordEvent(num2str(size(this.Session.currentRun.pastConditions,1)));
+            t = this.Session.experiment.GetConditionTable();
+            previousTilts = t{ this.Session.currentRun.pastConditions(:,1),'Tilt'};
+             
+            idxLastDifferentTilt = find(previousTilts ~=variables.Tilt,1,'last');
+            if (isempty( idxLastDifferentTilt ) )
+                idxLastDifferentTilt = 0;
             end
+            previousValues = previousValues((idxLastDifferentTilt+1):end);
+            previousResponses = previousResponses((idxLastDifferentTilt+1):end);
+            
+            this.updateRange(variables, previousValues, previousResponses);
             
             trialResult =  Enum.trialResult.CORRECT;
         end
@@ -365,223 +296,19 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
     % ---------------------------------------------------------------------
     methods ( Access = public )
         function trialDataSet = PrepareTrialDataSet( this, ds)
-            data = ds;
-            if ( data.TimeStopTrial(end) == 0)
-                data(end,:) = [];
-            end
-            
-            binSize = 30;
-            stepSize = 10;
-            
-            newData.Bin30SVV = nan(size(data,1),1);
-            newData.Bin30SVVth = nan(size(data,1),1);
-            newData.Bin30Start = nan(size(data,1),1);
-            newData.Bin30End = nan(size(data,1),1);
-            for j=1:ceil(size(data,1)/stepSize)
-                idx = (1:binSize) + (j-1)*stepSize;
-                idx(idx<1 | idx>size(data,1)) = [];
-                
-                MEANIDX = mean(idx);
-                if (  MEANIDX < this.ExperimentOptions.BaselineTrials )
-                    idx(idx>this.ExperimentOptions.BaselineTrials) = [];
-                elseif ( MEANIDX < this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials)
-                    idx(idx<=this.ExperimentOptions.BaselineTrials | idx > this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
-                else
-                    idx(idx <= this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
-                end
-                
-                if ( length(idx) >= 20 )
-                    angles = data.Angle(idx);
-                    responses = data.Response(idx);
-                    [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
-                    
-                    saveidx = floor(MEANIDX - stepSize/2 + (1:stepSize));
-                    saveidx(saveidx<1 | saveidx>size(data,1)) = [];
-                    
-                    if (  MEANIDX < this.ExperimentOptions.BaselineTrials )
-                        saveidx(saveidx>this.ExperimentOptions.BaselineTrials) = [];
-                    elseif ( MEANIDX < this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials)
-                        saveidx(saveidx<=this.ExperimentOptions.BaselineTrials | saveidx > this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
-                    else
-                        saveidx(saveidx <= this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
-                    end
-                    
-                    newData.Bin30SVV(saveidx) = SVV1;
-                    newData.Bin30SVVth(saveidx) = SVVth1;
-                    newData.Bin30Start(saveidx) = min(idx);
-                    newData.Bin30End(saveidx) = max(idx);
-                end
-            end
-            
-            
-            binSize = 100;
-            stepSize = 10;
-            f = binSize/stepSize;
-            
-            newData.Bin100SVV = nan(size(data,1),1);
-            newData.Bin100SVVth = nan(size(data,1),1);
-            newData.Bin100Start = nan(size(data,1),1);
-            newData.Bin100End = nan(size(data,1),1);
-            for j=1:ceil(size(data,1)/stepSize)
-                idx = (1:binSize) + (j-1)*stepSize;
-                idx(idx<1 | idx>size(data,1)) = [];
-                
-                MEANIDX = (j-1)*stepSize;
-                if (  MEANIDX < this.ExperimentOptions.BaselineTrials )
-                    idx(idx>this.ExperimentOptions.BaselineTrials) = [];
-                elseif ( MEANIDX < this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials)
-                    idx(idx<=this.ExperimentOptions.BaselineTrials | idx > this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
-                else
-                    idx(idx <= this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
-                end
-                
-                if ( length(idx) >= 20 )
-                    angles = data.Angle(idx);
-                    responses = data.Response(idx);
-                    [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
-                    
-                    
-                    saveidx = floor(mean(idx) - stepSize/2 + (1:stepSize));
-                    saveidx(saveidx<1 | saveidx>size(data,1)) = [];
-                    
-                    if (  MEANIDX < this.ExperimentOptions.BaselineTrials )
-                        saveidx(saveidx>this.ExperimentOptions.BaselineTrials) = [];
-                    elseif ( MEANIDX < this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials)
-                        saveidx(saveidx<=this.ExperimentOptions.BaselineTrials | saveidx > this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
-                    else
-                        saveidx(saveidx <= this.ExperimentOptions.BaselineTrials + this.ExperimentOptions.TiltedTrials) = [];
-                    end
-                    
-                    newData.Bin100SVV(saveidx) = SVV1;
-                    newData.Bin100SVVth(saveidx) = SVVth1;
-                    newData.Bin100Start(saveidx) = min(idx);
-                    newData.Bin100End(saveidx) = max(idx);
-                end
-            end
-            
-            
-            
-            
-            torsionFolder = 'N:\RAW_DATA\SVVTorsionAfterEffect\PostProcess';
-            T = nan(size(data.TimeStartTrial));
-            
-            if (length(dir(fullfile(torsionFolder,[this.Session.name(1:end-1)  '*']))) == 2)
-                folders = dir(fullfile(torsionFolder,[this.Session.name(1:end-1)  '*']));
-                d = GetCalibratedData(fullfile(torsionFolder,folders(1).name));
-                T = CleanTorsion(d);
-                d = GetCalibratedData(fullfile(torsionFolder,folders(2).name));
-                T = [T;CleanTorsion(d)];
-                
-                t = data.TimeStartTrial;
-                t2 = data.TimeStopTrial;
-                t2 = t2-t(1);
-                t = t-t(1);
-                t(101:end)= t(101:end)-t(101)+t2(100);
-                t2(101:end)= t2(101:end)-t(101)+t2(100);
-                
-                L = t2(end)-t(1);
-                LT = length(T);
-                t = t * LT / L;
-                t2 = t2 * LT / L;
-                
-                torsion = T;
-                T = nan(size(t));
-                for j=1:length(t)
-                    idx = t(j):t2(j);
-                    idx(idx<1) = [];
-                    idx(idx>length(torsion)) = [];
-                    T(j) = nanmedian(torsion(round(idx)));
-                end
-            end
-            
-            newData.Torsion = T;
-            
-            newDs = struct2dataset(newData);
-            
-            trialDataSet = [data newDs];
+            trialDataSet = ds;
         end
         
         function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
-            dataRight = this.Session.trialDataSet;
-            
-            data = sessionDataTable;
-            if ( contains(this.Session.sessionCode,'LED') )
-                data.TiltSide = 'LeftTilt';
-            elseif (contains(this.Session.sessionCode,'RED'))
-                data.TiltSide = 'RightTilt';
-            end
-            data.TiltSide =categorical(cellstr(data.TiltSide));
-                        
-            data.SVV = nan(1,15);
-            data.RT = nan(1,15);
-            data.TH = nan(1,15);
-            data.Time = nan(1,15);
-            data.Torsion = nan(1,15);
-            
-            for j=1:15
-                idx = (50:100) + (j-1)*50;
-                idx(idx>=length(dataRight.Bin100SVV)) = [];
-                if ( length(idx) > 20)
-                    data.SVV(1,j) = nanmean(dataRight.Bin100SVV(idx));
-                    data.RT(1,j) = nanmean(dataRight.ReactionTime(idx));
-                    data.TH(1,j) = nanmean(dataRight.Bin100SVVth(idx));
-                    data.Time(1,j) = nanmean(dataRight.TimeStopTrial(idx)-dataRight.TimeStopTrial(101));
-                end
-            end
-            data.SVV(:,[2 12 15]) = nan;
-            data.RT(:,[2 12 15]) = nan;
-            data.TH(:,[2 12 15]) = nan;
-            data.Torsion(:,[2 12 15]) = nan;
-            
-            
-            idx = 0:20;
-            
-            data.DriftSVV = nan(1,1);
-            data.DriftTorsion = nan(1,1);
-            data.DriftTH = nan(1,1);
-            data.DriftRT = nan(1,1);
-            
-            data.DriftRateSVV = nan(1,1);
-            data.DriftRateTorsion = nan(1,1);
-            data.DriftTotalSVV = nan(1,1);
-            data.DriftTotalTorsion = nan(1,1);
-            
-            if ( sum(~isnan(data.SVV(1,3:11)))>0 )
-                b = regress(data.SVV(1,3:11)',[ones(size(1:9))' (1:9)']);
-                data.DriftSVV(1) = b(2);
-            end
-            if ( sum(~isnan(data.Torsion(1,3:11)))>0 )
-                b = regress(data.Torsion(1,3:11)',[ones(size(1:9))' (1:9)']);
-                data.DriftTorsion(1) = b(2);
-            end
-            if ( sum(~isnan(data.TH(1,3:11)))>0 )
-                b = regress(data.TH(1,3:11)',[ones(size(1:9))' (1:9)']);
-                data.DriftTH(1) = b(2);
-            end
-            if ( sum(~isnan(data.RT(1,3:11)))>0 )
-                b = regress(data.RT(1,3:11)',[ones(size(1:9))' (1:9)']);
-                data.DriftRT(1) = b(2);
-            end
-            
-            data.DurationTilt = nan(1,1);
-            
-            data.DriftTotalSVV = data.DriftRateSVV .* data.DurationTilt;
-            data.DriftTotalTorsion = data.DriftRateTorsion .* data.DurationTilt;
-            
-            data.SVVInitial = data.SVV(:,1);
-            data.SVVInitialError = abs(data.SVV(:,1));
-            data.SVVBeginingTilt = data.SVV(:,3);
-            data.SVVEndTilt = data.SVV(:,11);
-            data.SVVAfterEffect = data.SVV(:,13)-data.SVV(:,1);
-            
-            data.TorsionInitial = data.Torsion(:,1);
-            data.TorsionInitialError = abs(data.Torsion(:,1));
-            data.TorsionBeginingTilt = data.Torsion(:,3);
-            data.TorsionEndTilt = data.Torsion(:,11);
-            data.TorsionAfterEffect = data.Torsion(:,13)-data.Torsion(:,1);
-            
-            sessionDataTable = data;
         end
+        
+    end
+    
+    % ---------------------------------------------------------------------
+    % Plot methods
+    % ---------------------------------------------------------------------
+    methods ( Access = public )
+        
     end
     
     % ---------------------------------------------------------------------
