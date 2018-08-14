@@ -59,7 +59,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                 nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
                 
                 previousValues = zeros(nCorrect,1);
-                previousResponses = zeros(nCorrect,1);
+                previousResponses = zeros(nCorrect,1); 
                 
                 n = 1;
                 for i=1:length(this.Session.currentRun.pastConditions(:,1))
@@ -127,15 +127,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             
             disp(sprintf(['\nLAST RESP.: ' char(previousResponses(max(end-100,1):end)')]));
             disp(['CURRENT TRIAL: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(Nblocks) ' RANGE: ' num2str(this.currentRange) ' SVV : ' num2str(this.currentCenterRange)]);
-            
-            if ( ~isempty(this.eyeTracker) )
-                if ( ~this.eyeTracker.IsRecording())
-                    this.eyeTracker.StartRecording();
-                    pause(1);
-                end
-                this.eyeTracker.RecordEvent(num2str(size(this.Session.currentRun.pastConditions,1)));
-            end
-            
+                        
             trialResult =  Enum.trialResult.CORRECT;
         end
         
@@ -278,13 +270,6 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
         end
         
         function trialOutput = runPostTrial(this)
-            
-            if ( ~isempty( this.eyeTracker ) )
-                
-                if ( length(this.Session.currentRun.futureConditions) == 0 )
-                    this.eyeTracker.StopRecording();
-                end
-            end
             
             trialOutput = [];
             trialOutput.Response = this.lastResponse;
@@ -826,10 +811,10 @@ T = [];
         end
         
         function trialDataSet = PrepareTrialDataSet( this, ds)
-            data = ds;
-            if ( data.TimeStopTrial(end) == 0)
-                data(end,:) = [];
-            end
+            trialDataSet = ds;
+            
+            
+            return;
             
             torsionFolder = 'F:\DATATEMP\SVVTorsionTMS';
             T = nan(size(data.TimeStartTrial));
@@ -931,7 +916,31 @@ T = [];
             newDs = struct2dataset(newData);
             
             trialDataSet = [data newDs];
-         end
+        end
+         
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)            
+                        
+            angles = this.GetAngles();
+            angles(this.Session.trialDataSet.TrialResult>0) = [];
+            
+            respones = this.GetLeftRightResponses();
+            respones(this.Session.trialDataSet.TrialResult>0) = [];
+            
+            [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
+            
+            ds = this.Session.trialDataSet;
+            ds(ds.TrialResult>0,:) = [];
+            ds(ds.Response<0,:) = [];
+            
+            times = ds.ReactionTime;
+            
+            sessionDataTable.SVV = SVV;
+            sessionDataTable.SVVth = SVVth;
+            
+            sessionDataTable.RTmean = nanmean(times);
+            sessionDataTable.RTstd = nanstd(times);
+            sessionDataTable.RTmedian = nanmedian(times);
+        end
     end
     
     % ---------------------------------------------------------------------

@@ -225,33 +225,14 @@ classdef Project < handle
                     session=this.sessions(isess);
                     % if this is one of the sessions we want
                     if ( any(categorical(subjectSelection) == session.subjectCode) && any(categorical(sessionSelection)==session.sessionCode))
-                        if ( isempty(dataTable) )
+                        if ( isempty(dataTable) && ~isempty(session.sessionDataTable))
                             dataTable = session.sessionDataTable;
-                        else
-%                             t1 = dataTable;
-%                             t2 = session.sessionDataTable;
-%                             if ( ~isempty(t2) )
-%                                 t1colmissing = setdiff(t2.Properties.VariableNames, t1.Properties.VariableNames);
-%                                 t2colmissing = setdiff(t1.Properties.VariableNames, t2.Properties.VariableNames);
-%                                 t1 = [t1 array2table(nan(height(t1), numel(t1colmissing)), 'VariableNames', t1colmissing)];
-%                                 t2 = [t2 array2table(nan(height(t2), numel(t2colmissing)), 'VariableNames', t2colmissing)];
-%                                 for colname = t1colmissing
-%                                     if iscell(t2.(colname{1}))
-%                                         t1.(colname{1}) = cell(height(t1), 1);
-%                                     end
-%                                 end
-%                                 for colname = t2colmissing
-%                                     if iscell(t1.(colname{1}))
-%                                         t2.(colname{1}) = cell(height(t2), 1);
-%                                     end
-%                                 end
-%                                 dataTable = [t1; t2]
-%                             end
-
-                            dataTable = [dataTable;session.sessionDataTable]
+                        elseif ( ~isempty(session.sessionDataTable))
+                            dataTable = [dataTable;session.sessionDataTable];
                         end
                     end
                 end
+                dataTable
         end
     end
     

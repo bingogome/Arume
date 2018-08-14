@@ -98,6 +98,11 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         
         function [samplesDataSet, rawData] = PrepareSamplesDataSet(this)
             samplesDataSet = [];
+            rawData = [];
+            
+            if ( ~isfield(this.Session.currentRun, 'LinkedFiles' ) || ~isfield(this.Session.currentRun.LinkedFiles,  'vogDataFile') )
+                return;
+            end
             
             dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
             calibrationFiles = this.Session.currentRun.LinkedFiles.vogCalibrationFile;

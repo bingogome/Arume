@@ -377,11 +377,11 @@ classdef ArumeController < handle
                 end
             end
             
+            this.currentProject.save();
+            
             if (useWaitBar)
                 close(h);
             end
-            
-            this.currentProject.save();
         end
                         
         function plotList = GetPlotList( this )

@@ -39,10 +39,7 @@ end
 
 if ( useGui && isempty(arumeController.gui))
     % Load the GUI
-    gui = ArumeCore.ArumeGui( arumeSingleton );
-    arumeController.gui = gui;
-else
-    gui = arumeController.gui;
+    arumeController.gui = ArumeCore.ArumeGui( arumeSingleton );
 end
 
 if ( exist('projectPath','var') )
@@ -50,5 +47,5 @@ if ( exist('projectPath','var') )
 end
 
 if ( useGui )
-    gui.updateGui();
+    arumeController.gui.updateGui();
 end

@@ -390,6 +390,9 @@ classdef Session < ArumeCore.DataDB
                 
                 if ( ~isempty( this.currentRun.Events) )
                     trials.TimeStartTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_START,1);
+                    % remove trials that were errors or quit halve way. Jut
+                    % keep corrects and aborts
+                    trials(trials.TrialResult>1,:) = [];
                     trials.TimeStopTrial = this.currentRun.Events(this.currentRun.Events(:,3)==Enum.Events.TRIAL_STOP,1);
                 end
                 
@@ -456,10 +459,15 @@ classdef Session < ArumeCore.DataDB
                     fields = fieldnames(var);
                     for j=1:length(fields)
                         field = fields{j};
-                        if ( ischar(var.(field){1} ))
-                            trials.(field)  = var.(field)';
+                        values = var.(field)';
+                        % remove trials that were errors or quit halve way. Jut
+                        % keep corrects and aborts
+                        tResults = this.currentRun.pastConditions(:,Enum.pastConditions.trialResult);
+                        values(tResults>1) = [];
+                        if ( ischar(values{1} ))
+                            trials.(field) = values;
                         else
-                            trials.(field)  = cell2mat(var.(field)');
+                            trials.(field) = cell2mat(values);
                         end
                     end
                 end
@@ -503,7 +511,7 @@ classdef Session < ArumeCore.DataDB
             
             opts = fieldnames(this.experiment.ExperimentOptions);
             for i=1:length(opts)
-                newSessionDataTable.(['Option_' opts{i}]) = {this.experiment.ExperimentOptions.(opts{i})};
+                newSessionDataTable.(['Option_' opts{i}]) = this.experiment.ExperimentOptions.(opts{i});
             end
         end
     end

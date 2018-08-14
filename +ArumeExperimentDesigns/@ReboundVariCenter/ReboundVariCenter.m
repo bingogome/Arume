@@ -256,7 +256,6 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
         function trialDataSet = PrepareTrialDataSet( this, ds)
             trialDataSet = ds;
             
-            
             eventFiles = this.Session.currentRun.LinkedFiles.vogEventsFile;
             if (~iscell(eventFiles) )
                 eventFiles = {eventFiles};
