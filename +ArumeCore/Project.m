@@ -52,9 +52,22 @@ classdef Project < handle
             % initialize the project
             this.init( path, projectName, data.defaultExperiment );
             
+            d = struct2table(dir(path));
+            d = d(d.isdir & ~strcmp(d.name,'.') & ~strcmp(d.name,'..'),:);
+            
             % load sessions
-            for session = data.sessions
-                ArumeCore.Session.LoadSession( this, session );
+            for i=1:length(d.name)
+                sessionName = d.name{i};
+                filename = fullfile( fullfile(path, sessionName), [sessionName '_ArumeSession.mat']);
+                
+                if ( exist(filename, 'file') )
+                    session = load( filename, 'sessionData' );
+                    session = session.sessionData;
+            
+                    ArumeCore.Session.LoadSession( this, session );
+                else
+                    disp(['WARNING: session ' sessionName ' could not be loaded. May be an old result of corruption.']);
+                end
             end
         end
         
@@ -82,6 +95,19 @@ classdef Project < handle
                     rmdir(fullfile(path, 'stimuli'),'s');
                 end
                 
+                
+                projectMatFile = fullfile(path, [projectName '_ArumeProject.mat']);
+                
+                % load project data
+                data = load( projectMatFile, 'data' );
+                data = data.data;
+                
+                for sessionData = data.sessions
+                    sessionName = [sessionData.experimentName '_' sessionData.subjectCode sessionData.sessionCode];
+                    filename = fullfile( fullfile(path, sessionName), [sessionName '_ArumeSession.mat']);
+                    save( filename, 'sessionData' );
+                end
+                data = rmfield(data,'sessions');
             end
         end
             
@@ -95,13 +121,10 @@ classdef Project < handle
             data = [];
             data.defaultExperiment = this.defaultExperiment; 
             
-            data.sessions = [];
             for session = this.sessions
-                if isempty( data.sessions )   
-                    data.sessions = session.save();
-                else
-                    data.sessions(end+1) = session.save();
-                end
+                sessionData = session.save();
+                filename = fullfile( session.dataPath, [session.name '_ArumeSession.mat']);
+                save( filename, 'sessionData' );
             end
             
             % Save the data structure
