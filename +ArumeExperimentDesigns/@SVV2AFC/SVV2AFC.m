@@ -65,8 +65,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
                 clear this.biteBarMotor;
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
                 
-                if ( this.ExperimentOptions.TiltHeadAtBegining )
-                    if ( length(this.Session.currentRun.pastConditions) == 0 )
+                if (isfield(this.ExperimentOptions, 'TiltHeadAtBegining') && this.ExperimentOptions.TiltHeadAtBegining )
+                    if ( isempty(this.Session.currentRun.pastConditions) )
                         this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
                         pause(2);
                         disp('30 s pause');
@@ -213,6 +213,36 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             trialDataSet.LeftRightResponse = trialDataSet.Response;
         end
         
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+            
+            
+            angles = this.GetAngles();
+            angles(this.Session.trialDataSet.TrialResult>0) = [];
+            
+            respones = this.GetLeftRightResponses();
+            respones(this.Session.trialDataSet.TrialResult>0) = [];
+            
+%             angles = angles(101:201);
+%             respones = respones(101:201);
+            [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
+            
+            
+            data = sessionDataTable;
+            if ( contains(this.Session.sessionCode,'LED') )
+                data.TiltSide = 'LeftTilt';
+            elseif (contains(this.Session.sessionCode,'RED'))
+                data.TiltSide = 'RightTilt';
+            elseif (contains(this.Session.sessionCode,'Upright'))
+                data.TiltSide = 'Upright';
+            end
+            data.TiltSide =categorical(cellstr(data.TiltSide));
+            
+            data.SVV = SVV;
+            data.SVVth = SVVth;
+            
+            sessionDataTable = data;
+        end
+        
         % Function that gets the angles of each trial with 0 meaning
         % upright, positive tilted CW and negative CCW.
         function angles = GetAngles( this )
@@ -225,7 +255,11 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             responses = this.Session.trialDataSet.Response;
         end
         
-        
+    end
+    % ---------------------------------------------------------------------
+    % Plot methods
+    % ---------------------------------------------------------------------
+    methods ( Access = public )
         function plotResults = Plot_Sigmoid(this)
             
             angles = this.GetAngles();
@@ -356,56 +390,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-        end
-        
-        
+        end 
     end
-    
-    
-    % ---------------------------------------------------------------------
-    % Data Analysis methods
-    % ---------------------------------------------------------------------
-    methods ( Access = public )
-        
-        function analysisResults = Analysis_SVV(this)
-            analysisResults = 0;
-        end
-        
-        function analysisResults = Analysis_SVVUpDown(this)
-            analysisResults=4;
-        end
-        
-        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
-            
-            
-            angles = this.GetAngles();
-            angles(this.Session.trialDataSet.TrialResult>0) = [];
-            
-            respones = this.GetLeftRightResponses();
-            respones(this.Session.trialDataSet.TrialResult>0) = [];
-            
-%             angles = angles(101:201);
-%             respones = respones(101:201);
-            [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
-            
-            
-            data = sessionDataTable;
-            if ( contains(this.Session.sessionCode,'LED') )
-                data.TiltSide = 'LeftTilt';
-            elseif (contains(this.Session.sessionCode,'RED'))
-                data.TiltSide = 'RightTilt';
-            elseif (contains(this.Session.sessionCode,'Upright'))
-                data.TiltSide = 'Upright';
-            end
-            data.TiltSide =categorical(cellstr(data.TiltSide));
-            
-            data.SVV = SVV;
-            data.SVVth = SVVth;
-            
-            sessionDataTable = data;
-        end
-    end
-    
     
     % ---------------------------------------------------------------------
     % Utility methods
@@ -496,7 +482,6 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             end
             
         end
-        
         
         function drawFrame( graph, angle, color)
             

@@ -59,7 +59,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                 nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
                 
                 previousValues = zeros(nCorrect,1);
-                previousResponses = zeros(nCorrect,1); 
+                previousResponses = zeros(nCorrect,1);
                 
                 n = 1;
                 for i=1:length(this.Session.currentRun.pastConditions(:,1))
@@ -71,63 +71,8 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                 end
             end
             
-            NtrialPerBlock = 10;
+            this.updateRange(variables, previousValues, previousResponses);
             
-            % recalculate every 10 trials
-            N = mod(length(previousValues),NtrialPerBlock);
-            Nblocks = floor(length(previousValues)/NtrialPerBlock)*NtrialPerBlock+1;
-            
-            if ( length(previousValues)>0 )
-                if ( N == 0 )
-                    ds = dataset;
-                    switch(this.ExperimentOptions.PreviousTrialsForRange)
-                        case 'All'
-                            ds.Response = previousResponses(1:end);
-                            ds.Angle = previousValues(1:end);
-                        case 'Previous30'
-                            ds.Response = previousResponses(max(1,end-30):end);
-                            ds.Angle = previousValues(max(1,end-30):end);
-                    end
-                    subds = ds;
-                    
-                    SVV = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-
-                    % Limit the center of the new range to the extremes of
-                    % the past range of angles
-                    if ( SVV > max(ds.Angle) )
-                        SVV = max(ds.Angle);
-                    elseif( SVV < min(ds.Angle))
-                        SVV = min(ds.Angle);
-                    end
-                    
-                    this.currentCenterRange = SVV + this.ExperimentOptions.offset;            
-
-                    switch(this.ExperimentOptions.RangeChanges)
-                        case 'Slow'
-                            this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
-                        case 'Fast'
-                            this.currentRange = (45)./min(9,round(2.^(Nblocks/15)));
-                    end
-                end
-            else
-                switch(this.ExperimentOptions.RangeChanges)
-                    case 'Slow'
-                        this.currentCenterRange = rand(1)*30-15;
-                        this.currentRange = 90;
-                    case 'Fast'
-                        this.currentCenterRange = rand(1)*15-15;
-                        this.currentRange = 45;
-                end
-            end
-            
-            this.currentAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
-            this.currentAngle = mod(this.currentAngle+90,180)-90;
-            
-            this.currentAngle = round(this.currentAngle);
-            
-            disp(sprintf(['\nLAST RESP.: ' char(previousResponses(max(end-100,1):end)')]));
-            disp(['CURRENT TRIAL: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(Nblocks) ' RANGE: ' num2str(this.currentRange) ' SVV : ' num2str(this.currentCenterRange)]);
-                        
             trialResult =  Enum.trialResult.CORRECT;
         end
         
@@ -278,10 +223,210 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             trialOutput.Range = this.currentRange;
             trialOutput.RangeCenter = this.currentCenterRange;
         end
+        
+        function updateRange(this, variables, previousValues, previousResponses)
+            NtrialPerBlock = 10;
+            
+            % recalculate every 10 trials
+            N = mod(length(previousValues),NtrialPerBlock);
+            Nblocks = floor(length(previousValues)/NtrialPerBlock)*NtrialPerBlock+1;
+            
+            if ( length(previousValues)>0 )
+                if ( N == 0 )
+                    ds = dataset;
+                    switch(this.ExperimentOptions.PreviousTrialsForRange)
+                        case 'All'
+                            ds.Response = previousResponses(1:end);
+                            ds.Angle = previousValues(1:end);
+                        case 'Previous30'
+                            ds.Response = previousResponses(max(1,end-30):end);
+                            ds.Angle = previousValues(max(1,end-30):end);
+                    end
+                    subds = ds;
+                    
+                    SVV = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
+                    
+                    % Limit the center of the new range to the extremes of
+                    % the past range of angles
+                    if ( SVV > max(ds.Angle) )
+                        SVV = max(ds.Angle);
+                    elseif( SVV < min(ds.Angle))
+                        SVV = min(ds.Angle);
+                    end
+                    
+                    this.currentCenterRange = SVV;
+                    if ( isfield( this.ExperimentOptions, 'offset' ) )
+                        this.currentCenterRange = this.currentCenterRange + this.ExperimentOptions.offset;
+                    end
+                    
+                    switch(this.ExperimentOptions.RangeChanges)
+                        case 'Slow'
+                            this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
+                        case 'Fast'
+                            this.currentRange = (45)./min(9,round(2.^(Nblocks/15)));
+                    end
+                end
+            else
+                switch(this.ExperimentOptions.RangeChanges)
+                    case 'Slow'
+                        this.currentCenterRange = rand(1)*30-15;
+                        this.currentRange = 90;
+                    case 'Fast'
+                        this.currentCenterRange = rand(1)*15-15;
+                        this.currentRange = 45;
+                end
+            end
+            
+            this.currentAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
+            this.currentAngle = mod(this.currentAngle+90,180)-90;
+            
+            this.currentAngle = round(this.currentAngle);
+            
+            disp(sprintf(['\nLAST RESP.: ' char(previousResponses(max(end-100,1):end)')]));
+            disp(['CURRENT TRIAL: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(Nblocks) ' RANGE: ' sprintf('%2.1f',this.currentRange) ' SVV : ' num2str(this.currentCenterRange)]);
+            
+        end
     end
     
     % ---------------------------------------------------------------------
     % Data Analysis methods
+    % ---------------------------------------------------------------------
+    methods ( Access = public )
+        
+        function trialDataSet = PrepareTrialDataSet( this, ds)
+            trialDataSet = ds;
+            
+            
+            return;
+            
+            torsionFolder = 'F:\DATATEMP\SVVTorsionTMS';
+            T = nan(size(data.TimeStartTrial));
+            
+            if (length(dir(fullfile(torsionFolder,[this.Session.name  '*']))) == 1);
+                folders = dir(fullfile(torsionFolder,[this.Session.name  '*']));
+                d = GetCalibratedData(fullfile(torsionFolder,folders(1).name));
+                T = CleanTorsion(d);
+                T(T>10 | T<-10) = nan;
+
+                
+                
+                t = data.TimeStartTrial;
+                t2 = data.TimeStopTrial;
+                t2 = t2-t(1);
+                t = t-t(1);
+%                 t(101:end)= t(101:end)-t(101)+t2(100);
+%                 t2(101:end)= t2(101:end)-t(101)+t2(100);
+                
+                L = t2(end)-t(1);
+                LT = length(T);
+                t = t * LT / L;
+                t2 = t2 * LT / L;
+                
+                torsion = T;
+                T = nan(size(t));
+                for j=1:length(t)
+                    idx = t(j):t2(j);
+                    idx(idx<1) = [];
+                    idx(idx>length(torsion)) = [];
+                    T(j) = nanmedian(torsion(round(idx)));
+                end
+            end
+            
+            
+                T(T>10 | T<-10) = nan;
+            newData.Torsion = T;
+            
+            
+            
+            binSize = 30;
+            stepSize = 10;
+            
+            newData.Bin30SVV = nan(size(data,1),1);
+            newData.Bin30SVVth = nan(size(data,1),1);
+            newData.Bin30Start = nan(size(data,1),1);
+            newData.Bin30End = nan(size(data,1),1);
+            newData.Bin30Torsion = nan(size(data,1),1);
+            for j=1:ceil(size(data,1)/stepSize)
+                idx = (1:binSize) + (j-1)*stepSize;
+                idx(idx<1 | idx>size(data,1)) = [];
+                if ( length(idx) >= 20 )
+                    angles = data.Angle(idx);
+                    responses = data.Response(idx);
+                    [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
+                    
+                    saveidx = floor(mean(idx) - stepSize/2 + (1:stepSize));
+                    saveidx(saveidx<1 | saveidx>size(data,1)) = [];
+                    
+                    newData.Bin30SVV(saveidx) = SVV1;
+                    newData.Bin30SVVth(saveidx) = SVVth1;
+                    newData.Bin30Start(saveidx) = min(idx);
+                    newData.Bin30End(saveidx) = max(idx);
+                    newData.Bin30Torsion(saveidx) = nanmedian(T(idx));
+                end
+            end
+            
+            
+            binSize = 100;
+            stepSize = 10;
+            f = binSize/stepSize;
+            
+            newData.Bin100SVV = nan(size(data,1),1);
+            newData.Bin100SVVth = nan(size(data,1),1);
+            newData.Bin100Start = nan(size(data,1),1);
+            newData.Bin100End = nan(size(data,1),1);
+            newData.Bin100Torsion = nan(size(data,1),1);
+            for j=1:ceil(size(data,1)/stepSize)
+                idx = (1:binSize) + (j-1)*stepSize;
+                idx(idx<1 | idx>size(data,1)) = [];
+                if ( length(idx) >= 20 )
+                    angles = data.Angle(idx);
+                    responses = data.Response(idx);
+                    [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
+                    
+                    
+                    saveidx = floor(mean(idx) - stepSize/2 + (1:stepSize));
+                    saveidx(saveidx<1 | saveidx>size(data,1)) = [];
+                    
+                    newData.Bin100SVV(saveidx) = SVV1;
+                    newData.Bin100SVVth(saveidx) = SVVth1;
+                    newData.Bin100Start(saveidx) = min(idx);
+                    newData.Bin100End(saveidx) = max(idx);
+                    newData.Bin100Torsion(saveidx) = nanmedian(T(idx));
+                end
+            end
+            
+            
+            newDs = struct2dataset(newData);
+            
+            trialDataSet = [data newDs];
+        end
+         
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)            
+                        
+            angles = this.GetAngles();
+            angles(this.Session.trialDataSet.TrialResult>0) = [];
+            
+            respones = this.GetLeftRightResponses();
+            respones(this.Session.trialDataSet.TrialResult>0) = [];
+            
+            [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
+            
+            ds = this.Session.trialDataSet;
+            ds(ds.TrialResult>0,:) = [];
+            ds(ds.Response<0,:) = [];
+            
+            times = ds.ReactionTime;
+            
+            sessionDataTable.SVV = SVV;
+            sessionDataTable.SVVth = SVVth;
+            
+            sessionDataTable.RTmean = nanmean(times);
+            sessionDataTable.RTstd = nanstd(times);
+            sessionDataTable.RTmedian = nanmedian(times);
+        end
+    end
+    % ---------------------------------------------------------------------
+    % Plot methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
                 
@@ -808,138 +953,6 @@ T = [];
 %                 
 %             end
             
-        end
-        
-        function trialDataSet = PrepareTrialDataSet( this, ds)
-            trialDataSet = ds;
-            
-            
-            return;
-            
-            torsionFolder = 'F:\DATATEMP\SVVTorsionTMS';
-            T = nan(size(data.TimeStartTrial));
-            
-            if (length(dir(fullfile(torsionFolder,[this.Session.name  '*']))) == 1);
-                folders = dir(fullfile(torsionFolder,[this.Session.name  '*']));
-                d = GetCalibratedData(fullfile(torsionFolder,folders(1).name));
-                T = CleanTorsion(d);
-                T(T>10 | T<-10) = nan;
-
-                
-                
-                t = data.TimeStartTrial;
-                t2 = data.TimeStopTrial;
-                t2 = t2-t(1);
-                t = t-t(1);
-%                 t(101:end)= t(101:end)-t(101)+t2(100);
-%                 t2(101:end)= t2(101:end)-t(101)+t2(100);
-                
-                L = t2(end)-t(1);
-                LT = length(T);
-                t = t * LT / L;
-                t2 = t2 * LT / L;
-                
-                torsion = T;
-                T = nan(size(t));
-                for j=1:length(t)
-                    idx = t(j):t2(j);
-                    idx(idx<1) = [];
-                    idx(idx>length(torsion)) = [];
-                    T(j) = nanmedian(torsion(round(idx)));
-                end
-            end
-            
-            
-                T(T>10 | T<-10) = nan;
-            newData.Torsion = T;
-            
-            
-            
-            binSize = 30;
-            stepSize = 10;
-            
-            newData.Bin30SVV = nan(size(data,1),1);
-            newData.Bin30SVVth = nan(size(data,1),1);
-            newData.Bin30Start = nan(size(data,1),1);
-            newData.Bin30End = nan(size(data,1),1);
-            newData.Bin30Torsion = nan(size(data,1),1);
-            for j=1:ceil(size(data,1)/stepSize)
-                idx = (1:binSize) + (j-1)*stepSize;
-                idx(idx<1 | idx>size(data,1)) = [];
-                if ( length(idx) >= 20 )
-                    angles = data.Angle(idx);
-                    responses = data.Response(idx);
-                    [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
-                    
-                    saveidx = floor(mean(idx) - stepSize/2 + (1:stepSize));
-                    saveidx(saveidx<1 | saveidx>size(data,1)) = [];
-                    
-                    newData.Bin30SVV(saveidx) = SVV1;
-                    newData.Bin30SVVth(saveidx) = SVVth1;
-                    newData.Bin30Start(saveidx) = min(idx);
-                    newData.Bin30End(saveidx) = max(idx);
-                    newData.Bin30Torsion(saveidx) = nanmedian(T(idx));
-                end
-            end
-            
-            
-            binSize = 100;
-            stepSize = 10;
-            f = binSize/stepSize;
-            
-            newData.Bin100SVV = nan(size(data,1),1);
-            newData.Bin100SVVth = nan(size(data,1),1);
-            newData.Bin100Start = nan(size(data,1),1);
-            newData.Bin100End = nan(size(data,1),1);
-            newData.Bin100Torsion = nan(size(data,1),1);
-            for j=1:ceil(size(data,1)/stepSize)
-                idx = (1:binSize) + (j-1)*stepSize;
-                idx(idx<1 | idx>size(data,1)) = [];
-                if ( length(idx) >= 20 )
-                    angles = data.Angle(idx);
-                    responses = data.Response(idx);
-                    [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
-                    
-                    
-                    saveidx = floor(mean(idx) - stepSize/2 + (1:stepSize));
-                    saveidx(saveidx<1 | saveidx>size(data,1)) = [];
-                    
-                    newData.Bin100SVV(saveidx) = SVV1;
-                    newData.Bin100SVVth(saveidx) = SVVth1;
-                    newData.Bin100Start(saveidx) = min(idx);
-                    newData.Bin100End(saveidx) = max(idx);
-                    newData.Bin100Torsion(saveidx) = nanmedian(T(idx));
-                end
-            end
-            
-            
-            newDs = struct2dataset(newData);
-            
-            trialDataSet = [data newDs];
-        end
-         
-        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)            
-                        
-            angles = this.GetAngles();
-            angles(this.Session.trialDataSet.TrialResult>0) = [];
-            
-            respones = this.GetLeftRightResponses();
-            respones(this.Session.trialDataSet.TrialResult>0) = [];
-            
-            [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
-            
-            ds = this.Session.trialDataSet;
-            ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
-            
-            times = ds.ReactionTime;
-            
-            sessionDataTable.SVV = SVV;
-            sessionDataTable.SVVth = SVVth;
-            
-            sessionDataTable.RTmean = nanmean(times);
-            sessionDataTable.RTstd = nanstd(times);
-            sessionDataTable.RTmedian = nanmedian(times);
         end
     end
     
