@@ -29,6 +29,8 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
             else
                 dlg.FirstSide = { {'Left','{Right}'} };
             end
+            
+            dlg.Prisms = { {'{No}','2020Converge'} };
         end
         
         function initExperimentDesign( this  )
@@ -97,6 +99,12 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
         end
         
         function trialResult = runPreTrial(this, variables )
+            
+            % call the SVV adaptive run pre trial to set the current range
+            % and angle appropriately
+            runPreTrial@ArumeExperimentDesigns.SVV2AFCAdaptive(this);
+            
+            
             Enum = ArumeCore.ExperimentDesign.getEnum();
             % Add stuff here
             
@@ -109,7 +117,6 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
                 n = 1;
                 for i=1:length(this.Session.currentRun.pastConditions(:,1))
                     if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
-                        isdown = strcmp(this.Session.currentRun.Data{i}.variables.Position, 'Down');
                         previousValues(n) = this.Session.currentRun.Data{i}.trialOutput.Angle;
                         previousResponses(n) = this.Session.currentRun.Data{i}.trialOutput.Response;
                         n = n+1;
@@ -123,23 +130,15 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
              % Initialize bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor )
                 if ( nCorrect == this.ExperimentOptions.BaselineTrials )
-                    
-                    if ( ~isempty( this.eyeTracker ) )
-                        this.eyeTracker.StopRecording();
-                    end
-                    
+                                        
                     result = 'n';
                     while( result ~= 'y' )
                         result = this.Graph.DlgSelect( ...
-                            'Continue:', ...
+                            'Continue?', ...
                             { 'y' 'n'}, ...
                             { 'Yes'  'No'} , [],[]);
                     end
-                    
-                    if ( ~isempty( this.eyeTracker ) )
-                        this.eyeTracker.StartRecording();
-                    end
-                    
+                                        
                     [mx, my] = RectCenter(this.Graph.wRect);
                     fixRect = [0 0 10 10];
                     fixRect = CenterRectOnPointd( fixRect, mx, my );

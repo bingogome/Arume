@@ -52,9 +52,22 @@ classdef Project < handle
             % initialize the project
             this.init( path, projectName, data.defaultExperiment );
             
+            d = struct2table(dir(path));
+            d = d(d.isdir & ~strcmp(d.name,'.') & ~strcmp(d.name,'..'),:);
+            
             % load sessions
-            for session = data.sessions
-                ArumeCore.Session.LoadSession( this, session );
+            for i=1:length(d.name)
+                sessionName = d.name{i};
+                filename = fullfile( fullfile(path, sessionName), [sessionName '_ArumeSession.mat']);
+                
+                if ( exist(filename, 'file') )
+                    session = load( filename, 'sessionData' );
+                    session = session.sessionData;
+            
+                    ArumeCore.Session.LoadSession( this, session );
+                else
+                    disp(['WARNING: session ' sessionName ' could not be loaded. May be an old result of corruption.']);
+                end
             end
         end
         
@@ -82,6 +95,19 @@ classdef Project < handle
                     rmdir(fullfile(path, 'stimuli'),'s');
                 end
                 
+                
+                projectMatFile = fullfile(path, [projectName '_ArumeProject.mat']);
+                
+                % load project data
+                data = load( projectMatFile, 'data' );
+                data = data.data;
+                
+                for sessionData = data.sessions
+                    sessionName = [sessionData.experimentName '_' sessionData.subjectCode sessionData.sessionCode];
+                    filename = fullfile( fullfile(path, sessionName), [sessionName '_ArumeSession.mat']);
+                    save( filename, 'sessionData' );
+                end
+                data = rmfield(data,'sessions');
             end
         end
             
@@ -95,13 +121,10 @@ classdef Project < handle
             data = [];
             data.defaultExperiment = this.defaultExperiment; 
             
-            data.sessions = [];
             for session = this.sessions
-                if isempty( data.sessions )   
-                    data.sessions = session.save();
-                else
-                    data.sessions(end+1) = session.save();
-                end
+                sessionData = session.save();
+                filename = fullfile( session.dataPath, [session.name '_ArumeSession.mat']);
+                save( filename, 'sessionData' );
             end
             
             % Save the data structure
@@ -225,33 +248,14 @@ classdef Project < handle
                     session=this.sessions(isess);
                     % if this is one of the sessions we want
                     if ( any(categorical(subjectSelection) == session.subjectCode) && any(categorical(sessionSelection)==session.sessionCode))
-                        if ( isempty(dataTable) )
+                        if ( isempty(dataTable) && ~isempty(session.sessionDataTable))
                             dataTable = session.sessionDataTable;
-                        else
-%                             t1 = dataTable;
-%                             t2 = session.sessionDataTable;
-%                             if ( ~isempty(t2) )
-%                                 t1colmissing = setdiff(t2.Properties.VariableNames, t1.Properties.VariableNames);
-%                                 t2colmissing = setdiff(t1.Properties.VariableNames, t2.Properties.VariableNames);
-%                                 t1 = [t1 array2table(nan(height(t1), numel(t1colmissing)), 'VariableNames', t1colmissing)];
-%                                 t2 = [t2 array2table(nan(height(t2), numel(t2colmissing)), 'VariableNames', t2colmissing)];
-%                                 for colname = t1colmissing
-%                                     if iscell(t2.(colname{1}))
-%                                         t1.(colname{1}) = cell(height(t1), 1);
-%                                     end
-%                                 end
-%                                 for colname = t2colmissing
-%                                     if iscell(t1.(colname{1}))
-%                                         t2.(colname{1}) = cell(height(t2), 1);
-%                                     end
-%                                 end
-%                                 dataTable = [t1; t2]
-%                             end
-
-                            dataTable = [dataTable;session.sessionDataTable]
+                        elseif ( ~isempty(session.sessionDataTable))
+                            dataTable = [dataTable;session.sessionDataTable];
                         end
                     end
                 end
+                dataTable
         end
     end
     
