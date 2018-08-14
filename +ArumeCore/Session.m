@@ -199,7 +199,7 @@ classdef Session < ArumeCore.DataDB
             this.WriteVariable(samplesDataSet,'samplesDataSet');
         end
         
-        function importSampleData(this, sampleDataSet)
+        function importSampleData(this, samplesDataSet)
             this.WriteVariable(samplesDataSet,'samplesDataSet');
         end
         
