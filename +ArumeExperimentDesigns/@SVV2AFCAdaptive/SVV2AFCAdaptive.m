@@ -55,19 +55,16 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             Enum = ArumeCore.ExperimentDesign.getEnum();
             % Add stuff here
             
-            if ( ~isempty( this.Session.currentRun ) )
-                nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
-                
-                previousValues = zeros(nCorrect,1);
-                previousResponses = zeros(nCorrect,1);
-                
-                n = 1;
-                for i=1:length(this.Session.currentRun.pastConditions(:,1))
-                    if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
-                        previousValues(n) = this.Session.currentRun.Data{i}.trialOutput.Angle;
-                        previousResponses(n) = this.Session.currentRun.Data{i}.trialOutput.Response;
-                        n = n+1;
-                    end
+            nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
+            previousValues = zeros(nCorrect,1);
+            previousResponses = zeros(nCorrect,1);
+            
+            n = 1;
+            for i=1:length(this.Session.currentRun.pastConditions(:,1))
+                if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
+                    previousValues(n) = this.Session.currentRun.Data{i}.trialOutput.Angle;
+                    previousResponses(n) = this.Session.currentRun.Data{i}.trialOutput.Response;
+                    n = n+1;
                 end
             end
             

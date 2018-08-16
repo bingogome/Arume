@@ -403,9 +403,6 @@ classdef ExperimentDesign < handle
                                 end
                             end
                             
-                            if ( exist( 'data', 'var') )
-                                this.Session.currentRun.Data{end+1} = data;
-                            end
                             
                             % -- Update pastcondition list
                             n = size(this.Session.currentRun.pastConditions,1)+1;
@@ -414,6 +411,10 @@ classdef ExperimentDesign < handle
                             this.Session.currentRun.pastConditions(n, Enum.pastConditions.blocknumber)  = this.Session.currentRun.futureConditions(1,Enum.futureConditions.blocknumber);
                             this.Session.currentRun.pastConditions(n, Enum.pastConditions.blockid)      = this.Session.currentRun.futureConditions(1, Enum.futureConditions.blockid);
                             this.Session.currentRun.pastConditions(n, Enum.pastConditions.session)      = this.Session.currentRun.CurrentSession;
+                            
+                            if ( exist( 'data', 'var') )
+                                this.Session.currentRun.Data{n} = data;
+                            end
                             
                             if ( trialResult == Enum.trialResult.CORRECT )
                                 %-- remove the condition that has just run from the future conditions list

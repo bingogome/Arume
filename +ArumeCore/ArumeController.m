@@ -289,21 +289,6 @@ classdef ArumeController < handle
             this.currentProject.save();
         end
         
-        function copySelectedSessionsToDifferentProject(this, newProjectFile)
-            if ( ~exist( newProjectFile, 'file') )
-                msgbox( 'The project file does not exist.');
-                return;
-            end
-            
-            secondProject = ArumeCore.Project.LoadProject( newProjectFile, [this.configuration.tempFolder '2'] );
-                      
-            for i =1:length(this.selectedSessions)
-                ArumeCore.Session.CopySessionToDifferentProject( this.selectedSessions(i), secondProject, this.selectedSessions(i).subjectCode, this.selectedSessions(i).sessionCode);
-            end
-            
-            secondProject.save();
-        end
-        
         function deleteSelectedSessions( this )
             % Deletes the current session
             sessions = this.selectedSessions;

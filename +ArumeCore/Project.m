@@ -74,6 +74,7 @@ classdef Project < handle
         function updateFileStructure(this, path, projectName)
             
             if ( exist(fullfile(path, 'project.mat'),'file') )
+                disp('Updated file structure to new version of Arume ...');
                 movefile(fullfile(path, 'project.mat'), fullfile(path, [projectName '_ArumeProject.mat']),'f');
                 movefile(fullfile(fullfile(path,'dataAnalysis'),'*'), path,'f');
                 movefile(fullfile(fullfile(path,'dataRaw'),'*'), path,'f');
@@ -108,11 +109,14 @@ classdef Project < handle
                     save( filename, 'sessionData' );
                 end
                 data = rmfield(data,'sessions');
+                % TODO: maybe save the updated data without sessions.
+                
+                disp('... Done updating file structure.');
             end
         end
             
         %
-        % Save project object to file
+        % Save project
         %   
         function save( this )
             % for safer storage do not save the actual matlab Project
@@ -208,26 +212,6 @@ classdef Project < handle
             this.sessions = this.sessions(i);
         end
         
-        function mergeProject(this, projectPath)
-            p2 = ArumeCore.Project.LoadProject(projectPath);
-            
-            for session = p2.sessions
-                repeated = false;
-                for session1 = this.sessions
-                    if ( strcmp( session.name, session1.name) )
-                        repeated = true;
-                    end
-                end
-                
-                if ( ~repeated)
-                    d = session.save();
-                    s = ArumeCore.Session.LoadSession(this,d);
-                    this.addSession(s);
-                end
-            end
-        
-        end
-        
         %
         % Analysis methods
         % 
@@ -312,7 +296,7 @@ classdef Project < handle
         % Other methods
         %
         function result = IsValidProjectName( name )
-            result = 1;
+            result = ~isempty(regexp(name,'^[_a-zA-Z0-9]+$','ONCE') );
         end
     end
 end

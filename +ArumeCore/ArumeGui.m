@@ -57,11 +57,6 @@ classdef ArumeGui < handle
         sessionContextMenuRenameSubjects
         sessionContextMenuDelete
         sessionContextMenuCopy
-        sessionContextMenuCopyTo
-        
-        % Analysis Contextual menu
-        analysisContextMenu
-        analysisContextMenuSendToWorkspace
     end
     
     %% Constructor
@@ -118,7 +113,7 @@ classdef ArumeGui < handle
             
             this.bottomPanel = uipanel ( ...
                 'Parent'    , this.figureHandle,... 
-                'Title'     , '',...
+                'Title'     , 'Session notes',...
                 'BorderType', 'none',...
                 'Units'     , 'Pixels' );
                             
@@ -276,9 +271,6 @@ classdef ArumeGui < handle
             this.sessionContextMenuEditSettings = uimenu(this.sessionContextMenu, ...
                 'Label'     , 'Edit settings ...', ...
                 'Callback'  , @this.EditSessionSettings);
-            this.sessionContextMenuCopyTo = uimenu(this.sessionContextMenu, ...
-                'Label'     , 'Copy session to different project ...', ...
-                'Callback'  , @this.CopySessionsTo);
             set(this.sessionListBox, 'uicontextmenu', this.sessionContextMenu)
             
             
@@ -343,13 +335,23 @@ classdef ArumeGui < handle
             
         function newProject(this, source, eventdata )
             if ( this.closeProjectQuestdlg() )
-                sDlg.Path = { {['uigetdir(''' this.arumeController.defaultDataFolder ''')']} };
-                sDlg.Name = 'ProjectName';
-                sDlg.Default_Experiment = {this.arumeController.possibleExperiments};
-
-                P = StructDlg(sDlg, 'New project');
-                if ( isempty( P ) )
-                    return
+                while(1)
+                    
+                    sDlg.Path = { {['uigetdir(''' this.arumeController.defaultDataFolder ''')']} };
+                    sDlg.Name = 'ProjectName';
+                    sDlg.Default_Experiment = {this.arumeController.possibleExperiments};
+                    
+                    P = StructDlg(sDlg, 'New project');
+                    if ( isempty( P ) )
+                        return
+                    end
+                    
+                    if ( isempty(regexp(P.Name,'^[_a-zA-Z0-9]+$','ONCE') ))
+                        uiwait(msgbox('The project name is not valid (no spaces or special signs)', 'Error', 'Modal'));
+                        continue;
+                    end
+                    
+                    break;
                 end
                 
                 if ( ~isempty( this.arumeController.currentProject ) )
@@ -628,29 +630,6 @@ classdef ArumeGui < handle
             
              this.arumeController.copySelectedSessions(newSubjectCodes, newSessionCodes);
              this.updateGui();
-        end
-        
-        function CopySessionsTo( this, source, eventdata )
-            
-            sessions = this.arumeController.selectedSessions;
-            
-            
-            h=waitbar(0,'Please wait..');
-            
-            [filename, pathname] = uigetfile([this.arumeController.defaultDataFolder '/*.aruprj'], 'Pick a project file');
-            if ( ~filename  )
-                close(h)
-                return
-            end
-            
-            waitbar(1/2)
-            this.arumeController.copySelectedSessionsToDifferentProject(fullfile(pathname, filename));
-            waitbar(2/2)
-            this.updateGui();
-            
-            close(h)
-            
-            this.updateGui();
         end
         
         function DeleteSessions( this, source, eventdata )
