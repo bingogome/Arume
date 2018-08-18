@@ -10,12 +10,11 @@ classdef ExperimentRun < matlab.mixin.Copyable
         
         Info
         
-        pastConditions
-        futureConditions
-        originalFutureConditions
+        pastTrialTable
+        futureTrialTable
+        originalFutureTrialTable
         
         Events
-        Data
         LinkedFiles
         
         SessionsToRun
@@ -29,19 +28,13 @@ classdef ExperimentRun < matlab.mixin.Copyable
             
             trialsPerSession = this.ExperimentDesign.trialsPerSession;
             
-            if ( ~isempty(this.pastConditions) )
-                cond = this.pastConditions(:,Enum.pastConditions.condition);
-                res = this.pastConditions(:,Enum.pastConditions.trialResult);
-                blockn = this.pastConditions(:,Enum.pastConditions.blocknumber);
-                blockid = this.pastConditions(:,Enum.pastConditions.blockid);
-                sess = this.pastConditions(:,Enum.pastConditions.session);
-                
-                stats.trialsCorrect = sum( res == Enum.trialResult.CORRECT );
-                stats.trialsAbort   =  sum( res ~= Enum.trialResult.CORRECT );
-                stats.totalTrials   = length(cond);
-                stats.sessionTrialsCorrect = sum( res == Enum.trialResult.CORRECT & sess == this.CurrentSession );
-                stats.sessionTrialsAbort   =  sum( res ~= Enum.trialResult.CORRECT & sess == this.CurrentSession );
-                stats.sessionTotalTrials   = length(cond & sess == this.CurrentSession );
+            if ( ~isempty(this.pastTrialTable) )
+                stats.trialsCorrect = sum( this.pastTrialTable.TrialResult == Enum.trialResult.CORRECT );
+                stats.trialsAbort   =  sum( this.pastTrialTable.TrialResult ~= Enum.trialResult.CORRECT );
+                stats.totalTrials   = height(this.pastTrialTable);
+                stats.sessionTrialsCorrect = sum( this.pastTrialTable.TrialResult == Enum.trialResult.CORRECT & this.pastTrialTable.Session == this.CurrentSession );
+                stats.sessionTrialsAbort   =  sum( this.pastTrialTable.TrialResult ~= Enum.trialResult.CORRECT & this.pastTrialTable.Session == this.CurrentSession );
+                stats.sessionTotalTrials   = length(this.pastTrialTable.Condition & this.pastTrialTable.Session == this.CurrentSession );
             else
                 stats.trialsCorrect = 0;
                 stats.trialsAbort   =  0;
@@ -53,12 +46,12 @@ classdef ExperimentRun < matlab.mixin.Copyable
             
             stats.currentSession = this.CurrentSession;
             stats.SessionsToRun = this.SessionsToRun;
-            stats.trialsInExperiment = size(this.originalFutureConditions,1);
+            stats.trialsInExperiment = size(this.originalFutureTrialTable,1);
             
-            if ( ~isempty(this.futureConditions) )
-                futcond = this.futureConditions(:,Enum.futureConditions.condition);
-                futblockn = this.futureConditions(:,Enum.futureConditions.blocknumber);
-                futblockid = this.futureConditions(:,Enum.futureConditions.blockid);
+            if ( ~isempty(this.futureTrialTable) )
+                futcond = this.futureTrialTable.Condition;
+                futblockn = this.futureTrialTable.BlockNumber;
+                futblockid = this.futureTrialTable.BlockSequenceNumber;
                 stats.currentBlock = futblockn(1);
                 stats.currentBlockID = futblockid(1);
                 stats.blocksFinished = futblockn(1)-1;
@@ -94,10 +87,9 @@ classdef ExperimentRun < matlab.mixin.Copyable
             newRun.Info.globalStream   = RandStream.getGlobalStream;
             newRun.Info.stateRandStream     = newRun.Info.globalStream.State;
             
-            newRun.pastConditions   = []; % conditions already run, including aborts
-            newRun.futureConditions = []; % conditions left for running (the whole list is created a priori)
+            newRun.pastTrialTable   = []; % conditions already run, including aborts
+            newRun.futureTrialTable = []; % conditions left for running (the whole list is created a priori)
             newRun.Events           = [];
-            newRun.Data             = [];
             newRun.LinkedFiles      = [];
             
             % generate the sequence of blocks, a total of
@@ -129,7 +121,7 @@ classdef ExperimentRun < matlab.mixin.Copyable
             end
             blockSequence = repmat( blockSequence,1,experimentDesign.numberOfTimesRepeatBlockSequence);
             
-            newRun.futureConditions = [];
+            futureConditions = [];
             for iblock=1:length(blockSequence)
                 i = blockSequence(iblock);
                 possibleConditions = experimentDesign.blocks(i).fromCondition : experimentDesign.blocks(i).toCondition; % the possible conditions to select from in this block
@@ -146,14 +138,29 @@ classdef ExperimentRun < matlab.mixin.Copyable
                     case 'Random with repetition'
                         trialSequence = possibleConditions( ceil( rand(1,nTrials) * nConditions ) ); % nTrialss numbers between 1 and nConditions
                 end
-                newRun.futureConditions = cat(1,newRun.futureConditions, [trialSequence' ones(size(trialSequence'))*iblock  ones(size(trialSequence'))*i] );
+                futureConditions = cat(1,futureConditions, [trialSequence' ones(size(trialSequence'))*iblock  ones(size(trialSequence'))*i] );
             end
             
-            newRun.pastConditions = zeros(0,5);
-            newRun.SessionsToRun    = ceil(size(newRun.futureConditions,1) / experimentDesign.trialsPerSession);
-            newRun.originalFutureConditions = newRun.futureConditions;
+            newRun.pastTrialTable = [];
+            newRun.SessionsToRun  = ceil(size(futureConditions,1) / experimentDesign.trialsPerSession);
             
             newRun.CurrentSession = 1;
+            
+            f2 = table();
+            f2.TrialNumber = (1:length(futureConditions(:,1)))';
+            f2.Condition = futureConditions(:,1);
+            f2.BlockNumber = futureConditions(:,2);
+            f2.BlockSequenceNumber = futureConditions(:,3);
+            
+            t2 = table();
+            for i=1:height(f2)
+                vars = experimentDesign.getVariablesCurrentCondition( f2.Condition(i) );
+                t2 = cat(1,t2,struct2table(vars,'AsArray',true));
+            end
+            
+            newRun.futureTrialTable = [f2 t2];
+            newRun.originalFutureTrialTable = newRun.futureTrialTable;
+
         end
         
         function run = LoadRunData( data, experiment )
@@ -165,12 +172,11 @@ classdef ExperimentRun < matlab.mixin.Copyable
             
             run.Info = data.Info;
             
-            run.pastConditions = data.pastConditions;
-            run.futureConditions = data.futureConditions;
-            run.originalFutureConditions = data.originalFutureConditions;
+            run.pastTrialTable = data.pastTrialTable;
+            run.futureTrialTable = data.futureTrialTable;
+            run.originalFutureTrialTable = data.originalFutureTrialTable;
             
             run.Events = data.Events;
-            run.Data = data.Data;
             if ( isfield( data, 'LinkedFiles' ) )
                 run.LinkedFiles = data.LinkedFiles;
             else
@@ -196,12 +202,11 @@ classdef ExperimentRun < matlab.mixin.Copyable
             
             runData.Info = run.Info;
             
-            runData.pastConditions = run.pastConditions;
-            runData.futureConditions = run.futureConditions;
-            runData.originalFutureConditions = run.originalFutureConditions;
+            runData.pastTrialTable = run.pastTrialTable;
+            runData.futureTrialTable = run.futureTrialTable;
+            runData.originalFutureTrialTable = run.originalFutureTrialTable;
             
             runData.Events = run.Events;
-            runData.Data = run.Data;
             runData.LinkedFiles = run.LinkedFiles;
             
             runData.SessionsToRun = run.SessionsToRun;

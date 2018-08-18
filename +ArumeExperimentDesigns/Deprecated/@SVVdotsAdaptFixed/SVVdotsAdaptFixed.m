@@ -336,15 +336,6 @@ classdef SVVdotsAdaptFixed < ArumeExperimentDesigns.SVV2AFC
         end
         
         function trialOutput = runPostTrial(this)
-            
-            
-            if ( ~isempty( this.eyeTracker ) )
-                
-                if ( length(this.Session.CurrentRun.futureConditions) == 0 )
-                    this.eyeTracker.StopRecording();
-                end
-            end
-            
             trialOutput = [];
             trialOutput.Response = this.lastResponse;
             trialOutput.ReactionTime = this.reactionTime;

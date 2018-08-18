@@ -431,11 +431,11 @@ classdef ArumeGui < handle
         function saveProjectBackup(this, source, eventdata )
             
             [filename, pathname] = uiputfile([this.arumeController.defaultDataFolder '/*.zip'], 'Pick a project backup');
-            if ( ~isempty(filename) )
+            if ( isempty(filename) )
                 return
             end
             
-            backupFile = filename(pathname, filename);
+            backupFile = fullfile(pathname, filename);
             
             h=waitbar(0,'Please wait..');
             waitbar(1/2)

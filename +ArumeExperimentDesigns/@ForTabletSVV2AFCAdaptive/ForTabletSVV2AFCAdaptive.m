@@ -49,20 +49,10 @@ classdef ForTabletSVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                 
             end
             
-            % Initialize eyetracker
-            if ( this.ExperimentOptions.UseEyeTracker )
-                
-                this.eyeTracker = ArumeHardware.VOG();
-                this.eyeTracker.Connect();
-                
-                this.eyeTracker.SetSessionName(this.Session.name);
-                this.eyeTracker.StartRecording();
-            end
-            
             % Initialize bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor && this.ExperimentOptions.TiltHeadAtBegining )
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
-                if ( length(this.Session.currentRun.pastConditions) == 0 )
+                if ( isempty(this.Session.currentRun.pastTrialTable) )
                     this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
                     disp('30 s pause');
                     pause(30);
@@ -80,16 +70,7 @@ classdef ForTabletSVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             % ose gamepad
             if ( this.ExperimentOptions.UseGamePad )
             end
-            
-            % Close eyetracker
-            if ( this.ExperimentOptions.UseEyeTracker )
-                if ( ~isempty(this.eyeTracker))
-                    if ( this.eyeTracker.IsRecording)
-                        this.eyeTracker.StopRecording();
-                    end
-                end
-            end
-            
+                        
             % Close bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor ~= 0 )
                 if ( ~isempty(this.biteBarMotor))
@@ -129,69 +110,8 @@ classdef ForTabletSVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             Enum = ArumeCore.ExperimentDesign.getEnum();
             % Add stuff here
             
-            if ( ~isempty( this.Session.currentRun ) )
-                nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
-                
-                previousValues = zeros(nCorrect,1);
-                previousResponses = zeros(nCorrect,1);
-                
-                n = 1;
-                for i=1:length(this.Session.currentRun.pastConditions(:,1))
-                    if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
-                        previousValues(n) = this.Session.currentRun.Data{i}.trialOutput.Angle;
-                        previousResponses(n) = this.Session.currentRun.Data{i}.trialOutput.Response;
-                        n = n+1;
-                    end
-                end
-            end
-            
-            NtrialPerBlock = 10;
-            
-            % recalculate every 10 trials
-            N = mod(length(previousValues),NtrialPerBlock);
-            Nblocks = floor(length(previousValues)/NtrialPerBlock)*NtrialPerBlock+1;
-            
-            if ( length(previousValues)>0 )
-                if ( N == 0 )
-                    ds = dataset;
-                    ds.Response = previousResponses(1:end);
-                    ds.Angle = previousValues(1:end);
-                    modelspec = 'Response ~ Angle';
-                    subds = ds;
-                    
-                    SVV = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-
-                    % Limit the center of the new range to the extremes of
-                    % the past range of angles
-                    if ( SVV > max(ds.Angle) )
-                        SVV = max(ds.Angle);
-                    elseif( SVV < min(ds.Angle))
-                        SVV = min(ds.Angle);
-                    end
-                    
-                    this.currentCenterRange = SVV + this.ExperimentOptions.offset;            
-
-                    this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
-                end
-            else
-                this.currentCenterRange = rand(1)*30-15;
-                this.currentRange = 90;
-            end
-            
-            this.currentAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
-            this.currentAngle = mod(this.currentAngle+90,180)-90;
-            
-            this.currentAngle = round(this.currentAngle);
-            
-            disp(['CURRENT: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(N) ' SVV : ' num2str(this.currentCenterRange) ' RANGE: ' num2str(this.currentRange)]);
-            
-            if ( ~isempty(this.eyeTracker) )
-                if ( ~this.eyeTracker.IsRecording())
-                    this.eyeTracker.StartRecording();
-                    pause(1);
-                end
-                this.eyeTracker.RecordEvent(num2str(size(this.Session.currentRun.pastConditions,1)));
-            end
+            correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  Enum.trialResult.CORRECT ,:);            
+            this.updateRange(variables, correctTrialsTable.Angle, correctTrialsTable.Response);
             
             trialResult =  Enum.trialResult.CORRECT;
         end
@@ -335,15 +255,6 @@ classdef ForTabletSVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
         end
         
         function trialOutput = runPostTrial(this)
-            
-            
-            if ( ~isempty( this.eyeTracker ) )
-                
-                if ( length(this.Session.currentRun.futureConditions) == 0 )
-                    this.eyeTracker.StopRecording();
-                end
-            end
-            
             trialOutput = [];
             trialOutput.Response = this.lastResponse;
             trialOutput.ReactionTime = this.reactionTime;

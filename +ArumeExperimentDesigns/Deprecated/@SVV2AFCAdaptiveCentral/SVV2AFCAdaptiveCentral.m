@@ -135,9 +135,6 @@ classdef SVV2AFCAdaptiveCentral < ArumeExperimentDesigns.SVV2AFCAdaptive
                     
                 end
             catch ex
-                if ( ~isempty( this.eyeTracker ) )
-                    this.eyeTracker.StopRecording();
-                end
                 rethrow(ex)
             end
             
@@ -149,14 +146,6 @@ classdef SVV2AFCAdaptiveCentral < ArumeExperimentDesigns.SVV2AFCAdaptive
         end
         
         function trialOutput = runPostTrial(this)
-            
-            
-            if ( ~isempty( this.eyeTracker ) )
-                
-                if ( length(this.Session.currentRun.futureConditions) == 0 )
-                    this.eyeTracker.StopRecording();
-                end
-            end
             
             trialOutput = [];
             trialOutput.Response = this.lastResponse;
