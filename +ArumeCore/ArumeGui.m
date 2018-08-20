@@ -324,9 +324,11 @@ classdef ArumeGui < handle
         
         function menuFileCallback( this, source, eventdata )
             
+            % Clean up and refill the recent projects menu
+            
             delete(get(this.menuFileLoadRecentProject,'children'));
             
-            for i=1:length(this.arumeController.recentProjects) % Add recent projects
+            for i=1:length(this.arumeController.recentProjects)
                 uimenu(this.menuFileLoadRecentProject, ...
                 'Label'     , this.arumeController.recentProjects{i}, ...
                 'Callback'  , @this.loadProject);
@@ -335,10 +337,14 @@ classdef ArumeGui < handle
             
         function newProject(this, source, eventdata )
             if ( this.closeProjectQuestdlg() )
+               
+                P.Path = this.arumeController.defaultDataFolder;
+                P.Name = 'ProjectName';
+                
                 while(1)
                     
-                    sDlg.Path = { {['uigetdir(''' this.arumeController.defaultDataFolder ''')']} };
-                    sDlg.Name = 'ProjectName';
+                    sDlg.Path = { {['uigetdir(''' P.Path ''')']} };
+                    sDlg.Name = P.Name;
                     sDlg.Default_Experiment = {this.arumeController.possibleExperiments};
                     
                     P = StructDlg(sDlg, 'New project');
@@ -346,8 +352,18 @@ classdef ArumeGui < handle
                         return
                     end
                     
-                    if ( isempty(regexp(P.Name,'^[_a-zA-Z0-9]+$','ONCE') ))
+                    if ( ~exist( P.Path, 'dir' ) )
+                        uiwait(msgbox('The folder selected does not exist', 'Error', 'Modal'));
+                        continue;
+                    end
+                    
+                    if ( ArumeCore.Project.IsValidProjectName(P.Name) )
                         uiwait(msgbox('The project name is not valid (no spaces or special signs)', 'Error', 'Modal'));
+                        continue;
+                    end
+                    
+                    if ( exist( fullfile(P.Path, P.Name), 'dir') )
+                        uiwait(msgbox('There is already a project with that name in that folder.', 'Error', 'Modal'));
                         continue;
                     end
                     
