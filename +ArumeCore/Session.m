@@ -120,30 +120,30 @@ classdef Session < ArumeCore.DataDB
         %
         % INIT METHODS
         %
-        function init( this, sessionPath, experimentName, subjectCode, sessionCode, experimentOptions )
-            this.dataPath    = sessionPath;
+        function init( this, projectPath, experimentName, subjectCode, sessionCode, experimentOptions )
             this.subjectCode    = subjectCode;
             this.sessionCode    = sessionCode;
             
             this.experiment = ArumeCore.ExperimentDesign.Create( this, experimentName );
             this.experiment.init(this, experimentOptions);
+            this.dataPath  = fullfile(projectPath, this.name);
             
             % to create stand alone sessions that do not belong to a
             % project and don't save data
-            if ( ~isempty( sessionPath ) ) 
-                this.InitDB( sessionPath );
+            if ( ~isempty( projectPath ) ) 
+                this.InitDB( projectPath, this.name );
             end
         end
         
         function initExisting( this, sessionPath )
              
-            [~,sessionName] = fileparts(sessionPath);
+            [projectPath,sessionName] = fileparts(sessionPath);
             filename = fullfile( sessionPath, [sessionName '_ArumeSession.mat']);
             
             sessionData = load( filename, 'sessionData' );
             data = sessionData.sessionData;          
             
-            this.init( sessionPath, data.experimentName, data.subjectCode, data.sessionCode, data.experimentOptions );
+            this.init( projectPath, data.experimentName, data.subjectCode, data.sessionCode, data.experimentOptions );
             
             if (isfield(data, 'currentRun') && ~isempty( data.currentRun ))
                 this.currentRun  = ArumeCore.ExperimentRun.LoadRunData( data.currentRun, this.experiment );
@@ -354,39 +354,47 @@ classdef Session < ArumeCore.DataDB
                 
         function newSessionDataTable = GetBasicSessionDataTable(this)
             
-            newSessionDataTable = table();
-            newSessionDataTable.Subject = categorical(cellstr(this.subjectCode));
-            newSessionDataTable.SessionCode = categorical(cellstr(this.sessionCode));
-            newSessionDataTable.Experiment = categorical(cellstr(this.experiment.Name));
-            
-            NoYes = {'No' 'Yes'};
-            newSessionDataTable.Started = NoYes{this.isStarted+1};
-            newSessionDataTable.Finished = NoYes{this.isFinished+1};
-            if (~isempty(this.currentRun) && ~isempty(this.currentRun.pastTrialTable))
-                newSessionDataTable.TimeFirstTrial = this.currentRun.pastTrialTable.DateTimeTrialStart(1,:);
-                newSessionDataTable.TimeLastTrial = this.currentRun.pastTrialTable.DateTimeTrialStart(end,:);
-            else
-                newSessionDataTable.TimeLastTrial = '-';
-                newSessionDataTable.TimeFirstTrial = '-';
-            end
-            if (~isempty(this.currentRun))
-                newSessionDataTable.NumberOfTrialsCompleted = 0;
-                newSessionDataTable.NumberOfTrialsAborted = 0;
-                newSessionDataTable.NumberOfTrialsPending = 0;
+            try 
+                newSessionDataTable = table();
+                newSessionDataTable.Subject = categorical(cellstr(this.subjectCode));
+                newSessionDataTable.SessionCode = categorical(cellstr(this.sessionCode));
+                newSessionDataTable.Experiment = categorical(cellstr(this.experiment.Name));
                 
-                if ( ~isempty(this.currentRun.pastTrialTable) )
-                    newSessionDataTable.NumberOfTrialsCompleted = sum(this.currentRun.pastTrialTable.TrialResult == 0);
-                    newSessionDataTable.NumberOfTrialsAborted   = sum(this.currentRun.pastTrialTable.TrialResult ~= 0);
+                NoYes = {'No' 'Yes'};
+                newSessionDataTable.Started = categorical(NoYes(this.isStarted+1));
+                newSessionDataTable.Finished = categorical(NoYes(this.isFinished+1));
+                if (~isempty(this.currentRun) && ~isempty(this.currentRun.pastTrialTable) && any(strcmp(this.currentRun.pastTrialTable.Properties.VariableNames,'DateTimeTrialStart')))
+                    newSessionDataTable.TimeFirstTrial = this.currentRun.pastTrialTable.DateTimeTrialStart(1,:);
+                    newSessionDataTable.TimeLastTrial = this.currentRun.pastTrialTable.DateTimeTrialStart(end,:);
+                else
+                    newSessionDataTable.TimeLastTrial = '-';
+                    newSessionDataTable.TimeFirstTrial = '-';
+                end
+                if (~isempty(this.currentRun))
+                    newSessionDataTable.NumberOfTrialsCompleted = 0;
+                    newSessionDataTable.NumberOfTrialsAborted = 0;
+                    newSessionDataTable.NumberOfTrialsPending = 0;
+                    
+                    if ( ~isempty(this.currentRun.pastTrialTable) )
+                        newSessionDataTable.NumberOfTrialsCompleted = sum(this.currentRun.pastTrialTable.TrialResult == 0);
+                        newSessionDataTable.NumberOfTrialsAborted   = sum(this.currentRun.pastTrialTable.TrialResult ~= 0);
+                    end
+                    
+                    if ( ~isempty(this.currentRun.futureTrialTable) )
+                        newSessionDataTable.NumberOfTrialsPending   = height(this.currentRun.futureTrialTable);
+                    end
                 end
                 
-                if ( ~isempty(this.currentRun.futureTrialTable) )
-                    newSessionDataTable.NumberOfTrialsPending   = height(this.currentRun.futureTrialTable);
+                opts = fieldnames(this.experiment.ExperimentOptions);
+                for i=1:length(opts)
+                    if ( ~ischar( this.experiment.ExperimentOptions.(opts{i})) )
+                        newSessionDataTable.(['Option_' opts{i}]) = this.experiment.ExperimentOptions.(opts{i});
+                    else
+                        newSessionDataTable.(['Option_' opts{i}]) = categorical(cellstr(this.experiment.ExperimentOptions.(opts{i})));
+                    end
                 end
-            end
-            
-            opts = fieldnames(this.experiment.ExperimentOptions);
-            for i=1:length(opts)
-                newSessionDataTable.(['Option_' opts{i}]) = this.experiment.ExperimentOptions.(opts{i});
+            catch ex
+                ex.getReport
             end
         end
     end

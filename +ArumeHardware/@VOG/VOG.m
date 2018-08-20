@@ -53,9 +53,10 @@ classdef VOG  < handle
             end
         end
         
-        function RecordEvent(this, message)
+        function frameNumber = RecordEvent(this, message)
+            frameNumber = [];
             if ( ~isempty( this.eyeTracker) )
-                this.eyeTracker.RecordEvent([num2str(GetSecs) ' ' message]);
+                frameNumber = this.eyeTracker.RecordEvent([num2str(GetSecs) ' ' message]);
             end
         end
         

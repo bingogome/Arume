@@ -36,6 +36,8 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 this.eyeTracker.Connect();
                 this.eyeTracker.SetSessionName(this.Session.name);
                 this.eyeTracker.StartRecording();
+                this.AddTrialStartCallback(@this.TrialStartCallback)
+                this.AddTrialStopCallback(@this.TrialStopCallBack)
             end
         end
         
@@ -44,18 +46,29 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             if ( this.ExperimentOptions.UseEyeTracker )
                 this.eyeTracker.StopRecording();
         
-                disp('Downloading files...');
+                disp('Downloading eye tracking files...');
                 files = this.eyeTracker.DownloadFile();
                 
                 disp(files{1});
                 disp(files{2});
-                disp(files{3});
+                if (length(files) > 2 )
+                    disp(files{3});
+                end
                 disp('Finished downloading');
                 
                 this.Session.addFile('vogDataFile', files{1});
                 this.Session.addFile('vogCalibrationFile', files{2});
-                this.Session.addFile('vogEventsFile', files{3});
+                if (length(files) > 2 )
+                    this.Session.addFile('vogEventsFile', files{3});
+                end
             end
+        end
+        
+        function variables = TrialStartCallback(this, variables)
+            variables.EyeTrackerFrameNumberTrialStart = this.eyeTracker.RecordEvent(sprintf('TRIAL_START %d %d %d', variables.TrialAttempt, variables.TrialNumber, variables.Condition) );
+        end
+        function variables = TrialStopCallBack(this, variables)
+            variables.EyeTrackerFrameNumberTrialStop = this.eyeTracker.RecordEvent(sprintf('TRIAL_STOP %d %d %d', variables.TrialAttempt, variables.TrialNumber, variables.Condition) );
         end
         
     end
@@ -65,6 +78,10 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         %% ImportSession
         function ImportSession( this )
             newRun = ArumeCore.ExperimentRun.SetUpNewRun( this );
+            vars = newRun.futureTrialTable;
+            vars.TrialResult = 0;
+            newRun.AddPastTrialData(vars)
+            newRun.futureTrialTable(:,:) = [];
             this.Session.importCurrentRun(newRun);
             
             

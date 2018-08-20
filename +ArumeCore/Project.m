@@ -198,7 +198,40 @@ classdef Project < handle
                         if ( isempty(dataTable) && ~isempty(session.sessionDataTable))
                             dataTable = session.sessionDataTable;
                         elseif ( ~isempty(session.sessionDataTable))
-                            dataTable = [dataTable;session.sessionDataTable];
+                            t1 = dataTable;
+                            t2 = session.sessionDataTable;
+                            t1colmissing = setdiff(t2.Properties.VariableNames, t1.Properties.VariableNames);
+                            t2colmissing = setdiff(t1.Properties.VariableNames, t2.Properties.VariableNames);
+                            t1andt2 = intersect(t2.Properties.VariableNames, t1.Properties.VariableNames);
+                            % first concatenate the common columns
+                            t = [t1(:,t1andt2);t2(:,t1andt2)];
+                            % then add to the unique columns of t1 missing
+                            % rows for each element of t2
+                            t12 = t1(:,t2colmissing);
+                            t12{height(t1)+(1:height(t2)),:} = missing;
+                            % then add to the unique columns of t2 missing
+                            % rows for each element of t1
+                            t21 = t2(:,t1colmissing);
+                            t21{height(t2)+(1:height(t1)),:} = missing;
+                            % move the values up so the rows match
+                            t21 = [t21(height(t2)+1:end,:);t21(1:height(t2),:)];
+                            
+                            % concatenate the 3 tables
+                            if ( ~isempty( t) && ~isempty( t12) && ~isempty( t21) ) 
+                                dataTable = [t t12 t21];
+                            elseif ( ~isempty( t) && ~isempty( t12) && isempty( t21) ) 
+                                dataTable = [t t12];
+                            elseif ( ~isempty( t) && isempty( t12) && ~isempty( t21) )  
+                                dataTable = [t t21];
+                            elseif ( isempty( t) && ~isempty( t12) && ~isempty( t21) )  
+                                dataTable = [t12 t21];
+                            elseif ( ~isempty( t) && isempty( t12) && isempty( t21) )  
+                                dataTable = t;
+                            elseif ( isempty( t) && ~isempty( t12) && isempty( t21) )  
+                                dataTable = t12;
+                            elseif ( isempty( t) && isempty( t12) && ~isempty( t21) )  
+                                dataTable = t21;
+                            end
                         end
                     end
                 end

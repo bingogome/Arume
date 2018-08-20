@@ -71,6 +71,33 @@ classdef ExperimentRun < matlab.mixin.Copyable
         function run = Copy(this)
             run = copy(this); 
         end
+        
+        function trialData = AddPastTrialData(this, trialData)
+            
+            if ( ~isempty( this.pastTrialTable ) )
+                % deal with the possibility that different trials have
+                % different columns
+                t1 = this.pastTrialTable;
+                t2 = trialData;
+                t1colmissing = setdiff(t2.Properties.VariableNames, t1.Properties.VariableNames);
+                t2colmissing = setdiff(t1.Properties.VariableNames, t2.Properties.VariableNames);
+                t1 = [t1 array2table(nan(height(t1), numel(t1colmissing)), 'VariableNames', t1colmissing)];
+                t2 = [t2 array2table(nan(height(t2), numel(t2colmissing)), 'VariableNames', t2colmissing)];
+                for colname = t1colmissing
+                    if iscell(t2.(colname{1}))
+                        t1.(colname{1}) = cell(height(t1), 1);
+                    end
+                end
+                for colname = t2colmissing
+                    if iscell(t1.(colname{1}))
+                        t2.(colname{1}) = cell(height(t2), 1);
+                    end
+                end
+                this.pastTrialTable = [t1; t2];
+            else
+                this.pastTrialTable = trialData;
+            end
+        end
     end
     
     methods(Static=true)
@@ -78,13 +105,29 @@ classdef ExperimentRun < matlab.mixin.Copyable
         %% setUpNewRun
         function newRun = SetUpNewRun( experimentDesign )
             
-            trialTable = experimentDesign.GetTrialTable(this);
+            newRun = ArumeCore.ExperimentRun();
+            
+            newRun.ExperimentDesign = experimentDesign;
+            
+            % use predictable randomization saving state
+            newRun.Info.globalStream   = RandStream.getGlobalStream;
+            newRun.Info.stateRandStream     = newRun.Info.globalStream.State;
+            
+            newRun.pastTrialTable   = []; % conditions already run, including aborts
+            newRun.futureTrialTable = []; % conditions left for running (the whole list is created a priori)
+            newRun.Events           = [];
+            newRun.LinkedFiles      = [];
+            
+            newRun.futureTrialTable = experimentDesign.GetTrialTable();
+            newRun.originalFutureTrialTable = newRun.futureTrialTable;
             % TODO: check if the table has the needed columns for dealing
             % drops blockid and blockseq
-            
-            newRun.futureTrialTable = trialTable;
-            newRun.originalFutureTrialTable = trialTable;
 
+            newRun.pastTrialTable = [];
+            newRun.SessionsToRun  = ceil(height(newRun.futureTrialTable) / experimentDesign.trialsPerSession);
+            
+            newRun.CurrentSession = 1;
+            
         end
         
         function run = LoadRunData( data, experiment )

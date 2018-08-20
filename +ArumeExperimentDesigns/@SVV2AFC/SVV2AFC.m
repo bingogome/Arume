@@ -85,6 +85,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
                     error('inp/outp installation failed');
                 end
             end
+            
         end
         
         function cleanAfterRunning(this)

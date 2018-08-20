@@ -22,15 +22,14 @@ classdef DataDB < handle
     
     methods (Access = protected)
         
-        function InitDB( this, folder)
+        function InitDB( this, folder, session)
             
             if ( ~ischar(folder) )
                 error( 'Folder should be a string' );
             end
             
-            [~,sessionDB] = fileparts(folder);
             this.folder = folder;
-            this.session = sessionDB;
+            this.session = session;
             
             if ( ~exist(this.folder, 'dir') )
                 error('Data folder does not exist');
