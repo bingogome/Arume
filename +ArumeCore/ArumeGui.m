@@ -357,7 +357,7 @@ classdef ArumeGui < handle
                         continue;
                     end
                     
-                    if ( ArumeCore.Project.IsValidProjectName(P.Name) )
+                    if ( ~ArumeCore.Project.IsValidProjectName(P.Name) )
                         uiwait(msgbox('The project name is not valid (no spaces or special signs)', 'Error', 'Modal'));
                         continue;
                     end
