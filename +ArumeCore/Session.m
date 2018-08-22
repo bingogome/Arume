@@ -520,7 +520,7 @@ classdef Session < ArumeCore.DataDB
             NoYes = {'No' 'Yes'};
             newSessionDataTable.Started = NoYes{this.isStarted+1};
             newSessionDataTable.Finished = NoYes{this.isFinished+1};
-            if (~isempty(this.currentRun) )
+            if (~isempty(this.currentRun) && ~isempty( this.currentRun.Events) )
                 newSessionDataTable.TimeLastTrial = datestr(this.currentRun.Events(1,2));
                 newSessionDataTable.TimeFirstTrial = datestr(this.currentRun.Events(end,2));
             else

@@ -404,11 +404,11 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             
             data = sessionDataTable;
-            if ( contains(this.Session.sessionCode,'LED') )
+            if ( contains(this.Session.sessionCode,'LED') || this.Session.experiment.ExperimentOptions.HeadAngle < 0 )
                 data.TiltSide = 'LeftTilt';
-            elseif (contains(this.Session.sessionCode,'RED'))
+            elseif (contains(this.Session.sessionCode,'RED') || this.Session.experiment.ExperimentOptions.HeadAngle > 0 )
                 data.TiltSide = 'RightTilt';
-            elseif (contains(this.Session.sessionCode,'Upright'))
+            elseif (contains(this.Session.sessionCode,'Upright')|| this.Session.experiment.ExperimentOptions.HeadAngle == 0 )
                 data.TiltSide = 'Upright';
             end
             data.TiltSide =categorical(cellstr(data.TiltSide));

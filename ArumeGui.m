@@ -80,7 +80,7 @@ classdef ArumeGui < handle
             end
             defaultBackground = get(0,'defaultUicontrolBackgroundColor');
             
-            w = 1000;
+            w = 1200;
             h = 600;
             
             this.arumeController = parent;

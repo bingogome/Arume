@@ -14,21 +14,21 @@ classdef VOG  < handle
                 port = 9000;
             end
             
-%             if ( exist('C:\secure\Code\EyeTracker\bin\x64\Debug','file') )
-%                 asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\x64\Debug\EyeTrackerRemoteClient.dll');
-% 
-%                 if ( ~exist('ip','var') )
-%                     ip = '127.0.0.1';
-%                 end
-%             else
-                asm = NET.addAssembly('C:\secure\code\Debug\EyeTrackerRemoteClient.dll');
+            if ( exist('C:\secure\Code\EyeTracker\bin\x64\Debug','file') )
+                asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\x64\Debug\EyeTrackerRemoteClient.dll');
+
+                if ( ~exist('ip','var') )
+                    ip = '127.0.0.1';
+                end
+            else
+                asm = NET.addAssembly('D:\Code\Debug\EyeTrackerRemoteClient.dll');
                 
                 if ( ~exist('ip','var') )
                     ip = '10.17.101.12';
                 end
-%             end
+            end
             
-            this.eyeTracker = VORLab.VOG.Remote.EyeTrackerClient(ip, port);
+            this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClientMatlab(ip, port);
         end
         
         function result = IsRecording(this)
@@ -59,19 +59,6 @@ classdef VOG  < handle
                 this.eyeTracker.RecordEvent([num2str(GetSecs) ' ' message]);
             end
         end
-        
-        function [files]= DownloadFile(this, path)
-            files = [];
-            if ( ~isempty( this.eyeTracker) )
-                try
-                    files = this.eyeTracker.DownloadFile();
-                catch ex
-                    ex
-                end
-                files = cell(files.ToArray)';
-            end
-        end
-                
     end
     
     methods(Static = true)
