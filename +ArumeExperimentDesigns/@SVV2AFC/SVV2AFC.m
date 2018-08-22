@@ -1,4 +1,4 @@
-classdef SVV2AFC < ArumeCore.ExperimentDesign
+classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
     %SVV2AFC Parent experiment design for designs of SVV experiments
     % using 2AFC two alternative forced choice task
     % all the experiments will have a variable called angle which is the
@@ -6,7 +6,6 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     % can 'R' or 'L'.
     
     properties
-        eyeTracker = [];
         gamePad = [];
         biteBarMotor = [];
         
@@ -16,7 +15,6 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         fixColor = [255 0 0];
         
         targetColor = [255 0 0];
-        
     end
     
     % ---------------------------------------------------------------------
@@ -26,7 +24,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         
         function dlg = GetOptionsDialog( this )
             
-            dlg.UseEyeTracker = { {'{0}','1'} };
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
+            
             dlg.UseGamePad = { {'0','{1}'} };
             dlg.UseMouse = { {'{0}','1'} };
             
@@ -51,6 +50,9 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         
         function initBeforeRunning( this )
             
+            % Initialize eyetracker
+            initBeforeRunning@ArumeExperimentDesigns.EyeTracking(this);
+            
             % Initialize gamepad
             if ( this.ExperimentOptions.UseGamePad )
                 
@@ -58,23 +60,13 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                 
             end
             
-            % Initialize eyetracker
-            if ( this.ExperimentOptions.UseEyeTracker )
-                
-                this.eyeTracker = ArumeHardware.VOG();
-                this.eyeTracker.Connect();
-                
-                this.eyeTracker.SetSessionName(this.Session.name);
-                this.eyeTracker.StartRecording();
-            end
-            
             % Initialize bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor)
                 clear this.biteBarMotor;
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
                 
-                if ( this.ExperimentOptions.TiltHeadAtBegining )
-                    if ( length(this.Session.currentRun.pastConditions) == 0 )
+                if (isfield(this.ExperimentOptions, 'TiltHeadAtBegining') && this.ExperimentOptions.TiltHeadAtBegining )
+                    if ( isempty(this.Session.currentRun.pastConditions) )
                         this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
                         pause(2);
                         disp('30 s pause');
@@ -93,23 +85,18 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                     error('inp/outp installation failed');
                 end
             end
+            
         end
         
         function cleanAfterRunning(this)
             
-            % ose gamepad
+            % Close eyetracker
+            cleanAfterRunning@ArumeExperimentDesigns.EyeTracking(this);
+            
+            % close gamepad
             if ( this.ExperimentOptions.UseGamePad )
             end
-            
-            % Close eyetracker
-            if ( this.ExperimentOptions.UseEyeTracker )
-                if ( ~isempty(this.eyeTracker))
-                    if ( this.eyeTracker.IsRecording)
-                        this.eyeTracker.StopRecording();
-                    end
-                end
-            end
-            
+                        
             % Close bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor ~= 0 )
                 if ( ~isempty(this.biteBarMotor))
@@ -216,37 +203,71 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-        function trialDataSet = PrepareTrialDataSet( this, ds)
+        function trialDataTable = PrepareTrialDataTable( this, ds)
             % Every class inheriting from SVV2AFC should override this
             % method and add the proper PresentedAngle and
             % LeftRightResponse variables
             
-            trialDataSet = this.PrepareTrialDataSet@ArumeCore.ExperimentDesign(ds);
+            trialDataTable = this.PrepareTrialDataTable@ArumeCore.ExperimentDesign(ds);
             
-            trialDataSet.PresentedAngle = trialDataSet.Angle;
-            trialDataSet.LeftRightResponse = trialDataSet.Response;
+            trialDataTable.PresentedAngle = trialDataTable.Angle;
+            trialDataTable.LeftRightResponse = trialDataTable.Response;
+        end
+        
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+            
+            
+            angles = this.GetAngles();
+            angles(this.Session.trialDataTable.TrialResult>0) = [];
+            
+            respones = this.GetLeftRightResponses();
+            respones(this.Session.trialDataTable.TrialResult>0) = [];
+            
+%             angles = angles(101:201);
+%             respones = respones(101:201);
+            [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
+            
+            
+            data = sessionDataTable;
+            if ( contains(this.Session.sessionCode,'LED') )
+                data.TiltSide = 'LeftTilt';
+            elseif (contains(this.Session.sessionCode,'RED'))
+                data.TiltSide = 'RightTilt';
+            elseif (contains(this.Session.sessionCode,'Upright'))
+                data.TiltSide = 'Upright';
+            end
+            data.TiltSide =categorical(cellstr(data.TiltSide));
+            
+            data.SVV = SVV;
+            data.SVVth = SVVth;
+            
+            sessionDataTable = data;
         end
         
         % Function that gets the angles of each trial with 0 meaning
         % upright, positive tilted CW and negative CCW.
         function angles = GetAngles( this )
-            angles = this.Session.trialDataSet.Angle;
+            angles = this.Session.trialDataTable.Angle;
         end
         
         % Function that gets the left and right responses with 1 meaning
         % right and 0 meaning left.
         function responses = GetLeftRightResponses( this )
-            responses = this.Session.trialDataSet.Response;
+            responses = this.Session.trialDataTable.Response;
         end
         
-        
+    end
+    % ---------------------------------------------------------------------
+    % Plot methods
+    % ---------------------------------------------------------------------
+    methods ( Access = public )
         function plotResults = Plot_Sigmoid(this)
             
             angles = this.GetAngles();
-            angles(this.Session.trialDataSet.TrialResult>0) = [];
+            angles(this.Session.trialDataTable.TrialResult>0) = [];
             
             respones = this.GetLeftRightResponses();
-            respones(this.Session.trialDataSet.TrialResult>0) = [];
+            respones(this.Session.trialDataTable.TrialResult>0) = [];
             
 %             angles = angles(101:201);
 %             respones = respones(101:201);
@@ -329,9 +350,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         function plotResults = Plot_SigmoidUpDown(this)
             analysisResults = 0;
             
-            ds = this.Session.trialDataSet;
+            ds = this.Session.trialDataTable;
             ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
             
             figure('position',[400 100 1000 600],'color','w','name',this.Session.name)
             
@@ -370,56 +390,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-        end
-        
-        
+        end 
     end
-    
-    
-    % ---------------------------------------------------------------------
-    % Data Analysis methods
-    % ---------------------------------------------------------------------
-    methods ( Access = public )
-        
-        function analysisResults = Analysis_SVV(this)
-            analysisResults = 0;
-        end
-        
-        function analysisResults = Analysis_SVVUpDown(this)
-            analysisResults=4;
-        end
-        
-        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
-            
-            
-            angles = this.GetAngles();
-            angles(this.Session.trialDataSet.TrialResult>0) = [];
-            
-            respones = this.GetLeftRightResponses();
-            respones(this.Session.trialDataSet.TrialResult>0) = [];
-            
-%             angles = angles(101:201);
-%             respones = respones(101:201);
-            [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
-            
-            
-            data = sessionDataTable;
-            if ( contains(this.Session.sessionCode,'LED') || this.Session.experiment.ExperimentOptions.HeadAngle < 0 )
-                data.TiltSide = 'LeftTilt';
-            elseif (contains(this.Session.sessionCode,'RED') || this.Session.experiment.ExperimentOptions.HeadAngle > 0 )
-                data.TiltSide = 'RightTilt';
-            elseif (contains(this.Session.sessionCode,'Upright')|| this.Session.experiment.ExperimentOptions.HeadAngle == 0 )
-                data.TiltSide = 'Upright';
-            end
-            data.TiltSide =categorical(cellstr(data.TiltSide));
-            
-            data.SVV = SVV;
-            data.SVVth = SVVth;
-            
-            sessionDataTable = data;
-        end
-    end
-    
     
     % ---------------------------------------------------------------------
     % Utility methods
@@ -428,6 +400,11 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
         function [SVV, a, p, allAngles, allResponses, trialCounts, SVVth] = FitAngleResponses( angles, responses)
             
             % add values in the extremes to "support" the logistic fit
+            
+            if ( iscell(responses) )
+                % fix for new tables. Usually responses will come as a cell
+                responses = cell2mat(responses);
+            end
             
             ds = dataset;
             if ( max(responses)>10)
@@ -510,7 +487,6 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             end
             
         end
-        
         
         function drawFrame( graph, angle, color)
             

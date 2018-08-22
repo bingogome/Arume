@@ -54,10 +54,13 @@ classdef Display < handle
             
             graph.screens = Screen('Screens');
             screens=Screen('Screens');
-        	graph.selectedScreen=max(screens);
+         	graph.selectedScreen=max(screens);
+%           	graph.selectedScreen=1;
     
             %-- window
-            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
+            Screen('Preference', 'ConserveVRAM', 64);
+            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [10 10 600 400], [], [], 0, 10);
+%             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
 %             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0);
          
             %-- color

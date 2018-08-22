@@ -8,7 +8,6 @@ classdef ExperimentDesign < handle
     % etc.
     
     properties( SetAccess = private)
-        Project = [];       % The project that this experiment design belongs to.
         Session = [];       % The session that is current running this experiment design
         
         Graph       = [];   % Display handle (psychtoolbox).
@@ -21,9 +20,11 @@ classdef ExperimentDesign < handle
         % Experimental variables
         ConditionVars = [];
         RandomVars = [];
-        StaircaseVars = [];
         
         ConditionMatrix 
+        
+        TrialStartCallbacks
+        TrialStopCallbacks
     end
     
     properties ( Dependent = true )
@@ -106,6 +107,7 @@ classdef ExperimentDesign < handle
         % initialized before running but don't need to be initialized for
         % every single trial
         function initBeforeRunning( this )
+            
         end
         
         %% runPreTrial
@@ -130,6 +132,22 @@ classdef ExperimentDesign < handle
         
         %% runs after the session is completed
         function runAfterSessionCompleted(this)
+        end
+        
+        function AddTrialStartCallback(this, fun)
+            if ( isempty(this.TrialStartCallbacks) )
+                this.TrialStartCallbacks = {fun};
+            else
+                this.TrialStartCallbacks{end+1} = fun;
+            end
+        end
+        
+        function AddTrialStopCallback(this, fun)
+            if ( isempty(this.TrialStopCallbacks) )
+                this.TrialStopCallbacks = {fun};
+            else
+                this.TrialStopCallbacks{end+1} = fun;
+            end
         end
     end
     
@@ -158,26 +176,25 @@ classdef ExperimentDesign < handle
         % one it is a good idea to first call GetExperimentDesignOptions from
         % the parent class to get the options and then add new ones.
         %
-        % It needs to be static because it is called before the experimental
-        % session and the experiment design is created
-        function dlg = GetExperimentOptionsDialog( this )
-            
-%             experimentOptions = [];
-%             myclass = meta.class.fromName(class(this));
-%             while( ~isempty( myclass.SuperClasses ) )
-%                 if ( ismethod( eval(myclass.Name), 'GetOptionsDialog') )
-%                     experimentOptions = mergestructs( feval([myclass.Name '.GetOptionsDialog']), experimentOptions);
-%                 end
-%                 myclass = myclass.SuperClasses{1};
-%             end
-            
-            dlg = this.GetOptionsDialog();
+        % This options may also appear when importing a session and it is
+        % possible that the parameters that want to be displaied in that
+        % case are different
+        function dlg = GetExperimentOptionsDialog( this, importing )
+            if ( ~exist( 'importing', 'var') )
+                dlg = this.GetOptionsDialog();
+            else
+                dlg = this.GetOptionsDialog(importing);
+            end
         end
         
         function init(this, session, options)
-            this.Project            = session.project;
-            this.Session            = session;
-            this.ExperimentOptions  = options;
+            if ( exist( 'session', 'var') && exist('options', 'var') )
+                this.Session            = session;
+                this.ExperimentOptions  = options;
+            end
+            
+            % set up options
+            this.initOptions();
             
             % load variables
             this.initVariables();
@@ -189,7 +206,7 @@ classdef ExperimentDesign < handle
             this.initExperimentDesign( );
             
             this.Config = this.psyCortex_DefaultConfig();
-            this.Config.Debug = 1;
+            this.Config.Debug = 1; 
         end
         
         function run(this)
@@ -235,7 +252,7 @@ classdef ExperimentDesign < handle
                 disp(['PSYCORTEX: Hardware set up failed: ' err.message ]);
                 disp(err.stack(1));
                 
-                if ( this.Config.UsingVideo )
+                if ( this.Config.UsingVideoGraphics )
                     ShowCursor;
                     ListenChar(0);
                     Priority(0);
@@ -253,6 +270,9 @@ classdef ExperimentDesign < handle
             % --------------------------------------------------------------------
             
             try
+                this.TrialStartCallbacks = [];
+                this.TrialStopCallbacks = [];
+                
                 this.initBeforeRunning();
             catch
                 err = psychlasterror;
@@ -337,77 +357,78 @@ classdef ExperimentDesign < handle
                             
                             try
                                 %-- find which condition to run and the variable values for that condition
-                                if ( ~isempty(this.Session.currentRun.pastConditions) )
-                                    trialnumber = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult)==Enum.trialResult.CORRECT)+1;
+                                if ( ~isempty(this.Session.currentRun.pastTrialTable) )
+                                    trialAttempt = height(this.Session.currentRun.pastTrialTable)+1;
                                 else
-                                    trialnumber = 1;
+                                    trialAttempt = 1;
                                 end
-                                currentCondition    = this.Session.currentRun.futureConditions(1,1);
-                                variables           = this.getVariablesCurrentCondition( currentCondition );
+                                vars1 = table();
+                                vars1.TrialAttempt = trialAttempt;
+                                vars1.Session = this.Session.currentRun.CurrentSession;
+                                
+                                variables = table2struct([vars1 this.Session.currentRun.futureTrialTable(1,:)]);
+                                fprintf('\nTRIAL START: ...\n');
+                                disp(variables)
                                 
                                 %------------------------------------------------------------
                                 %% -- PRE TRIAL ----------------------------------------------
                                 %------------------------------------------------------------
-                                this.SaveEvent( Enum.Events.PRE_TRIAL_START);
+                                variables.TimePreTrialStart = GetSecs;
                                 this.runPreTrial( variables );
-                                this.SaveEvent( Enum.Events.PRE_TRIAL_STOP);
+                                variables.TimePreTrialStop = GetSecs;
                                 
                                 %------------------------------------------------------------
                                 %% -- TRIAL ---------------------------------------------------
                                 %------------------------------------------------------------
-                                fprintf('\nTRIAL START: N=%d Cond=%d ...', trialnumber , currentCondition );
+                                variables.TimeTrialStart = GetSecs;
+                                for i=1:length(this.TrialStartCallbacks)
+                                    variables = feval(this.TrialStartCallbacks{i}, variables);
+                                end
+                                variables.DateTimeTrialStart = datestr(now);
                                 
-                                clear data;
-                                data.variables = variables;
+                                variables.TrialResult = this.runTrial( variables );
                                 
-                                %%-- Run the trial
-                                this.SaveEvent( Enum.Events.TRIAL_START);
-                                trialResult = this.runTrial( variables );
-                                this.SaveEvent( Enum.Events.TRIAL_STOP);
-                                                                
-                                fprintf(' TRIAL END ');
+                                variables.TimeTrialStop = GetSecs;
+                                for i=1:length(this.TrialStopCallbacks)
+                                    variables = feval(this.TrialStopCallbacks{i}, variables);
+                                end
                                 
                                 %------------------------------------------------------------
                                 %% -- POST TRIAL ----------------------------------------------
                                 %------------------------------------------------------------
                                 
-                                this.PlaySound(trialResult);
+                                this.PlaySound(variables.TrialResult);
                                 
-                                this.SaveEvent( Enum.Events.POST_TRIAL_START);
-                                [trialOutput] = this.runPostTrial(  );
-                                this.SaveEvent( Enum.Events.POST_TRIAL_STOP);
+                                variables.TimePostTrialStart = GetSecs;
+                                trialOutput = this.runPostTrial(  );
+                                variables.TimePostTrialStop = GetSecs;
                                 
-                                data.trialOutput  = trialOutput;
+                                % collect output data
+                                variablesTable = [struct2table(variables,'AsArray',true) struct2table(trialOutput,'AsArray',true)];
+                                variables = table2struct(variablesTable);
+                                disp(variables);
                                 
-                              catch
-                                err = psychlasterror;
+                                fprintf(' TRIAL END \n');
+                                
+                            catch err
                                 if ( streq(err.identifier, 'PSYCORTEX:USERQUIT' ) )
-                                    trialResult = Enum.trialResult.QUIT;
+                                    variables.TrialResult = Enum.trialResult.QUIT;
                                 else
-                                    trialResult = Enum.trialResult.ERROR;
+                                    variables.TrialResult = Enum.trialResult.ERROR;
                                     % display error
-                                    disp(['Error in trial: ' err.message ]);
-                                    disp(err.stack(1));
+                                    disp('!!!!!!!!!!!!! ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+                                    disp(err.getReport);
+                                    disp('!!!!!!!!!!!!! END ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
                                     this.Graph.DlgHitKey( ['Error, trial could not be run: \n' err.message],[],[] );
-
                                 end
                             end
                             
-                            if ( exist( 'data', 'var') )
-                                this.Session.currentRun.Data{end+1} = data;
-                            end
+                            % -- Update past trial table
+                            this.Session.currentRun.AddPastTrialData(struct2table(variables,'AsArray',true));
                             
-                            % -- Update pastcondition list
-                            n = size(this.Session.currentRun.pastConditions,1)+1;
-                            this.Session.currentRun.pastConditions(n, Enum.pastConditions.condition)    = this.Session.currentRun.futureConditions(1,Enum.futureConditions.condition );
-                            this.Session.currentRun.pastConditions(n, Enum.pastConditions.trialResult)  = trialResult;
-                            this.Session.currentRun.pastConditions(n, Enum.pastConditions.blocknumber)  = this.Session.currentRun.futureConditions(1,Enum.futureConditions.blocknumber);
-                            this.Session.currentRun.pastConditions(n, Enum.pastConditions.blockid)      = this.Session.currentRun.futureConditions(1, Enum.futureConditions.blockid);
-                            this.Session.currentRun.pastConditions(n, Enum.pastConditions.session)      = this.Session.currentRun.CurrentSession;
-                            
-                            if ( trialResult == Enum.trialResult.CORRECT )
+                            if ( variables.TrialResult == Enum.trialResult.CORRECT )
                                 %-- remove the condition that has just run from the future conditions list
-                                this.Session.currentRun.futureConditions(1,:) = [];
+                                this.Session.currentRun.futureTrialTable(1,:) = [];
                                 
                                 %-- save to disk temporary data
                                 %//TODO this.SaveTempData();
@@ -422,23 +443,24 @@ classdef ExperimentDesign < handle
                                     case 'Delay'
                                         % randomly get one of the future conditions in the current block
                                         % and switch it with the next
-                                        currentblock = this.Session.currentRun.futureConditions(1,Enum.futureConditions.blocknumber);
-                                        futureConditionsInCurrentBlock = this.Session.currentRun.futureConditions(this.Session.currentRun.futureConditions(:,Enum.futureConditions.blocknumber)==currentblock,:);
+                                        currentblock = this.Session.currentRun.futureTrialTable.BlockNumber(1);
+                                        currentblockSeqNumber = this.Session.currentRun.futureTrialTable.BlockSequenceNumber(1);
+                                        futureConditionsInCurrentBlock = this.Session.currentRun.futureTrialTable(this.Session.currentRun.futureTrialTable.BlockNumber==currentblock & this.Session.currentRun.futureTrialTable.BlockSequenceNumber==currentblockSeqNumber,:);
                                         
-                                        newPosition = ceil(rand(1)*(size(futureConditionsInCurrentBlock,1)-1))+1;
+                                        newPosition = ceil(rand(1)*(height(futureConditionsInCurrentBlock)-1))+1;
                                         c = futureConditionsInCurrentBlock(1,:);
                                         futureConditionsInCurrentBlock(1,:) = futureConditionsInCurrentBlock(newPosition,:);
                                         futureConditionsInCurrentBlock(newPosition,:) = c;
-                                        this.Session.currentRun.futureConditions(this.Session.currentRun.futureConditions(:,Enum.futureConditions.blocknumber)==currentblock,:) = futureConditionsInCurrentBlock;
-                                        % TODO: improve
+                                        this.Session.currentRun.futureTrialTable(this.Session.currentRun.futureTrialTable.BlockNumber==currentblock & this.Session.currentRun.futureTrialTable.BlockSequenceNumber==currentblockSeqNumber,:) = futureConditionsInCurrentBlock;
+                                        this.Session.currentRun.futureTrialTable.TrialNumber = (min(this.Session.currentRun.futureTrialTable.TrialNumber):max(this.Session.currentRun.futureTrialTable.TrialNumber))';
                                     case 'Drop'
                                         %-- remove the condition that has just run from the future conditions list
-                                        this.Session.currentRun.futureConditions(1,:) = [];
+                                        this.Session.currentRun.futureTrialTable(1,:) = [];
                                 end
                             end
                             
                             %-- handle errors
-                            switch ( trialResult )
+                            switch ( variables.TrialResult )
                                 case Enum.trialResult.ERROR
                                     status = IDLE;
                                     continue;
@@ -485,10 +507,10 @@ classdef ExperimentDesign < handle
                 % --------------------------------------------------------------------
                 
                 
-            catch
-                err = psychlasterror;
-                disp(['Error: ' err.message ]);
-                disp(err.stack(1));
+            catch err
+                disp('!!!!!!!!!!!!! ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+                disp(err.getReport);
+                disp('!!!!!!!!!!!!! END ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
             end %try..catch.
             
             
@@ -637,10 +659,9 @@ classdef ExperimentDesign < handle
                 % --------------------------------------------------------------------
                 
                 
-            catch
-                err = psychlasterror;
+            catch err
                 disp(['Error: ' err.message ]);
-                disp(err.stack(1));
+                disp(err.getReport);
             end %try..catch.
         end
         
@@ -648,11 +669,97 @@ classdef ExperimentDesign < handle
             throw(MException('PSYCORTEX:USERQUIT', ''));
         end
         
-        function DisplayConditionMatrix(this)
-            c = this.ConditionMatrix;
-            for i=1:size(c,1)
-                disp(c(i,:))
+        function conditionTable = GetConditionTable(this)
+            cm = table();
+            for i=1:size(this.ConditionMatrix,1)
+                for j=1:size(this.ConditionMatrix,2)
+                    var = this.ConditionVars(j);
+                    if ( iscell(var.values) )
+                        if ( width(cm) < j )
+                            cm.(var.name) = cell(size(this.ConditionMatrix(:,j)));
+                        end
+                        cm{i,j} = {var.values{this.ConditionMatrix(i,j)}};
+                    else
+                        if ( width(cm) < j )
+                            cm.(var.name) = nan(size(this.ConditionMatrix(:,j)));
+                        end
+                        cm{i,j} = var.values(this.ConditionMatrix(i,j));
+                    end
+                end
             end
+            conditionTable = cm;
+        end
+        
+        function DisplayConditionMatrix(this)
+            
+            this.GetConditionTable()
+        end
+        
+        function trialTable = GetTrialTable(this)
+                        
+            % generate the sequence of blocks, a total of
+            % parameters.blocksToRun blocks will be run
+            nBlocks = length(this.blocks);
+            blockSequence = [];
+            switch(this.blockSequence)
+                case 'Sequential'
+                    blockSequence = mod( (1:this.blocksToRun)-1,  nBlocks ) + 1;
+                case 'Random'
+                    [~, blocks] = sort( rand(1,this.blocksToRun) ); % get a random shuffle of 1 ... blocks to run
+                    blockSequence = mod( blocks-1,  nBlocks ) + 1; % limit the random sequence to 1 ... nBlocks
+                case 'Random with repetition'
+                    blockSequence = ceil( rand(1,this.blocksToRun) * nBlocks ); % just get random block numbers
+                case 'Manual'
+                    blockSequence = [];
+                    
+                    while length(blockSequence) ~= this.blocksToRun
+                        S.Block_Sequence = [1:this.blocksToRun];
+                        S = StructDlg( S, ['Block Sequence'], [],  CorrGui.get_default_dlg_pos() );
+                        blockSequence =  S.Block_Sequence;
+                    end
+                    %                     if length(parameters.manualBlockSequence) == parameters.blocksToRun;
+                    %                         %                         blockSequence = parameters.manualBlockSequence;
+                    %
+                    %                     else
+                    %                         disp(['Error with the manual block sequence. Please fix.']);
+                    %                     end
+            end
+            blockSequence = repmat( blockSequence,1,this.numberOfTimesRepeatBlockSequence);
+            
+            futureConditions = [];
+            for iblock=1:length(blockSequence)
+                i = blockSequence(iblock);
+                possibleConditions = this.blocks(i).fromCondition : this.blocks(i).toCondition; % the possible conditions to select from in this block
+                nConditions = length(possibleConditions);
+                nTrials = this.blocks(i).trialsToRun;
+                
+                switch( this.trialSequence )
+                    case 'Sequential'
+                        trialSequence = possibleConditions( mod( (1:nTrials)-1,  nConditions ) + 1 );
+                    case 'Random'
+                        [junk conditions] = sort( rand(1,nTrials) ); % get a random shuffle of 1 ... nTrials
+                        conditionIndexes = mod( conditions-1,  nConditions ) + 1; % limit the random sequence to 1 ... nConditions
+                        trialSequence = possibleConditions( conditionIndexes ); % limit the random sequence to fromCondition ... toCondition for this block
+                    case 'Random with repetition'
+                        trialSequence = possibleConditions( ceil( rand(1,nTrials) * nConditions ) ); % nTrialss numbers between 1 and nConditions
+                end
+                futureConditions = cat(1,futureConditions, [trialSequence' ones(size(trialSequence'))*iblock  ones(size(trialSequence'))*i] );
+            end
+            
+            
+            f2 = table();
+            f2.TrialNumber = (1:length(futureConditions(:,1)))';
+            f2.Condition = futureConditions(:,1);
+            f2.BlockNumber = futureConditions(:,2);
+            f2.BlockSequenceNumber = futureConditions(:,3);
+            
+            t2 = table();
+            for i=1:height(f2)
+                vars = this.getVariablesCurrentCondition( f2.Condition(i) );
+                t2 = cat(1,t2,struct2table(vars,'AsArray',true));
+            end
+            
+            trialTable = [f2 t2];
         end
         
         %% function psyCortex_defaultConfig
@@ -678,22 +785,7 @@ classdef ExperimentDesign < handle
     % --------------------------------------------------------------------
     % to be called from any experiment
     % --------------------------------------------------------------------
-    methods(Access=protected)
-        
-        function addFile(this, fileTag, filePath)
-            
-            [~,fileName, ext] = fileparts(filePath);
-            copyfile(filePath, fullfile(this.Session.dataRawPath, [fileName ext] ));
-                
-            if ( ~isfield(this.Session.currentRun.LinkedFiles, fileTag) )
-                this.Session.currentRun.LinkedFiles.(fileTag) = [fileName ext];
-            else
-                if ~iscell(this.Session.currentRun.LinkedFiles.(fileTag))
-                    this.Session.currentRun.LinkedFiles.(fileTag) = {this.Session.currentRun.LinkedFiles.(fileTag)};
-                end
-                this.Session.currentRun.LinkedFiles.(fileTag) = cat(1, this.Session.currentRun.LinkedFiles.(fileTag), [fileName ext] );
-            end               
-        end
+    methods(Access=public)
                 
         %% SaveEvent
         %--------------------------------------------------------------------------
@@ -757,117 +849,6 @@ classdef ExperimentDesign < handle
                         variables.(varName) = -varParams(1) .* log(rand(1));
                 end
             end
-            
-            %
-            % Staircase variables
-            %
-            for iVar=1:length(this.StaircaseVars)
-                varName = this.StaircaseVars(iVar).name;
-                
-                % kind of adaptive probit (APE)
-                
-                previousValues = [];
-                previousResponses = [];
-                
-                                %             for i=1:length(this.ConditionVars(1).values)
-                %                 angles(i) = this.ConditionVars(1).values(i);
-                %                 responses(i) = mean(ds.Response(ds.Angle==angles(i)));
-                %             end
-               
-                
-                
-                
-                if ( ~isempty( this.Session.currentRun ) )
-                    nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
-                    
-                    previousValues = zeros(nCorrect,1);
-                    previousResponses = zeros(nCorrect,1);
-                    
-                    n = 1;
-                    for i=1:length(this.Session.currentRun.pastConditions(:,1))
-                        if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
-                            previousValues(n) = this.Session.currentRun.Data{i}.variables.(varName);
-                            previousResponses(n) = this.Session.currentRun.Data{i}.trialOutput.(this.StaircaseVars(iVar).associatedResponse);
-                            n = n+1;
-                        end
-                    end
-                end
-                
-                a = min(previousValues):0.1:max(previousValues);
-                
-                N = floor(length(previousValues)/10)*10;
-                
-                if ( N > 0 ) 
-                    ds = dataset;
-                    ds.Response = previousResponses(1:N) == this.StaircaseVars(iVar).associatedResponseIncrease;
-                    ds.Angle = previousValues(1:N);
-                    modelspec = 'Response ~ Angle';
-                    mdl = fitglm(ds(:,{'Response', 'Angle'}), modelspec, 'Distribution', 'binomial');
-                    p = predict(mdl,a')*100;
-                    [svvr svvidx] = min(abs( p-50));
-                    SVV = a(svvidx);
-                else
-                    SVV = 0;
-                end
-                
-                N
-                SVV
-                variables.(varName) = (rand(1)*180-90)/min(16,round(2^(N/15))) + SVV;
-                
-                
-%                 % QUEST - DOESNT WORK
-%                 iTrial = 0;
-%                 % find the last value in a correct trial
-%                 if ( ~isempty( this.Session.currentRun ) )
-%                     for i=length(this.Session.currentRun.pastConditions(:,1)):-1:1
-%                         if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
-%                             iTrial = i;
-%                             break;
-%                         end
-%                     end
-%                 end
-%                 
-%                 if ( iTrial > 0)
-%                     response = ( this.Session.currentRun.Data{iTrial}.trialOutput.(this.StaircaseVars(iVar).associatedResponse) ~= this.StaircaseVars(iVar).associatedResponseIncrease )
-%                     lastValue = this.Session.currentRun.Data{iTrial}.variables.(varName);
-%                     this.StaircaseVars(iVar).q = QuestUpdate(this.StaircaseVars(iVar).q, lastValue, response);
-%                 end
-%                 variables.(varName) = QuestQuantile(this.StaircaseVars(iVar).q);
-                
-                
-                % DOUBLE STAIRCASE
-%                 iTrial = 0;
-%                 % find the last value in a correct trial
-%                 if ( ~isempty( this.Session.currentRun ) )
-%                     foundOne = 0;
-%                     for i=length(this.Session.currentRun.pastConditions(:,1)):-1:1
-%                         if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
-%                             if ( foundOne ) 
-%                                 iTrial = i;
-%                                 break;
-%                             else
-%                                 foundOne = 1;
-%                             end
-%                         end
-%                     end
-%                 end
-%                 if ( iTrial == 0 && foundOne)
-%                     variables.(varName) = this.StaircaseVars(iVar).initialValues(1);
-%                     return;
-%                 elseif ( iTrial == 0 && ~foundOne)
-%                     variables.(varName) = this.StaircaseVars(iVar).initialValues(2);
-%                     return;
-%                 end
-%                 
-%                 lastValue = this.Session.currentRun.Data{iTrial}.variables.(varName);
-%                 
-%                 if ( this.Session.currentRun.Data{iTrial}.trialOutput.(this.StaircaseVars(iVar).associatedResponse) == this.StaircaseVars(iVar).associatedResponseIncrease )
-%                     variables.(varName) = lastValue + this.StaircaseVars(iVar).stepChange;
-%                 else
-%                     variables.(varName) = lastValue - this.StaircaseVars(iVar).stepChange;
-%                 end
-                variables.(varName) 
-            end
         end
         
         function shuffleConditionMatrix(this, variableNumber)
@@ -912,21 +893,11 @@ classdef ExperimentDesign < handle
         function initVariables(this)
             this.ConditionVars = this.getConditionVariables();
             this.RandomVars = this.getRandomVariables();
-            this.StaircaseVars = this.getStaircaseVariables();
             
             this.ConditionMatrix = this.getConditionMatrix( this.ConditionVars );
         end
         
-        %% setUpParameters
-        function initParameters(this)
-            
-            % default parameters of any experiment
-            this.trialsPerSession = this.NumberOfConditions;
-            
-            %%-- Blocking
-            this.blocks(1).toCondition    = this.NumberOfConditions;
-            this.blocks(1).trialsToRun    = this.NumberOfConditions;
-            
+        function initOptions(this)
             %%-- Check if all the options are there, if not add the default
             %%values. This is important to mantain past compatibility if
             %%options are added in the future.
@@ -940,6 +911,18 @@ classdef ExperimentDesign < handle
                     end
                 end
             end
+        end
+        
+        %% setUpParameters
+        function initParameters(this)
+            
+            % default parameters of any experiment
+            this.trialsPerSession = this.NumberOfConditions;
+            
+            %%-- Blocking
+            this.blocks(1).toCondition    = this.NumberOfConditions;
+            this.blocks(1).trialsToRun    = this.NumberOfConditions;
+            
         end
         
         %% setUpConditionMatrix
@@ -999,9 +982,10 @@ classdef ExperimentDesign < handle
             experimentList = {};
             
             expPackage = meta.package.fromName('ArumeExperimentDesigns');
-            
+            disp('Setting up experiments...')
             for i=1:length(expPackage.ClassList)
                 experimentList{i} = strrep( expPackage.ClassList(i).Name, 'ArumeExperimentDesigns.','');
+                disp(experimentList{i});
             end
         end
         
@@ -1059,16 +1043,6 @@ classdef ExperimentDesign < handle
             Enum.Events.POST_TRIAL_STOP             = i;i=i+1;
             Enum.Events.TRIAL_EVENT                 = i;i=i+1;
             
-            Enum.pastConditions.condition = 1;
-            Enum.pastConditions.trialResult = 2;
-            Enum.pastConditions.blocknumber = 3;
-            Enum.pastConditions.blockid = 4;
-            Enum.pastConditions.session = 5;
-            
-            Enum.futureConditions.condition     = 1;
-            Enum.futureConditions.blocknumber   = 2;
-            Enum.futureConditions.blockid   = 3;
-            
         end
         
     end
@@ -1079,14 +1053,15 @@ classdef ExperimentDesign < handle
     % --------------------------------------------------------------------
     methods
         
-        function trialDataSet = PrepareTrialDataSet( this, trialDataSet)
-        end
-            
-        function [samplesDataSet rawDataSet] = PrepareSamplesDataSet(this, samplesDataSet)
-            rawDataSet = [];
+        function [samplesDataTable, rawDataTable] = PrepareSamplesDataTable(this)
+            samplesDataTable= [];
+            rawDataTable = [];
         end
         
-        function eventDataset = PrepareEventDataSet(this, eventDataset)
+        function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
+        end
+            
+        function eventDataTable = PrepareEventDataTable(this, eventDataTable)
         end
         
         function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)

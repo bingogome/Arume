@@ -15,8 +15,6 @@ classdef ArumeGui < handle
         defaultExperimentTextLabel
         pathTextLabel
         sessionListBox
-        analysisListBox
-        plotsListBox
         
         infoBox
         commentsTextBox
@@ -31,11 +29,10 @@ classdef ArumeGui < handle
         menuFile
         menuFileNewProject
         menuFileLoadProject
-        menuFileNewProjectFolder
-        menuFileLoadProjectFolder
+        menuFileSaveProjectBackup
+        menuFileLoadProjectBackup
         menuFileLoadRecentProject
         menuFileCloseProject
-        menuFileExportProject
         menuFileNewSession
         menuFileImportSession
         menuFileSortSessions
@@ -47,12 +44,11 @@ classdef ArumeGui < handle
         
         menuAnalyze
         menuAnalyzePrepare
-        menuAnalyzeRunAnalyses
-        menuAnalyzeExportAnalysisData
         
         menuPlot
         menuPlotGeneratePlots
         menuPlotGeneratePlotsCombined
+        menuPlotGeneratePlotsAggregated
         
         % Session Contextual menu
         sessionContextMenu
@@ -61,11 +57,6 @@ classdef ArumeGui < handle
         sessionContextMenuRenameSubjects
         sessionContextMenuDelete
         sessionContextMenuCopy
-        sessionContextMenuCopyTo
-        
-        % Analysis Contextual menu
-        analysisContextMenu
-        analysisContextMenuSendToWorkspace
     end
     
     %% Constructor
@@ -74,6 +65,7 @@ classdef ArumeGui < handle
               
             % Ensure singleton behavior
             h = findall(0,'tag','Arume');
+            
             if ( ~isempty( h ) )
                 figure(h);
                 return
@@ -94,7 +86,7 @@ classdef ArumeGui < handle
                 'NumberTitle'   , 'off',... % Do not show figure number
                 'Position'      , [400,800,w,h], ...
                 'CloseRequestFcn', @this.figureCloseRequest, ...
-                'ResizeFcn'     , @this.figureResizeFcn);
+                'SizeChangedFcn' , @this.figureResizeFcn); %Jing, change 'ResizeFcn' to 'SizeChangedFcn', becuase it might be removed in future
             
             %  Construct panels
             
@@ -108,16 +100,21 @@ classdef ArumeGui < handle
                 'Title'     ,  sprintf('%-19.19s %-10.10s %-12.12s', 'Experiment', 'Subject', 'Session code'),...
                 'FontName'	, 'consolas',...
                 'FontSize'	, 9,...
+                'BorderType', 'none',...
                 'Units'     , 'Pixels' );
             
             this.rightPanel = uipanel ( ...
                 'Parent'    , this.figureHandle,...
-                'Title'     , '',...
+                'Title'     , 'Session info',...
+                'FontName'	, 'consolas',...
+                'FontSize'	, 9,...
+                'BorderType', 'none',...
                 'Units'     , 'Pixels' );
             
             this.bottomPanel = uipanel ( ...
                 'Parent'    , this.figureHandle,... 
-                'Title'     , '',...
+                'Title'     , 'Session notes',...
+                'BorderType', 'none',...
                 'Units'     , 'Pixels' );
                             
             
@@ -127,18 +124,9 @@ classdef ArumeGui < handle
                 'Style'     , 'text',...
                 'String'    , 'Project: ',...
                 'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
+                'FontSize'	, 11,...
                 'HorizontalAlignment', 'left',...
-                'Position'  , [10,36,500,15]);
-            
-            this.defaultExperimentTextLabel = uicontrol( ...
-                'Parent'    , this.topPanel,...
-                'Style'     , 'text',...
-                'String'    , 'Default experiment: ',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
-                'HorizontalAlignment', 'left',...
-                'Position'  , [10,21,500,15]);
+                'Position'  , [5,18,500,15]);
             
             this.pathTextLabel = uicontrol( ...
                 'Parent'    , this.topPanel,...
@@ -147,7 +135,7 @@ classdef ArumeGui < handle
                 'FontSize'	, 9,...
                 'String'    , 'Project: ',...
                 'HorizontalAlignment', 'left',...
-                'Position'  , [10,3,500,15]);
+                'Position'  , [5,0,500,15]);
             
             this.sessionListBox = uicontrol( ...
                 'Parent'    , this.leftPanel,...
@@ -156,7 +144,7 @@ classdef ArumeGui < handle
                 'FontSize'	, 9,...
                 'String'    , '',...
                 'Units'     ,'normalized',...
-                'Position'  , [0.02 0.01 0.96 0.98], ...
+                'Position'  , [0 0 1 1], ...
                 'BackgroundColor'     , 'w', ...
                 'Max'       , 20, ...
                 'Callback'  , @this.sessionListBoxCallBack);
@@ -165,19 +153,19 @@ classdef ArumeGui < handle
                 'Parent'    , this.rightPanel,...
                 'Style'     , 'edit',...
                 'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
+                'FontSize'	, 8,...
                 'Max'       , 10, ...
                 'Enable'    , 'inactive', ...
                 'HorizontalAlignment'   , 'Left',...
                 'FontName'	, 'consolas',...
                 'String'    , 'INFO:',...
                 'Units'     ,'normalized',...
-                'Position'  , [0.01 0.01 0.48 0.97], ...
+                'Position'  , [0 0 1 1], ...
                 'BackgroundColor'     , 'w', ...
                 'Callback'  , @this.sessionListBoxCallBack);
             
             this.commentsTextBox = uicontrol( ...
-                'Parent'    , this.rightPanel,...
+                'Parent'    , this.bottomPanel,...
                 'Style'     , 'edit',...
                 'FontName'	, 'consolas',...
                 'FontSize'	, 9,...
@@ -185,33 +173,9 @@ classdef ArumeGui < handle
                 'HorizontalAlignment'   , 'Left',...
                 'String'    , '',...
                 'Units'     ,'normalized',...
-                'Position'  , [0.5 0.61 0.48 0.37], ...
+                'Position'  , [0 0 1 1], ...
                 'BackgroundColor'     , [1 1 0.8], ...
                 'Callback'  , @this.commentsTextBoxCallBack);
-            
-            this.analysisListBox = uicontrol( ...
-                'Parent'    , this.rightPanel,...
-                'Style'     , 'listbox',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
-                'Max'       , 20, ...
-                'String'    , '',...
-                'Units'     ,'normalized',...
-                'Position'  , [0.5 0.01 0.48 0.17], ...
-                'BackgroundColor'     , 'w', ...
-                'Callback'  , @this.analysisListBoxCallBack);
-            
-            this.plotsListBox = uicontrol( ...
-                'Parent'    , this.rightPanel,...
-                'Style'     , 'listbox',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
-                'Max'       , 20, ...
-                'String'    , '',...
-                'Units'     ,'normalized',...
-                'Position'  , [0.5 0.20 0.48 0.38], ...
-                'BackgroundColor'     , 'w', ...
-                'Callback'  , @this.plotsListBoxCallBack);
             
             % menu
             set(this.figureHandle,'MenuBar','none'); 
@@ -226,21 +190,19 @@ classdef ArumeGui < handle
             this.menuFileLoadProject = uimenu(this.menuFile, ...
                 'Label'     , 'Load project ...', ...
                 'Callback'  , @this.loadProject);
-            this.menuFileNewProjectFolder = uimenu(this.menuFile, ...
-                'Label'     , 'New project folder ...', ...
-                'Callback'  , @this.newProjectFolder);
-            this.menuFileLoadProjectFolder = uimenu(this.menuFile, ...
-                'Label'     , 'Load project folder...', ...
-                'Callback'  , @this.loadProjectFolder);
             this.menuFileLoadRecentProject = uimenu(this.menuFile, ...
                 'Label'     , 'Load recent project');
-            
             this.menuFileCloseProject = uimenu(this.menuFile, ...
                 'Label'     , 'Close project', ...
                 'Callback'  , @this.closeProject);
-            this.menuFileExportProject = uimenu(this.menuFile, ...
-                'Label'     , 'Export project ...', ...
-                'Callback'  , @(varargin)msgbox('Not implemented'));
+            
+            this.menuFileSaveProjectBackup = uimenu(this.menuFile, ...
+                'Label'     , 'Backup project ...', ...
+                'Separator' , 'on', ...
+                'Callback'  , @this.saveProjectBackup);
+            this.menuFileLoadProjectBackup = uimenu(this.menuFile, ...
+                'Label'     , 'Restore project backup ...', ...
+                'Callback'  , @this.loadProjectBackup);
             
             this.menuFileNewSession = uimenu(this.menuFile, ...
                 'Label'     , 'New session', ...
@@ -276,25 +238,20 @@ classdef ArumeGui < handle
                 'Label'     , 'Prepare ...', ...
                  'Callback'  , @this.PrepareAnalysis);
             
-            this.menuAnalyzeRunAnalyses = uimenu(this.menuAnalyze, ...
-                'Label'     , 'Run analyses ...', ...
-                'Callback'  , @this.RunAnalyses);
-            
-            this.menuAnalyzeExportAnalysisData = uimenu(this.menuAnalyze, ...
-                'Label'     , 'Export analyses data to workspace ...', ...
-                'Callback'  , @this.ExportAnalysesData);
-            
             
             this.menuPlot = uimenu(this.figureHandle, ...
-                'Label'     , 'Plot');
+                'Label'     , 'Plot', ...
+                 'Callback'  , @this.Plot);
             
             this.menuPlotGeneratePlots = uimenu(this.menuPlot, ...
-                'Label'     , 'Generate plots ...', ...
-                'Callback'  , @this.GeneratePlots);
+                'Label'     , 'Generate plots');
             
             this.menuPlotGeneratePlotsCombined = uimenu(this.menuPlot, ...
-                'Label'     , 'Generate plots combined ...', ...
-                'Callback'  , @this.GeneratePlotsCombined);
+                'Label'     , 'Generate plots combined');
+            
+            this.menuPlotGeneratePlotsAggregated = uimenu(this.menuPlot, ...
+                'Label'     , 'Generate plots aggregated');
+            
             
             % session contextual menu
             % Define a context menu; it is not attached to anything
@@ -314,18 +271,8 @@ classdef ArumeGui < handle
             this.sessionContextMenuEditSettings = uimenu(this.sessionContextMenu, ...
                 'Label'     , 'Edit settings ...', ...
                 'Callback'  , @this.EditSessionSettings);
-            this.sessionContextMenuCopyTo = uimenu(this.sessionContextMenu, ...
-                'Label'     , 'Copy session to different project ...', ...
-                'Callback'  , @this.CopySessionsTo);
             set(this.sessionListBox, 'uicontextmenu', this.sessionContextMenu)
             
-            % session contextual menu
-            % Define a context menu; it is not attached to anything
-            this.analysisContextMenu = uicontextmenu;
-            this.analysisContextMenuSendToWorkspace = uimenu(this.analysisContextMenu, ...
-                'Label'     , 'Send data to matlab workspace ...', ...
-                'Callback'  , @this.SendToWorkspace);
-            set(this.analysisListBox, 'uicontextmenu', this.analysisContextMenu)
             
             % Move the GUI to the center of the screen.
             movegui(this.figureHandle,'center')
@@ -358,8 +305,8 @@ classdef ArumeGui < handle
             w = figurePosition(3);  % figure width
             h = figurePosition(4);  % figure height
             
-            m = 5;      % margin between panels
-            th = 60;    % top panel height
+            m = 8;      % margin between panels
+            th = 40;    % top panel height
             bh = 60;    % bottom panel height
             lw = 400;   % left panel width            
             
@@ -377,9 +324,11 @@ classdef ArumeGui < handle
         
         function menuFileCallback( this, source, eventdata )
             
+            % Clean up and refill the recent projects menu
+            
             delete(get(this.menuFileLoadRecentProject,'children'));
             
-            for i=1:length(this.arumeController.recentProjects) % Add recent projects
+            for i=1:length(this.arumeController.recentProjects)
                 uimenu(this.menuFileLoadRecentProject, ...
                 'Label'     , this.arumeController.recentProjects{i}, ...
                 'Callback'  , @this.loadProject);
@@ -388,14 +337,39 @@ classdef ArumeGui < handle
             
         function newProject(this, source, eventdata )
             if ( this.closeProjectQuestdlg() )
-                sDlg.Path = { {['uigetdir(''' this.arumeController.defaultDataFolder ''')']} };
-                sDlg.Name = 'ProjectName';
-                sDlg.Default_Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
-
-                P = StructDlg(sDlg, 'New project');
-                if ( isempty( P ) )
-                    return
+               
+                P.Path = this.arumeController.defaultDataFolder;
+                P.Name = 'ProjectName';
+                
+                while(1)
+                    
+                    sDlg.Path = { {['uigetdir(''' P.Path ''')']} };
+                    sDlg.Name = P.Name;
+                    sDlg.Default_Experiment = {this.arumeController.possibleExperiments};
+                    
+                    P = StructDlg(sDlg, 'New project');
+                    if ( isempty( P ) )
+                        return
+                    end
+                    
+                    if ( ~exist( P.Path, 'dir' ) )
+                        uiwait(msgbox('The folder selected does not exist', 'Error', 'Modal'));
+                        continue;
+                    end
+                    
+                    if ( ~ArumeCore.Project.IsValidProjectName(P.Name) )
+                        uiwait(msgbox('The project name is not valid (no spaces or special signs)', 'Error', 'Modal'));
+                        continue;
+                    end
+                    
+                    if ( exist( fullfile(P.Path, P.Name), 'dir') )
+                        uiwait(msgbox('There is already a project with that name in that folder.', 'Error', 'Modal'));
+                        continue;
+                    end
+                    
+                    break;
                 end
+                
                 if ( ~isempty( this.arumeController.currentProject ) )
                     this.arumeController.currentProject.save();
                 end
@@ -405,99 +379,87 @@ classdef ArumeGui < handle
             end
         end
         
-        function newProjectFolder(this, source, eventdata )           
-            if ( this.closeProjectQuestdlg() )
-                sDlg.Path = { {['uigetdir(''' this.arumeController.defaultDataFolder ''')']} };
-                sDlg.Name = 'ProjectName';
-                sDlg.Default_Experiment = {ArumeCore.ExperimentDesign.GetExperimentList};
-               
-                P = StructDlg(sDlg, 'New project');
-                if ( isempty( P ) )
-                    return
-                end
-                if ( ~isempty( this.arumeController.currentProject ) )
-                    this.arumeController.currentProject.save();
-                end
-                
-                this.arumeController.newProjectFolder( P.Path, P.Name, P.Default_Experiment);
-                this.updateGui();
-            end
-        end
-        
         function loadProject(this, source, eventdata )
-            
-            h=waitbar(0,'Please wait..');
             
             if ( this.closeProjectQuestdlg() )
                 if ( this.menuFileLoadProject == source ) 
-                    [filename, pathname] = uigetfile([this.arumeController.defaultDataFolder '/*.aruprj'], 'Pick a project file');
-                    if ( ~filename  )
-                        close(h)
+                    pathname = uigetdir(this.arumeController.defaultDataFolder, 'Pick a project folder');
+                    if ( isempty(pathname) || (isscalar(pathname) && (~pathname)) || ~exist(pathname,'dir')  )
                         return
                     end
+                    
+                    [~,projectName] = fileparts(pathname);
+                    if (  ~exist(fullfile(pathname, [projectName '_ArumeProject.mat']),'file'))
+                        msgbox('This folder does not appear to be an Arume project folder');
+                        return;
+                    end
+                    
                     if ( ~isempty(this.arumeController.currentProject) )
                         this.arumeController.currentProject.save();
                     end
                 else % load a recent project
-                    fullname = get(source,'Label');
-                    if ( exist(fullname,'file') )
-                        [pathname, file, extension] = fileparts(fullname);
-                        filename = [file extension];
-                    else
-                        close(h)
+                    pathname = get(source,'Label');
+                    if ( ~exist(pathname,'dir') )
                         msgbox('File does not exist');
                         return;
                     end
                 end
                 
+                h=waitbar(0,'Please wait..');
                 waitbar(1/2)
-                this.arumeController.loadProject(fullfile(pathname, filename));
+                this.arumeController.loadProject(pathname);
                 waitbar(2/2)
                 this.updateGui();
+                close(h)
             end
             
-            close(h)
         end
         
-        function loadProjectFolder(this, source, eventdata )
-             
+        function loadProjectBackup(this, source, eventdata )
+            
+            if ( this.closeProjectQuestdlg() )
+                
+                [filename, pathname] = uigetfile({'*.zip;*.aruprj', 'Arume backup files (*.zip, *.aruprj'}, 'Pick a project backup');
+                if ( isempty(filename) )
+                    return
+                end
+                
+                backupFile = fullfile(pathname, filename);
+                newParentPath = uigetdir(this.arumeController.defaultDataFolder, 'Pick the parent folder for the restored project');
+                if ( ~newParentPath  )
+                    return
+                end
+                
+                if ( ~isempty(this.arumeController.currentProject) )
+                    this.arumeController.currentProject.save();
+                end
+                
+                h=waitbar(0,'Please wait..');
+                waitbar(1/2)
+                this.arumeController.loadProjectBackup(backupFile, newParentPath);
+                waitbar(2/2)
+                this.updateGui();
+                close(h)
+            end
+            
+        end
+        
+        function saveProjectBackup(this, source, eventdata )
+            
+            [filename, pathname] = uiputfile([this.arumeController.defaultDataFolder '/*.zip'], 'Pick a project backup');
+            if ( isempty(filename) )
+                return
+            end
+            
+            backupFile = fullfile(pathname, filename);
+            
             h=waitbar(0,'Please wait..');
-            
-            if ( this.closeProjectQuestdlg() )
-                if ( this.menuFileLoadProjectFolder == source ) 
-                    [filename, pathname] = uigetfile([this.arumeController.defaultDataFolder '/Project.mat'], 'Pick a project file');
-                    if ( ~filename  )
-                        close(h)
-                        return
-                    end
-                    if ( ~isempty(this.arumeController.currentProject) )
-                        this.arumeController.currentProject.save();
-                    end
-                else % load a recent project
-                    fullname = get(source,'Label');
-                    if ( exist(fullname,'file') )
-                        [pathname, file, extension] = fileparts(fullname);
-                        filename = [file extension];
-                    else
-                        close(h)
-                        msgbox('File does not exist');
-                        return;
-                    end
-                end
-                
-                waitbar(1/2)
-                this.arumeController.loadProjectFolder(pathname);
-                waitbar(2/2)
-                this.updateGui();
-            end
-            
+            waitbar(1/2)
+            this.arumeController.saveProjectBackup(backupFile);
+            waitbar(2/2)
+            this.updateGui();
             close(h)
-        end
-        
-        function loadRecentProject(this, source, eventdata )
-            if ( this.closeProjectQuestdlg() )
-               a=1;
-            end
+            
         end
                 
         function closeProject(this, source, eventdata )
@@ -509,7 +471,7 @@ classdef ArumeGui < handle
         
         function newSession( this, source, eventdata ) 
             
-            experiments = ArumeCore.ExperimentDesign.GetExperimentList;
+            experiments = this.arumeController.possibleExperiments;
             defaultExperimentIndex = find(strcmp(experiments,this.arumeController.currentProject.defaultExperiment));
             
             session.Experiment = experiments{defaultExperimentIndex};
@@ -559,14 +521,14 @@ classdef ArumeGui < handle
                 options = [];
             end
             
-            session = this.arumeController.newSession( session.Experiment, session.Subject_Code, session.Session_Code, options );
+            this.arumeController.newSession( session.Experiment, session.Subject_Code, session.Session_Code, options );
             
             this.updateGui();
         end
         
         function importSession( this, source, eventdata )     
             
-            experiments = ArumeCore.ExperimentDesign.GetExperimentList;
+            experiments = this.arumeController.possibleExperiments;
             defaultExperimentIndex = find(strcmp(experiments,this.arumeController.currentProject.defaultExperiment));
             
             session.Experiment = experiments{defaultExperimentIndex};
@@ -606,11 +568,11 @@ classdef ArumeGui < handle
             
             % Show the dialog for experiment options if necessary
             experiment = ArumeCore.ExperimentDesign.Create([], session.Experiment);
-            optionsDlg = experiment.GetExperimentOptionsDialog( );
+            optionsDlg = experiment.GetExperimentOptionsDialog( 1 );
             if ( ~isempty( optionsDlg) )
                 options = StructDlg(optionsDlg, 'Edit experiment options');
                 if ( isempty( options ) )
-                    options = StructDlg(optionsDlg,'',[],[],'off');
+                    return;
                 end
             else
                 options = [];
@@ -686,29 +648,6 @@ classdef ArumeGui < handle
              this.updateGui();
         end
         
-        function CopySessionsTo( this, source, eventdata )
-            
-            sessions = this.arumeController.selectedSessions;
-            
-            
-            h=waitbar(0,'Please wait..');
-            
-            [filename, pathname] = uigetfile([this.arumeController.defaultDataFolder '/*.aruprj'], 'Pick a project file');
-            if ( ~filename  )
-                close(h)
-                return
-            end
-            
-            waitbar(1/2)
-            this.arumeController.copySelectedSessionsToDifferentProject(fullfile(pathname, filename));
-            waitbar(2/2)
-            this.updateGui();
-            
-            close(h)
-            
-            this.updateGui();
-        end
-        
         function DeleteSessions( this, source, eventdata )
             choice = questdlg('Are you sure you want to delete the sessions?', ...
                 'Closing', ...
@@ -753,7 +692,7 @@ classdef ArumeGui < handle
                 allgood = 1;
                 for i=1:length(sessions)
                     for session = this.arumeController.currentProject.sessions
-                        if ( streq(session.subjectCode, newSubjectCodes{i}) &&  streq(session.sessionCode, newSessionCodes{i}) )
+                        if ( streq(upper(session.subjectCode), upper(newSubjectCodes{i})) && streq(upper(session.sessionCode), upper(newSessionCodes{i})) )
                             uiwait(msgbox(['One of the names is repeated ' newSubjectCodes{i} '-' newSessionCodes{i} '.'], 'Error', 'Modal'));
                             allgood = 0;
                             break;
@@ -875,8 +814,15 @@ classdef ArumeGui < handle
         end
         
         function restartSession( this, source, eventdata ) 
-            this.arumeController.restartSession();
-            this.updateGui();
+            
+            choice = questdlg('Are you sure you want to restart the sessions?', ...
+                'Closing', ...
+                'Yes','No','No');
+            switch choice
+                case 'Yes'
+                    this.arumeController.restartSession();
+                    this.updateGui();
+            end
         end
         
         function PrepareAnalysis( this, source, eventdata ) 
@@ -884,35 +830,61 @@ classdef ArumeGui < handle
             this.updateGui();
         end
         
-        function RunAnalyses( this, source, eventdata ) 
+        function Plot( this, source, eventdata )
             
-            analyses = get(this.analysisListBox,'string');
-            selection = get(this.analysisListBox,'value');
+            delete(get(this.menuPlotGeneratePlots,'children'));
+            delete(get(this.menuPlotGeneratePlotsCombined,'children'));
+            delete(get(this.menuPlotGeneratePlotsAggregated,'children'));
             
-            this.arumeController.runAnalyses(analyses, selection);
-            this.updateGui();
+            
+            if ( ~isempty( this.arumeController.currentSession ) && this.arumeController.currentSession.isReadyForAnalysis)
+            
+                plotsList = {};
+                plotsListAgg = {};
+                for session = this.arumeController.selectedSessions
+                    if ( isempty (plotsList) )
+                        plotsList = this.arumeController.GetPlotList();
+                    else
+                        plotsList =  intersect(plotsList, this.arumeController.GetPlotList());
+                    end
+                    if ( isempty (plotsListAgg) )
+                        plotsListAgg = this.arumeController.GetAggregatePlotList();
+                    else
+                        plotsListAgg =  intersect(plotsListAgg, this.arumeController.GetAggregatePlotList());
+                    end
+                end
+            else
+                plotsList = {};
+                plotsListAgg = {};
+            end
+            
+            for i=1:length(plotsList)
+                uimenu(this.menuPlotGeneratePlots, ...
+                    'Label'     , plotsList{i}, ...
+                    'Callback'  , @this.GeneratePlots);
+                uimenu(this.menuPlotGeneratePlotsCombined, ...
+                    'Label'     , plotsList{i}, ...
+                    'Callback'  , @this.GeneratePlotsCombined);
+            end
+            
+            for i=1:length(plotsListAgg)
+                uimenu(this.menuPlotGeneratePlotsAggregated, ...
+                    'Label'     , plotsListAgg{i}, ...
+                    'Callback'  , @this.GeneratePlots);
+            end
+            
+            
+            % update plots listbox
         end
         
-        function ExportAnalysesData( this, source, eventdata ) 
-            this.arumeController.exportAnalysesData();
-            this.updateGui();
-        end
-        
-        function GeneratePlots( this, source, eventdata ) 
-            
-            plots = get(this.plotsListBox,'string');
-            selection = get(this.plotsListBox,'value');
-            
-            this.arumeController.generatePlots(plots, selection);
+        function GeneratePlots( this, source, eventdata )
+                        
+            this.arumeController.generatePlots({source.Label}, 1);
             this.updateGui();
         end
         
         function GeneratePlotsCombined( this, source, eventdata ) 
-            
-            plots = get(this.plotsListBox,'string');
-            selection = get(this.plotsListBox,'value');
-            
-            this.arumeController.generatePlots(plots, selection,1);
+            this.arumeController.generatePlots({source.Label}, 1);
             this.updateGui();
         end
         
@@ -930,15 +902,6 @@ classdef ArumeGui < handle
             this.arumeController.currentSession.updateComment(get(this.commentsTextBox, 'string'));
         end
         
-        
-        function analysisListBoxCallBack( this, source, eventdata )
-            
-        end
-        
-        function plotsListBoxCallBack( this, source, eventdata )
-            
-        end
-        
         function SendToWorkspace( this, source, eventdata)
             
         end
@@ -946,15 +909,19 @@ classdef ArumeGui < handle
     
     methods(Access=public)
         function updateGui( this )
+            if ( isempty( this.arumeController ))
+                return;
+            end
+            
             % update top box info
             if ( ~isempty( this.arumeController.currentProject ) )
-                set(this.projectTextLabel, 'String', ['Project: ' this.arumeController.currentProject.name] );
-                set(this.pathTextLabel, 'String', ['Path: ' this.arumeController.currentProject.projectFile] );
-                set(this.defaultExperimentTextLabel, 'String', ['Default experiment: ' this.arumeController.currentProject.defaultExperiment] );
+                set(this.projectTextLabel,              'String', ['Project: ' this.arumeController.currentProject.name] );
+                set(this.pathTextLabel,                 'String', ['Path: ' this.arumeController.currentProject.path] );
+                set(this.defaultExperimentTextLabel,    'String', ['Default experiment: ' this.arumeController.currentProject.defaultExperiment] );
             else
-                set(this.projectTextLabel, 'String', ['Project: ' '-'] );
-                set(this.pathTextLabel, 'String', ['Path: ' '-'] );
-                set(this.defaultExperimentTextLabel, 'String', ['Default experiment: ' '-'] );
+                set(this.projectTextLabel,              'String', 'Project: -' );
+                set(this.pathTextLabel,                 'String', 'Path: -' );
+                set(this.defaultExperimentTextLabel,    'String', 'Default experiment: -' );
             end
             
             % update session listbox
@@ -992,18 +959,36 @@ classdef ArumeGui < handle
                 end
                     for i=1:length(dataTable.Properties.VariableNames)
                         optionClass = class(dataTable{1,i});
+                        row = '';
                         switch(optionClass)
                             case 'double'
                                 if ( isscalar(dataTable{1,i}))
-                                    s = [s sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, num2str(dataTable{1,i}))];
+                                   row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, num2str(dataTable{1,i}));
                                 end
                             case 'char'
-                                s = [s sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, dataTable{1,i})];
+                                fieldText = dataTable{1,i};
+                                if ( length(fieldText) > 50 )
+                                    fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
+                                end
+                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, fieldText);
                             case 'categorical'
-                                s = [s sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, string(dataTable{1,i}))];
+                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, string(dataTable{1,i}));
+                            case 'cell'
+                                if ( length(size(dataTable{1,i}))<=2 && min(size(dataTable{1,i}))==1 && ischar(dataTable{1,i}{1}) && ~isempty(dataTable{1,i}) )
+                                    for j=1:length(dataTable{1,i})
+                                        fieldText = dataTable{1,i}{j};
+                                        if ( length(fieldText) > 50 )
+                                            fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
+                                        end
+                                        row = [row sprintf('%-25s: %s\n', [dataTable.Properties.VariableNames{i} num2str(j)], fieldText)];
+                                    end
+                                else
+                                    row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, 'CELL');
+                                end
                             otherwise
-                                s = [s sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, '-')];
-                        end         
+                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, '-');
+                        end   
+                         s = [s row];
                     end
                         
                         
@@ -1017,45 +1002,6 @@ classdef ArumeGui < handle
             else
                 set(this.commentsTextBox, 'Enable','off')
                 set(this.commentsTextBox,'string','');
-            end
-            
-            % update analysis listbox
-            if ( ~isempty( this.arumeController.currentSession ) && this.arumeController.currentSession.isReadyForAnalysis)
-                anlysisList =  this.arumeController.GetAnalysisList();
-                set(this.analysisListBox, 'String', anlysisList);
-                set(this.analysisListBox, 'Value', min(1,length(anlysisList)) )
-            else
-                set(this.analysisListBox, 'String', {});
-                set(this.analysisListBox, 'Value', 0 )
-                set(this.analysisListBox, 'Enable', 'on');
-            end
-            
-            % update plots listbox
-            if ( ~isempty( this.arumeController.currentSession ) && this.arumeController.currentSession.isReadyForAnalysis)
-                plots = get(this.plotsListBox,'string');
-                selection = get(this.plotsListBox,'value');
-            
-                plotsList = {};
-                for session = this.arumeController.selectedSessions
-                    if ( isempty (plotsList) )
-                        plotsList = this.arumeController.GetPlotList();
-                    else
-                        plotsList =  intersect(plotsList, this.arumeController.GetPlotList());
-                    end
-                end
-                
-                if ( ~isempty(selection) && selection(1) > 0 )
-                    [a newselection] = intersect(plotsList,plots(selection));
-                else
-                    newselection = min(1,length(plotsList));
-                end
-                
-                set(this.plotsListBox, 'String', plotsList);
-                set(this.plotsListBox, 'Value', newselection );
-            else
-                set(this.plotsListBox, 'String', {});
-                set(this.plotsListBox, 'Value', 0 )
-                set(this.plotsListBox, 'Enable', 'on');
             end
                 
             % update menu 
@@ -1081,14 +1027,10 @@ classdef ArumeGui < handle
             
             if ( ~isempty( this.arumeController.currentProject ) )
                 set(this.menuFileCloseProject, 'Enable', 'on');
-                set(this.menuFileExportProject, 'Enable', 'on');
-                
                 set(this.menuFileNewSession, 'Enable', 'on');
                 
             else
                 set(this.menuFileCloseProject, 'Enable', 'off');
-                set(this.menuFileExportProject, 'Enable', 'off');
-                
                 set(this.menuFileNewSession, 'Enable', 'off');
             end
             

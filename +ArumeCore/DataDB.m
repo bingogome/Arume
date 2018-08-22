@@ -22,15 +22,11 @@ classdef DataDB < handle
     
     methods (Access = protected)
         
-        function InitDB( this, folder, session )
+        function InitDB( this, folder, session)
             
             if ( ~ischar(folder) )
                 error( 'Folder should be a string' );
             end
-            if ( ~ischar(session) )
-                error( 'Session should be a string' );
-            end
-            
             
             this.folder = folder;
             this.session = session;

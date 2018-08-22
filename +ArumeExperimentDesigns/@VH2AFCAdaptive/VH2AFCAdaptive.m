@@ -126,14 +126,6 @@ classdef VH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             
             disp(['CURRENT: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(N) ' SHV : ' num2str(this.currentCenterRange) ' RANGE: ' num2str(this.currentRange)]);
             
-            if ( ~isempty(this.eyeTracker) )
-                if ( ~this.eyeTracker.IsRecording())
-                    this.eyeTracker.StartRecording();
-                    pause(1);
-                end
-                this.eyeTracker.RecordEvent(num2str(size(this.Session.currentRun.pastConditions,1)));
-            end
-            
             trialResult =  Enum.trialResult.CORRECT;
         end
         
@@ -299,9 +291,6 @@ classdef VH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                     % -----------------------------------------------------------------
                 end
             catch ex
-                if ( ~isempty( this.eyeTracker ) )
-                    %                     this.eyeTracker.StopRecording();
-                end
                 rethrow(ex)
             end
             
@@ -312,14 +301,6 @@ classdef VH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
         end
         
         function trialOutput = runPostTrial(this)
-            
-            if ( ~isempty( this.eyeTracker ) )
-                
-                if ( length(this.Session.currentRun.futureConditions) == 0 )
-                    this.eyeTracker.StopRecording();
-                end
-            end
-            
             trialOutput = [];
             trialOutput.Response = this.lastResponse;
             trialOutput.ReactionTime = this.reactionTime;

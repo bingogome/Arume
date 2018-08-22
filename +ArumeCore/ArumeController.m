@@ -33,6 +33,7 @@ classdef ArumeController < handle
     
     properties
         gui                 % Current gui associated with the controller
+        possibleExperiments % List of possible experiments
     end
     
     properties( SetAccess=private )
@@ -81,7 +82,6 @@ classdef ArumeController < handle
         %
         
         function arumeController = ArumeController()
-            
         end
         
         function init( this)
@@ -89,7 +89,7 @@ classdef ArumeController < handle
             [folder, name, ext] = fileparts(which('Arume'));
             
             % find the configuration file
-            if ( ~ exist(fullfile(folder,'arumeconf.mat')))
+            if ( ~exist(fullfile(folder,'arumeconf.mat'),'file'))
                 conf = [];
                 this.configuration = conf;
                 save(fullfile(folder,'arumeconf.mat'), 'conf'); 
@@ -118,96 +118,91 @@ classdef ArumeController < handle
             if ( ~exist( this.configuration.tempFolder, 'dir') )
                 mkdir(folder, 'Temp');
             end
+            
+            % Get the list of possible experiments
+            this.possibleExperiments = sort(ArumeCore.ExperimentDesign.GetExperimentList());
         end
+        
         %
         % Managing projects
         %
         
-        function newProject( this, projectFilePath, projectName, defaultExperiment )
+        function newProject( this, parentPath, projectName, defaultExperiment )
             % Creates a new project
             
-            this.currentProject = ArumeCore.Project.NewProject( projectFilePath, projectName, this.configuration.tempFolder, defaultExperiment);
+            this.currentProject = ArumeCore.Project.NewProject( parentPath, projectName, defaultExperiment);
             this.selectedSessions = [];
             
-            if ( ~isfield(this.configuration, 'recentProjects' ) )
-                this.configuration.recentProjects = {};
-            end
-            
-            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
-            
-            this.configuration.recentProjects = [this.currentProject.projectFile this.configuration.recentProjects];
-            conf = this.configuration;
-            [folder, name, ext] = fileparts(which('Arume'));
-            save(fullfile(folder,'arumeconf.mat'), 'conf'); 
+            this.updateRecentProjects(this.currentProject.path);
         end
         
-        function newProjectFolder( this, projectFilePath, projectName, defaultExperiment )
-            % Creates a new project
+        function loadProject( this, folder )  
+            % Loads a project from a project folder
             
-            this.currentProject = ArumeCore.Project.NewProject( projectFilePath, projectName, projectFilePath, defaultExperiment);
-            this.selectedSessions = [];
-            
-            if ( ~isfield(this.configuration, 'recentProjects' ) )
-                this.configuration.recentProjects = {};
+            if ( ~exist( folder, 'dir') )
+                msgbox( 'The project folder does not exist.');
             end
             
-            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
+            if ( ~isempty(this.currentProject) && strcmp(this.currentProject.path, folder))
+                disp('Loading the same project folder that is currently loaded');
+                return;
+            end
             
-            this.configuration.recentProjects = [this.currentProject.projectFile this.configuration.recentProjects];
-            conf = this.configuration;
-            [folder, name, ext] = fileparts(which('Arume'));
-            save(fullfile(folder,'arumeconf.mat'), 'conf'); 
+            this.currentProject = ArumeCore.Project.LoadProject( folder );
+            if ~isempty(this.currentProject.sessions) 
+                this.selectedSessions = this.currentProject.sessions(1);
+            else
+                this.selectedSessions = [];
+            end            
+            
+            this.updateRecentProjects(this.currentProject.path)
         end
         
-        function loadProject( this, file )  
+        function loadProjectBackup( this, file, parentPath )  
             % Loads a project from a project file
-            
             if ( ~exist( file, 'file') )
                 msgbox( 'The project file does not exist.');
             end
             
-            if ( ~isempty(this.currentProject) && strcmp(this.currentProject.projectFile, file))
+            [~,projectName] = fileparts(file);
+            
+            if ( ~isempty(this.currentProject) && strcmp(this.currentProject.name, projectName))
                 disp('Loading the same project file that is currently loaded');
                 return;
             end
             
-            this.currentProject = ArumeCore.Project.LoadProject( file, this.configuration.tempFolder );
-            this.selectedSessions = [];
-            
-            if ( ~isfield(this.configuration, 'recentProjects' ) )
-                this.configuration.recentProjects = {};
+            this.currentProject = ArumeCore.Project.LoadProjectBackup( file, parentPath );
+            if ~isempty(this.currentProject.sessions)
+                this.selectedSessions = this.currentProject.sessions(1);
+            else
+                this.selectedSessions = [];
             end
             
-            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
-            
-            this.configuration.recentProjects = [file this.configuration.recentProjects];
-            conf = this.configuration;
-            [folder, name, ext] = fileparts(which('Arume'));
-            save(fullfile(folder,'arumeconf.mat'), 'conf'); 
+            this.updateRecentProjects(this.currentProject.path)
         end
         
-        function loadProjectFolder( this, file )  
-            % Loads a project from a project file
-            
-            if ( ~exist( file, 'file') )
-                msgbox( 'The project file does not exist.');
+        function saveProjectBackup(this, file)
+            if ( exist( file, 'file') )
+                msgbox( 'The file already exists.');
             end
             
-            if ( ~isempty(this.currentProject) && strcmp(this.currentProject.projectFile, file))
-                disp('Loading the same project file that is currently loaded');
-                return;
-            end
-            
-            this.currentProject = ArumeCore.Project.LoadProject( file, file );
-            this.selectedSessions = [];
+            this.currentProject.backup(file);
+        end
+
+        function updateRecentProjects(this, currentProjectFile)
             
             if ( ~isfield(this.configuration, 'recentProjects' ) )
                 this.configuration.recentProjects = {};
             end
             
-            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, this.currentProject.projectFile))) = [];
-            
-            this.configuration.recentProjects = [file this.configuration.recentProjects];
+            % remove the current file
+            this.configuration.recentProjects = unique(this.configuration.recentProjects);
+            if (~isempty( this.configuration.recentProjects ) )
+                this.configuration.recentProjects =  this.configuration.recentProjects(1:min(30,length(this.configuration.recentProjects)));
+            end
+            this.configuration.recentProjects(find(strcmp(this.configuration.recentProjects, currentProjectFile))) = [];
+            % add it again at the top
+            this.configuration.recentProjects = [currentProjectFile this.configuration.recentProjects];
             conf = this.configuration;
             [folder, name, ext] = fileparts(which('Arume'));
             save(fullfile(folder,'arumeconf.mat'), 'conf'); 
@@ -246,7 +241,8 @@ classdef ArumeController < handle
                 end
             end
             
-            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subjectCode, sessionCode, experimentOptions );
+            session = ArumeCore.Session.NewSession( this.currentProject.path, experiment, subjectCode, sessionCode, experimentOptions );
+            this.currentProject.addSession(session);
             this.selectedSessions = session;
             this.currentProject.save();
         end
@@ -255,20 +251,28 @@ classdef ArumeController < handle
             % Imports a session from external files containing the data. It
             % will not be possible to run this session
             
-            % check if session already exists
-            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code, options );
+            % check if session already exists with that subjectCode and
+            % sessionCode
+            for session = this.currentProject.sessions
+                if ( isequal(subject_Code, session.subjectCode) && isequal( session_Code, session.sessionCode) )
+                    error( 'Arume: session already exists use a diferent name' );
+                end
+            end
             
+            session = ArumeCore.Session.NewSession( this.currentProject.path, experiment, subject_Code, session_Code, options );
+            this.currentProject.addSession(session);
             this.selectedSessions = session;
             
-            session.experiment.ImportSession();
-            session.prepareForAnalysis();
+            session.importSession();
             
             this.currentProject.save();
         end
+        
         function updateExperimentOptions( this, experiment, subject_Code, session_Code, options )
             session = this.currentProject.findSession( experiment, subject_Code, session_Code);
             session.experiment.UpdateExperimentOptions(options);
         end
+        
         function renameSession( this, session, subjectCode, sessionCode)
             % Renames the current session
             
@@ -279,37 +283,18 @@ classdef ArumeController < handle
             end
             disp(['Renaming session' session.subjectCode ' - ' session.sessionCode ' to '  subjectCode ' - ' sessionCode]);
             
-            [s i] = this.currentProject.findSession(session.experiment.Name, session.subjectCode, session.sessionCode);
+            [~, i] = this.currentProject.findSession(session.experiment.Name, session.subjectCode, session.sessionCode);
             this.currentProject.sessions(i).rename(subjectCode, sessionCode);
             this.currentProject.save();
         end
         
         function copySelectedSessions( this, newSubjectCodes, newSessionCodes)
             
-            sessions = this.selectedSessions;
-            
-            for i =1:length(sessions)
-                newSession = ArumeCore.Session.CopySession( sessions(i), newSubjectCodes{i}, newSessionCodes{i});
+            for i =1:length(this.selectedSessions)
+                ArumeCore.Session.CopySession( this.selectedSessions(i), newSubjectCodes{i}, newSessionCodes{i});
             end
                         
             this.currentProject.save();
-        end
-        
-        function copySelectedSessionsToDifferentProject(this, newProjectFile)
-            if ( ~exist( newProjectFile, 'file') )
-                msgbox( 'The project file does not exist.');
-                return;
-            end
-            
-            secondProject = ArumeCore.Project.LoadProject( newProjectFile, [this.configuration.tempFolder '2'] );
-          
-            sessions = this.selectedSessions;
-            
-            for i =1:length(sessions)
-                newSession = ArumeCore.Session.CopySessionToDifferentProject( sessions(i),secondProject, sessions(i).subjectCode, sessions(i).sessionCode);
-            end
-            
-            secondProject.save();
         end
         
         function deleteSelectedSessions( this )
@@ -358,14 +343,16 @@ classdef ArumeController < handle
             % trial dataset and the samples dataset
             
             useWaitBar = 0;
+                       
             if ( ~exist('sessions','var') )
                 sessions = this.selectedSessions;
                 useWaitBar = 1;
             end
             
+            n = length(sessions);
+            
             if (useWaitBar)
                 h = waitbar(0,'Please wait...');
-                n = length(this.selectedSessions);
             end
             
             for i =1:n
@@ -383,52 +370,13 @@ classdef ArumeController < handle
                 end
             end
             
+            this.currentProject.save();
+            
             if (useWaitBar)
                 close(h);
             end
-            
-            this.currentProject.save();
         end
-        
-        function runAnalyses( this, analysis, selection )
-            % Runs the selected analysis
-            
-            analysisSelection = {};
-            if ( ~isempty( selection ) )
-                for i=1:length(selection)
-                    if ( ismethod( this.currentSession.experiment, [this.AnalysisMethodPrefix analysis{selection(i)}] ))
-                        analysisSelection{end+1} = analysis{selection(i)};
-                    end
-                end
-                
-                h = waitbar(0,'Please wait...');
-                n = length(this.selectedSessions);
-                i=0;
-                % Single sessions plot
-                for session = this.selectedSessions
-                    i = i+1;
-                    session.RunAnalyses(analysisSelection);
-                    waitbar(i/n,h)
-                end
-                close(h);
-                this.currentProject.save();
-            end
-        end
-        
-        function analysisList = GetAnalysisList( this )
-            analysisList = {};
-            methodList = meta.class.fromName(class(this.currentSession.experiment)).MethodList;
-            for i=1:length(methodList)
-                if ( strfind( methodList(i).Name, this.AnalysisMethodPrefix) )
-                    analysisList{end+1} = strrep( methodList(i).Name, this.AnalysisMethodPrefix ,'');
-                end
-            end
-        end
-                
-        function exportAnalysesData(this)
-            a=1;
-        end
-        
+                        
         function plotList = GetPlotList( this )
             plotList = {};
             methodList = meta.class.fromName(class(this.currentSession.experiment)).MethodList;
@@ -436,6 +384,13 @@ classdef ArumeController < handle
                 if ( strfind( methodList(i).Name, this.PlotsMethodPrefix) )
                     plotList{end+1} = strrep(methodList(i).Name, this.PlotsMethodPrefix ,'');
                 end
+            end
+        end
+        
+        function plotList = GetAggregatePlotList( this )
+            plotList = {};
+            methodList = meta.class.fromName(class(this.currentSession.experiment)).MethodList;
+            for i=1:length(methodList)
                 if ( strfind( methodList(i).Name, this.PlotsAggregateMethodPrefix) )
                     plotList{end+1} = strrep(methodList(i).Name, this.PlotsAggregateMethodPrefix ,'');
                 end
@@ -457,8 +412,8 @@ classdef ArumeController < handle
                             end
                         else 
                             
-                            nplot1 = [1 2 1 2 2 2 2 2 3 2 4 4 4 4 4 5 5 5 5 5 5 5 5 5];
-                            nplot2 = [1 1 3 2 3 3 4 4 3 5 3 3 4 4 4 4 4 4 4 5 5 5 5 5];
+                            nplot1 = [1 2 1 2 2 2 2 2 3 2 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5];
+                            nplot2 = [1 1 3 2 3 3 4 4 3 5 3 3 4 4 4 4 4 4 4 4 5 5 5 5 5];
                             combinedFigures = [];
                             nSessions = length(this.selectedSessions);
                             p1 = nplot1(nSessions);
@@ -487,8 +442,8 @@ classdef ArumeController < handle
                                         % copy all including legend
                                         axcopy = copyobj(axorig(:), combinedFigures(iplot));
                                     end
-                                    ax = subplot(p1,p2,iSession,axcopy(end))
-                                    title(ax,theTitle)
+                                    ax = subplot(p1,p2,iSession,axcopy(end));
+                                    title(ax,theTitle);
                                 end
 
                                 close(setdiff( newhandles,handles))

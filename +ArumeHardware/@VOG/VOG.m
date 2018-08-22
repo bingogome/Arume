@@ -13,18 +13,17 @@ classdef VOG  < handle
             if ( ~exist('port','var') )
                 port = 9000;
             end
-            
+                        
             if ( exist('C:\secure\Code\EyeTracker\bin\x64\Debug','file') )
                 asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\x64\Debug\EyeTrackerRemoteClient.dll');
-
                 if ( ~exist('ip','var') )
-                    ip = '127.0.0.1';
+                    ip = fileread('C:\secure\Code\EyeTracker\bin\x64\Debug\IP.txt');
                 end
             else
-                asm = NET.addAssembly('D:\Code\Debug\EyeTrackerRemoteClient.dll');
+                asm = NET.addAssembly('C:\secure\code\Debug\EyeTrackerRemoteClient.dll');
                 
                 if ( ~exist('ip','var') )
-                    ip = '10.17.101.12';
+                    ip = fileread('C:\secure\code\Debug\IP.txt');
                 end
             end
             
@@ -54,9 +53,10 @@ classdef VOG  < handle
             end
         end
         
-        function RecordEvent(this, message)
+        function frameNumber = RecordEvent(this, message)
+            frameNumber = [];
             if ( ~isempty( this.eyeTracker) )
-                this.eyeTracker.RecordEvent([num2str(GetSecs) ' ' message]);
+                frameNumber = this.eyeTracker.RecordEvent([num2str(GetSecs) ' ' message]);
             end
         end
     end

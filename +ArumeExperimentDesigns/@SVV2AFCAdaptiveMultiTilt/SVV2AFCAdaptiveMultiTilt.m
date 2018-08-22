@@ -1,4 +1,4 @@
-classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
+classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
     %SVVLineAdaptiveLong Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -11,7 +11,26 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
     methods ( Access = protected )
         
         function dlg = GetOptionsDialog( this )
+             
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptive(this);
+            
+            dlg.PreviousTrialsForRange = { {'{All}','Previous30'} };
+            dlg.RangeChanges = { {'{Slow}','Fast'} };
+            dlg = rmfield(dlg, 'TotalNumberOfTrials');
+            dlg = rmfield(dlg, 'HeadAngle');
+            dlg = rmfield(dlg, 'TiltHeadAtBegining');
+            dlg = rmfield(dlg, 'offset');
+            
+            dlg.Tilts = [10 20 30];
+            dlg.TrialsPerTilt = {100 '* (trials)' [1 500] };
+            
+            if ( rand>0.5)
+                dlg.FirstSide = { {'{Left}','Right'} };
+            else
+                dlg.FirstSide = { {'Left','{Right}'} };
+            end
+            
+            dlg.Prisms = { {'{No}','2020Converge'} };
         end
         
         function initExperimentDesign( this  )
@@ -22,13 +41,44 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
-            this.trialsPerSession   = 1000;
+            this.trialsPerSession   = this.ExperimentOptions.TrialsPerTilt*(length(this.ExperimentOptions.Tilts)+1)*2;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 100;
-            this.blocksToRun = 1;
-            this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 10, 'trialsToRun', 10) ];
+            this.numberOfTimesRepeatBlockSequence =  1;
+            NblocksPerTilt = ceil(this.ExperimentOptions.TrialsPerTilt/10);
+            this.blocksToRun = NblocksPerTilt*(length(this.ExperimentOptions.Tilts)+1)*2;
+            
+              
+            this.blocks = [];
+            
+            if ( strcmp(this.ExperimentOptions.FirstSide,'Left') )
+                offset1 = 0;
+                offset2 = 30;
+            else
+                offset1 = 30;
+                offset2 = 0;
+            end
+            
+            % initial upright
+            block = struct( 'fromCondition', 1, 'toCondition', 10, 'trialsToRun', 10);
+            this.blocks = cat(1,this.blocks, repmat(block,NblocksPerTilt,1));
+            
+            % first side
+            for j=1:length(this.ExperimentOptions.Tilts)
+                block = struct( 'fromCondition', 1+j*10+offset1, 'toCondition', 10+j*10+offset1, 'trialsToRun', 10);
+                this.blocks = cat(1,this.blocks, repmat(block,NblocksPerTilt,1));
+            end
+            
+            % second upright
+            block = struct( 'fromCondition', 1, 'toCondition', 10, 'trialsToRun', 10);
+            this.blocks = cat(1,this.blocks, repmat(block,NblocksPerTilt,1));
+            
+            % second side 
+            for j=1:length(this.ExperimentOptions.Tilts)
+                block = struct( 'fromCondition', 1+j*10+offset2, 'toCondition', 10+j*10+offset2, 'trialsToRun', 10);
+                this.blocks = cat(1,this.blocks, repmat(block,NblocksPerTilt,1));
+            end
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -42,74 +92,78 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
             i = i+1;
             conditionVars(i).name   = 'Position';
             conditionVars(i).values = {'Up' 'Down'};
+            
+            i = i+1;
+            conditionVars(i).name   = 'Tilt';
+            conditionVars(i).values = [0 -this.ExperimentOptions.Tilts this.ExperimentOptions.Tilts];
         end
         
         function trialResult = runPreTrial(this, variables )
+            
             Enum = ArumeCore.ExperimentDesign.getEnum();
-            % Add stuff here
             
-            if ( ~isempty( this.Session.currentRun ) )
-                nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
-                
-                previousValues = zeros(nCorrect,1);
-                previousResponses = zeros(nCorrect,1);
-                
-                n = 1;
-                for i=1:length(this.Session.currentRun.pastConditions(:,1))
-                    if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
-                        isdown = strcmp(this.Session.currentRun.Data{i}.variables.Position, 'Down');
-                        previousValues(n) = this.Session.currentRun.Data{i}.trialOutput.Angle;
-                        previousResponses(n) = this.Session.currentRun.Data{i}.trialOutput.Response;
-                        n = n+1;
+            % Change the angle of the bitebar if necessary
+            if ( this.ExperimentOptions.UseBiteBarMotor )
+                if ( variables.Tilt ~= this.biteBarMotor.CurrentAngle )       
+                    result = 'n';
+                    while( result ~= 'y' )
+                        result = this.Graph.DlgSelect( ...
+                            'Continue?', ...
+                            { 'y' 'n'}, ...
+                            { 'Yes'  'No'} , [],[]);
+                    end
+                                        
+                    [mx, my] = RectCenter(this.Graph.wRect);
+                    fixRect = [0 0 10 10];
+                    fixRect = CenterRectOnPointd( fixRect, mx, my );
+                    Screen('FillOval', this.Graph.window,  255, fixRect);
+                    Screen('Flip', this.Graph.window);
+                    
+                    if ( this.ExperimentOptions.UseBiteBarMotor)
+                        pause(2);
+                        if ( this.ExperimentOptions.UseEyeTracker )
+                            this.eyeTracker.RecordEvent('Tilt begin');
+                        end
+                        this.biteBarMotor.SetTiltAngle(variables.Tilt);
+                        if ( this.ExperimentOptions.UseEyeTracker )
+                            this.eyeTracker.RecordEvent('Tilt end');
+                        end
+                        disp('30 s pause');
+                        pause(30);
+                        if ( this.ExperimentOptions.UseEyeTracker )
+                            this.eyeTracker.RecordEvent('Tilt 30 second pause end');
+                        end
+                        disp('done');
                     end
                 end
             end
             
-            NtrialPerBlock = 10;
+            % adaptive paradigm
             
-            % recalculate every 10 trials
-            N = mod(length(previousValues),NtrialPerBlock);
-            Nblocks = floor(length(previousValues)/NtrialPerBlock)*NtrialPerBlock+1;
+            nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
+            previousValues = zeros(nCorrect,1);
+            previousResponses = zeros(nCorrect,1);
             
-            if ( length(previousValues)>0 )
-                if ( N == 0 )
-                    ds = dataset;
-                    ds.Response = previousResponses(max(1,end-30):end);
-                    ds.Angle = previousValues(max(1,end-30):end);
-                    subds = ds;
-                    
-                    SVV = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( subds.Angle, subds.Response);
-                    this.currentCenterRange = SVV + this.ExperimentOptions.offset;
-                    
-                    % Limit the center of the new range to the extremes of
-                    % the past range of angles
-                    if ( SVV > max(ds.Angle) )
-                        SVV = max(ds.Angle);
-                    elseif( SVV < min(ds.Angle))
-                        SVV = min(ds.Angle);
-                    end
-                    
-                    this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
+            n = 1;
+            for i=1:length(this.Session.currentRun.pastConditions(:,1))
+                if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
+                    previousValues(n) = this.Session.currentRun.Data{i}.trialOutput.Angle;
+                    previousResponses(n) = this.Session.currentRun.Data{i}.trialOutput.Response;
+                    n = n+1;
                 end
-            else
-                this.currentCenterRange = rand(1)*30-15;
-                this.currentRange = 90;
             end
             
-            this.currentAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
-            this.currentAngle = mod(this.currentAngle+90,180)-90;
-            
-            this.currentAngle = round(this.currentAngle);
-            
-            disp(['CURRENT: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(N) ' SVV : ' num2str(this.currentCenterRange) ' RANGE: ' num2str(this.currentRange)]);
-            
-            if ( ~isempty(this.eyeTracker) )
-                if ( ~this.eyeTracker.IsRecording())
-                    this.eyeTracker.StartRecording();
-                    pause(1);
-                end
-                this.eyeTracker.RecordEvent(num2str(size(this.Session.currentRun.pastConditions,1)));
+            t = this.Session.experiment.GetConditionTable();
+            previousTilts = t{ this.Session.currentRun.pastConditions(:,1),'Tilt'};
+             
+            idxLastDifferentTilt = find(previousTilts ~=variables.Tilt,1,'last');
+            if (isempty( idxLastDifferentTilt ) )
+                idxLastDifferentTilt = 0;
             end
+            previousValues = previousValues((idxLastDifferentTilt+1):end);
+            previousResponses = previousResponses((idxLastDifferentTilt+1):end);
+            
+            this.updateRange(variables, previousValues, previousResponses);
             
             trialResult =  Enum.trialResult.CORRECT;
         end
@@ -149,27 +203,11 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
                     t1 = this.ExperimentOptions.fixationDuration/1000;
                     t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
                     
-                    lineLength = 300;
-                    
 %                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
                     if ( secondsElapsed > t1)
                         %-- Draw target
                         
-                        switch(variables.Position)
-                            case 'Up'
-                                fromH = mx;
-                                fromV = my;
-                                toH = mx + lineLength*sin(this.currentAngle/180*pi);
-                                toV = my - lineLength*cos(this.currentAngle/180*pi);
-                            case 'Down'
-                                fromH = mx;
-                                fromV = my;
-                                toH = mx - lineLength*sin(this.currentAngle/180*pi);
-                                toV = my + lineLength*cos(this.currentAngle/180*pi);
-                        end
-                        
-                        Screen('DrawLine', graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
-                        
+                        this.DrawLine(variables);
                     end
                     
 %                     if (secondsElapsed < t2)
@@ -257,6 +295,20 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
     % Data Analysis methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
+        function trialDataSet = PrepareTrialDataSet( this, ds)
+            trialDataSet = ds;
+        end
+        
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+        end
+        
+    end
+    
+    % ---------------------------------------------------------------------
+    % Plot methods
+    % ---------------------------------------------------------------------
+    methods ( Access = public )
+        
     end
     
     % ---------------------------------------------------------------------
