@@ -27,7 +27,7 @@ classdef VOG  < handle
                 end
             end
             
-            this.eyeTracker = VORLab.VOG.Remote.EyeTrackerClient(ip, port);
+            this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClientMatlab(ip, port);
         end
         
         function result = IsRecording(this)
@@ -53,24 +53,12 @@ classdef VOG  < handle
             end
         end
         
-        function RecordEvent(this, message)
+        function frameNumber = RecordEvent(this, message)
+            frameNumber = [];
             if ( ~isempty( this.eyeTracker) )
-                this.eyeTracker.RecordEvent([num2str(GetSecs) ' ' message]);
+                frameNumber = this.eyeTracker.RecordEvent([num2str(GetSecs) ' ' message]);
             end
         end
-        
-        function [files]= DownloadFile(this, path)
-            files = [];
-            if ( ~isempty( this.eyeTracker) )
-                try
-                    files = this.eyeTracker.DownloadFile();
-                catch ex
-                    ex
-                end
-                files = cell(files.ToArray)';
-            end
-        end
-                
     end
     
     methods(Static = true)

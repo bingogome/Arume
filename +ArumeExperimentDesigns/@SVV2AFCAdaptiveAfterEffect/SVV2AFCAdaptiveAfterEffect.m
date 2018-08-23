@@ -10,7 +10,7 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         
-         function dlg = GetOptionsDialog( this )
+         function dlg = GetOptionsDialog( this, importing)
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptiveLong(this);
             
             dlg.TiltHeadAtBegining = { {'{0}','1'} };

@@ -45,8 +45,8 @@ classdef Session < ArumeCore.DataDB
         % Different experiments can load different columns.
         % Each experiment has to take care of preparing the dataset
         %
-        rawDataTable
         samplesDataTable
+        rawDataTable
         
         % DataTable with all the events data
         % 
@@ -120,30 +120,30 @@ classdef Session < ArumeCore.DataDB
         %
         % INIT METHODS
         %
-        function init( this, sessionPath, experimentName, subjectCode, sessionCode, experimentOptions )
-            this.dataPath    = sessionPath;
+        function init( this, projectPath, experimentName, subjectCode, sessionCode, experimentOptions )
             this.subjectCode    = subjectCode;
             this.sessionCode    = sessionCode;
             
             this.experiment = ArumeCore.ExperimentDesign.Create( this, experimentName );
             this.experiment.init(this, experimentOptions);
+            this.dataPath  = fullfile(projectPath, this.name);
             
             % to create stand alone sessions that do not belong to a
             % project and don't save data
-            if ( ~isempty( sessionPath ) ) 
-                this.InitDB( sessionPath );
+            if ( ~isempty( projectPath ) ) 
+                this.InitDB( projectPath, this.name );
             end
         end
         
         function initExisting( this, sessionPath )
              
-            [~,sessionName] = fileparts(sessionPath);
+            [projectPath,sessionName] = fileparts(sessionPath);
             filename = fullfile( sessionPath, [sessionName '_ArumeSession.mat']);
             
             sessionData = load( filename, 'sessionData' );
             data = sessionData.sessionData;          
             
-            this.init( sessionPath, data.experimentName, data.subjectCode, data.sessionCode, data.experimentOptions );
+            this.init( projectPath, data.experimentName, data.subjectCode, data.sessionCode, data.experimentOptions );
             
             if (isfield(data, 'currentRun') && ~isempty( data.currentRun ))
                 this.currentRun  = ArumeCore.ExperimentRun.LoadRunData( data.currentRun, this.experiment );
@@ -196,6 +196,32 @@ classdef Session < ArumeCore.DataDB
             save( filename, 'sessionData' );
         end
         
+        function session = copy( this, newSubjectCode, newSessionCode)
+            projectFolder = fileparts(this.dataPath);
+            newSessionName = [this.experiment.Name '_' newSubjectCode newSessionCode];
+            newSessionDataPath = fullfile(projectFolder, newSessionName);
+            if ( exist( newSessionDataPath, 'dir') )
+                error( 'There is already a session in the current project with the same name.');
+            end
+            
+            mkdir(newSessionDataPath);
+            
+            sessionData = [];
+            
+            sessionData.subjectCode = newSubjectCode;
+            sessionData.sessionCode = newSessionCode;
+            sessionData.experimentName = this.experiment.Name;
+            sessionData.experimentOptions = this.experiment.ExperimentOptions;
+            sessionData.currentRun = [];
+            sessionData.pastRuns = [];
+            
+            filename = fullfile( newSessionDataPath, [newSessionName '_ArumeSession.mat']);
+            save( filename, 'sessionData' );
+            
+            session = ArumeCore.Session();
+            session.initExisting( newSessionDataPath );
+        end
+        
         function updateComment( this, comment)
             this.comment = comment;
         end
@@ -203,7 +229,9 @@ classdef Session < ArumeCore.DataDB
         function updateExperimentOptions( this, newExperimentOptions)
             
             if ( ~this.isStarted )
-                this.init( this.project, this.experiment.Name, this.subjectCode, this.sessionCode, newExperimentOptions );
+               % re initialize the experiment with the new options 
+                this.experiment = ArumeCore.ExperimentDesign.Create( this, this.experiment.Name );
+                this.experiment.init(this, newExperimentOptions);
             else
                 error('This is session is already started, cannot change settings.');
             end
@@ -276,6 +304,26 @@ classdef Session < ArumeCore.DataDB
             this.experiment.run();
         end
         
+        function resumeFrom( this, runNumber )
+            
+            if ( this.isFinished )
+                error( 'This is session is finished it cannot be run' )
+            end
+            
+            % Save the status of the current run in  the past runs, useful
+            % to restart from a past point
+            if ( isempty( this.pastRuns) )
+                this.pastRuns = this.currentRun.Copy();
+            else
+                this.pastRuns( length(this.pastRuns) + 1 ) = this.currentRun;
+            end
+            
+            this.currentRun = this.pastRuns(runNumber).Copy();
+            
+            % Start the experiment
+            this.experiment.run();
+        end
+        
         function restart( this )
             
             if ( this.isFinished )
@@ -302,6 +350,10 @@ classdef Session < ArumeCore.DataDB
     %% ANALYSIS METHODS
     methods
         function prepareForAnalysis( this )
+            if ( isempty(  this.currentRun ) )
+                return;
+            end
+            
             SHOULD_DO_TRIALS = 1;
             SHOULD_DO_SAMPLES = 1;
             SHOULD_DO_EVENTS = 0;
@@ -354,39 +406,50 @@ classdef Session < ArumeCore.DataDB
                 
         function newSessionDataTable = GetBasicSessionDataTable(this)
             
-            newSessionDataTable = table();
-            newSessionDataTable.Subject = categorical(cellstr(this.subjectCode));
-            newSessionDataTable.SessionCode = categorical(cellstr(this.sessionCode));
-            newSessionDataTable.Experiment = categorical(cellstr(this.experiment.Name));
-            
-            NoYes = {'No' 'Yes'};
-            newSessionDataTable.Started = NoYes{this.isStarted+1};
-            newSessionDataTable.Finished = NoYes{this.isFinished+1};
-            if (~isempty(this.currentRun) && ~isempty(this.currentRun.pastTrialTable))
-                newSessionDataTable.TimeFirstTrial = this.currentRun.pastTrialTable.DateTimeTrialStart(1,:);
-                newSessionDataTable.TimeLastTrial = this.currentRun.pastTrialTable.DateTimeTrialStart(end,:);
-            else
-                newSessionDataTable.TimeLastTrial = '-';
-                newSessionDataTable.TimeFirstTrial = '-';
-            end
-            if (~isempty(this.currentRun))
-                newSessionDataTable.NumberOfTrialsCompleted = 0;
-                newSessionDataTable.NumberOfTrialsAborted = 0;
-                newSessionDataTable.NumberOfTrialsPending = 0;
+            try 
+                newSessionDataTable = table();
+                newSessionDataTable.Subject = categorical(cellstr(this.subjectCode));
+                newSessionDataTable.SessionCode = categorical(cellstr(this.sessionCode));
+                newSessionDataTable.Experiment = categorical(cellstr(this.experiment.Name));
                 
-                if ( ~isempty(this.currentRun.pastTrialTable) )
-                    newSessionDataTable.NumberOfTrialsCompleted = sum(this.currentRun.pastTrialTable.TrialResult == 0);
-                    newSessionDataTable.NumberOfTrialsAborted   = sum(this.currentRun.pastTrialTable.TrialResult ~= 0);
+                NoYes = {'No' 'Yes'};
+                newSessionDataTable.Started = categorical(NoYes(this.isStarted+1));
+                newSessionDataTable.Finished = categorical(NoYes(this.isFinished+1));
+                if (~isempty(this.currentRun) && ~isempty(this.currentRun.pastTrialTable) && any(strcmp(this.currentRun.pastTrialTable.Properties.VariableNames,'DateTimeTrialStart')))
+                    newSessionDataTable.TimeFirstTrial = string(this.currentRun.pastTrialTable.DateTimeTrialStart(1,:));
+                    newSessionDataTable.TimeLastTrial = string(this.currentRun.pastTrialTable.DateTimeTrialStart(end,:));
+                else
+                    newSessionDataTable.TimeLastTrial = string('-');
+                    newSessionDataTable.TimeFirstTrial = string('-');
+                end
+                if (~isempty(this.currentRun))
+                    newSessionDataTable.NumberOfTrialsCompleted = 0;
+                    newSessionDataTable.NumberOfTrialsAborted = 0;
+                    newSessionDataTable.NumberOfTrialsPending = 0;
+                    
+                    if ( ~isempty(this.currentRun.pastTrialTable) )
+                        newSessionDataTable.NumberOfTrialsCompleted = sum(this.currentRun.pastTrialTable.TrialResult == 0);
+                        newSessionDataTable.NumberOfTrialsAborted   = sum(this.currentRun.pastTrialTable.TrialResult ~= 0);
+                    end
+                    
+                    if ( ~isempty(this.currentRun.futureTrialTable) )
+                        newSessionDataTable.NumberOfTrialsPending   = height(this.currentRun.futureTrialTable);
+                    end
                 end
                 
-                if ( ~isempty(this.currentRun.futureTrialTable) )
-                    newSessionDataTable.NumberOfTrialsPending   = height(this.currentRun.futureTrialTable);
+                opts = fieldnames(this.experiment.ExperimentOptions);
+                s = this.experiment.GetExperimentOptionsDialog(1);
+                for i=1:length(opts)
+                    if ( ~ischar( this.experiment.ExperimentOptions.(opts{i})) )
+                        newSessionDataTable.(['Option_' opts{i}]) = this.experiment.ExperimentOptions.(opts{i});
+                    elseif (isfield( s, opts{i}) && iscell(s.(opts{i})) && iscell(s.(opts{i}){1}) && length(s.(opts{i}){1}) >1)
+                        newSessionDataTable.(['Option_' opts{i}]) = categorical(cellstr(this.experiment.ExperimentOptions.(opts{i})));
+                    else
+                        newSessionDataTable.(['Option_' opts{i}]) = string(this.experiment.ExperimentOptions.(opts{i}));
+                    end
                 end
-            end
-            
-            opts = fieldnames(this.experiment.ExperimentOptions);
-            for i=1:length(opts)
-                newSessionDataTable.(['Option_' opts{i}]) = this.experiment.ExperimentOptions.(opts{i});
+            catch ex
+                ex.getReport
             end
         end
     end
@@ -412,46 +475,19 @@ classdef Session < ArumeCore.DataDB
             session.initExisting( sessionPath );
         end
         
-        function session = CopySession( sourceSession, newSubjectCode, newSessionCode)
-            data = sourceSession.save();
-            
-            newData = [];
-            
-            newData.subjectCode = newSubjectCode;
-            newData.sessionCode = newSessionCode;
-            newData.experimentName = data.experimentName;
-            newData.experimentOptions = data.experimentOptions;
-            
-            session = ArumeCore.Session();
-            session.initExisting( sourceSession.project, newData );
-            sourceSession.project.addSession(session);
-            
-            % JORGE 4/25/2018 Decided to not copy data because it was being
-            % too confusing.
-            %             if ( length(dir(sourceSession.dataAnalysisPath)) > 2 )
-            %                 copyfile(fullfile(sourceSession.dataAnalysisPath,'*'),fullfile(session.dataAnalysisPath));
-            %             end
-            %             if ( length(dir(sourceSession.dataPath)) > 2 )
-            %                 copyfile(fullfile(sourceSession.dataPath,'*'),fullfile(session.dataPath));
-            %             end
+        
+        %
+        % Other methods
+        %
+        function result = IsValidSubjectCode( name )
+            result = ~isempty(regexp(name,'^[_a-zA-Z0-9]+$','ONCE') );
         end
         
-        function session = CopySessionToDifferentProject( sourceSession, destinationProject, newSubjectCode, newSessionCode)
-            data = sourceSession.save();
-            
-            newData = data;
-            
-            newData.subjectCode = newSubjectCode;
-            newData.sessionCode = newSessionCode;
-            
-            session = ArumeCore.Session();
-            session.initExisting( destinationProject, newData );
-            
-            destinationProject.addSession(session);
-            
-            if ( length(dir(sourceSession.dataPath)) > 2 )
-                copyfile(fullfile(sourceSession.dataPath,'*'),fullfile(session.dataPath));
-            end
+        %
+        % Other methods
+        %
+        function result = IsValidSessionCode( name )
+            result = ~isempty(regexp(name,'^[_a-zA-Z0-9]+$','ONCE') );
         end
     end
     

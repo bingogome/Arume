@@ -13,7 +13,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
     % ---------------------------------------------------------------------
     methods ( Access = protected )
          
-        function dlg = GetOptionsDialog( this )
+        function dlg = GetOptionsDialog( this, importing)
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFC(this);
             
             dlg.PreviousTrialsForRange = { {'{All}','Previous30'} };
@@ -68,8 +68,8 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
         function trialResult = runTrial( this, variables )
                         
             try
-                this.lastResponse = -1;
-                this.reactionTime = -1;
+                this.lastResponse = '';
+                this.reactionTime = nan;
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
                 

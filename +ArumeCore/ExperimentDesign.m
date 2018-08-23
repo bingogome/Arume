@@ -22,6 +22,9 @@ classdef ExperimentDesign < handle
         RandomVars = [];
         
         ConditionMatrix 
+        
+        TrialStartCallbacks
+        TrialStopCallbacks
     end
     
     properties ( Dependent = true )
@@ -129,6 +132,22 @@ classdef ExperimentDesign < handle
         
         %% runs after the session is completed
         function runAfterSessionCompleted(this)
+        end
+        
+        function AddTrialStartCallback(this, fun)
+            if ( isempty(this.TrialStartCallbacks) )
+                this.TrialStartCallbacks = {fun};
+            else
+                this.TrialStartCallbacks{end+1} = fun;
+            end
+        end
+        
+        function AddTrialStopCallback(this, fun)
+            if ( isempty(this.TrialStopCallbacks) )
+                this.TrialStopCallbacks = {fun};
+            else
+                this.TrialStopCallbacks{end+1} = fun;
+            end
         end
     end
     
@@ -251,6 +270,9 @@ classdef ExperimentDesign < handle
             % --------------------------------------------------------------------
             
             try
+                this.TrialStartCallbacks = [];
+                this.TrialStopCallbacks = [];
+                
                 this.initBeforeRunning();
             catch
                 err = psychlasterror;
@@ -336,7 +358,7 @@ classdef ExperimentDesign < handle
                             try
                                 %-- find which condition to run and the variable values for that condition
                                 if ( ~isempty(this.Session.currentRun.pastTrialTable) )
-                                    trialAttempt = sum(this.Session.currentRun.pastTrialTable.TrialResult==Enum.trialResult.CORRECT)+1;
+                                    trialAttempt = height(this.Session.currentRun.pastTrialTable)+1;
                                 else
                                     trialAttempt = 1;
                                 end
@@ -359,9 +381,17 @@ classdef ExperimentDesign < handle
                                 %% -- TRIAL ---------------------------------------------------
                                 %------------------------------------------------------------
                                 variables.TimeTrialStart = GetSecs;
+                                for i=1:length(this.TrialStartCallbacks)
+                                    variables = feval(this.TrialStartCallbacks{i}, variables);
+                                end
                                 variables.DateTimeTrialStart = datestr(now);
+                                
                                 variables.TrialResult = this.runTrial( variables );
+                                
                                 variables.TimeTrialStop = GetSecs;
+                                for i=1:length(this.TrialStopCallbacks)
+                                    variables = feval(this.TrialStopCallbacks{i}, variables);
+                                end
                                 
                                 %------------------------------------------------------------
                                 %% -- POST TRIAL ----------------------------------------------
@@ -380,41 +410,21 @@ classdef ExperimentDesign < handle
                                 
                                 fprintf(' TRIAL END \n');
                                 
-                              catch
-                                err = psychlasterror;
+                            catch err
                                 if ( streq(err.identifier, 'PSYCORTEX:USERQUIT' ) )
                                     variables.TrialResult = Enum.trialResult.QUIT;
                                 else
                                     variables.TrialResult = Enum.trialResult.ERROR;
                                     % display error
-                                    disp(['Error in trial: ' err.message ]);
-                                    disp(err.stack(1));
+                                    disp('!!!!!!!!!!!!! ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+                                    disp(err.getReport);
+                                    disp('!!!!!!!!!!!!! END ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
                                     this.Graph.DlgHitKey( ['Error, trial could not be run: \n' err.message],[],[] );
                                 end
                             end
                             
-                            % -- Update pastcondition list
-                            if ( ~isempty( this.Session.currentRun.pastTrialTable ) )
-                                t1 = this.Session.currentRun.pastTrialTable;
-                                t2 = struct2table(variables,'AsArray',true);
-                                t1colmissing = setdiff(t2.Properties.VariableNames, t1.Properties.VariableNames);
-                                t2colmissing = setdiff(t1.Properties.VariableNames, t2.Properties.VariableNames);
-                                t1 = [t1 array2table(nan(height(t1), numel(t1colmissing)), 'VariableNames', t1colmissing)];
-                                t2 = [t2 array2table(nan(height(t2), numel(t2colmissing)), 'VariableNames', t2colmissing)];
-                                for colname = t1colmissing
-                                    if iscell(t2.(colname{1}))
-                                        t1.(colname{1}) = cell(height(t1), 1);
-                                    end
-                                end
-                                for colname = t2colmissing
-                                    if iscell(t1.(colname{1}))
-                                        t2.(colname{1}) = cell(height(t2), 1);
-                                    end
-                                end
-                                this.Session.currentRun.pastTrialTable = [t1; t2];
-                            else
-                                this.Session.currentRun.pastTrialTable = struct2table(variables,'AsArray',true);
-                            end
+                            % -- Update past trial table
+                            this.Session.currentRun.AddPastTrialData(struct2table(variables,'AsArray',true));
                             
                             if ( variables.TrialResult == Enum.trialResult.CORRECT )
                                 %-- remove the condition that has just run from the future conditions list
@@ -497,13 +507,10 @@ classdef ExperimentDesign < handle
                 % --------------------------------------------------------------------
                 
                 
-            catch
-                err = psychlasterror;
-                disp(['Error: ' err.message ]);
-                disp(err.stack(1));
-                if ( length(err.stack) > 1 )
-                    disp(err.stack(2));
-                end
+            catch err
+                disp('!!!!!!!!!!!!! ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+                disp(err.getReport);
+                disp('!!!!!!!!!!!!! END ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
             end %try..catch.
             
             
@@ -652,10 +659,9 @@ classdef ExperimentDesign < handle
                 % --------------------------------------------------------------------
                 
                 
-            catch
-                err = psychlasterror;
+            catch err
                 disp(['Error: ' err.message ]);
-                disp(err.stack(1));
+                disp(err.getReport);
             end %try..catch.
         end
         
@@ -690,21 +696,7 @@ classdef ExperimentDesign < handle
         end
         
         function trialTable = GetTrialTable(this)
-            
-            % create the new object
-            newRun = ArumeCore.ExperimentRun();
-            
-            newRun.ExperimentDesign = this;
-            
-            % use predictable randomization saving state
-            newRun.Info.globalStream   = RandStream.getGlobalStream;
-            newRun.Info.stateRandStream     = newRun.Info.globalStream.State;
-            
-            newRun.pastTrialTable   = []; % conditions already run, including aborts
-            newRun.futureTrialTable = []; % conditions left for running (the whole list is created a priori)
-            newRun.Events           = [];
-            newRun.LinkedFiles      = [];
-            
+                        
             % generate the sequence of blocks, a total of
             % parameters.blocksToRun blocks will be run
             nBlocks = length(this.blocks);
@@ -754,10 +746,6 @@ classdef ExperimentDesign < handle
                 futureConditions = cat(1,futureConditions, [trialSequence' ones(size(trialSequence'))*iblock  ones(size(trialSequence'))*i] );
             end
             
-            newRun.pastTrialTable = [];
-            newRun.SessionsToRun  = ceil(size(futureConditions,1) / this.trialsPerSession);
-            
-            newRun.CurrentSession = 1;
             
             f2 = table();
             f2.TrialNumber = (1:length(futureConditions(:,1)))';

@@ -71,6 +71,10 @@ classdef ExperimentRun < matlab.mixin.Copyable
         function run = Copy(this)
             run = copy(this); 
         end
+        
+        function trialData = AddPastTrialData(this, trialData)
+            this.pastTrialTable  = VertCatTablesMissing(this.pastTrialTable,trialData);
+        end
     end
     
     methods(Static=true)
@@ -78,13 +82,29 @@ classdef ExperimentRun < matlab.mixin.Copyable
         %% setUpNewRun
         function newRun = SetUpNewRun( experimentDesign )
             
-            trialTable = experimentDesign.GetTrialTable();
+            newRun = ArumeCore.ExperimentRun();
+            
+            newRun.ExperimentDesign = experimentDesign;
+            
+            % use predictable randomization saving state
+            newRun.Info.globalStream   = RandStream.getGlobalStream;
+            newRun.Info.stateRandStream     = newRun.Info.globalStream.State;
+            
+            newRun.pastTrialTable   = []; % conditions already run, including aborts
+            newRun.futureTrialTable = []; % conditions left for running (the whole list is created a priori)
+            newRun.Events           = [];
+            newRun.LinkedFiles      = [];
+            
+            newRun.futureTrialTable = experimentDesign.GetTrialTable();
+            newRun.originalFutureTrialTable = newRun.futureTrialTable;
             % TODO: check if the table has the needed columns for dealing
             % drops blockid and blockseq
-            
-            newRun.futureTrialTable = trialTable;
-            newRun.originalFutureTrialTable = trialTable;
 
+            newRun.pastTrialTable = [];
+            newRun.SessionsToRun  = ceil(height(newRun.futureTrialTable) / experimentDesign.trialsPerSession);
+            
+            newRun.CurrentSession = 1;
+            
         end
         
         function run = LoadRunData( data, experiment )
@@ -124,9 +144,7 @@ classdef ExperimentRun < matlab.mixin.Copyable
         
         function runData = SaveRunData( run )
             
-            if ( isfield(run,'info') )
-                runData.Info = run.Info;
-            end
+            runData.Info = run.Info;
             
             runData.pastTrialTable = run.pastTrialTable;
             runData.futureTrialTable = run.futureTrialTable;

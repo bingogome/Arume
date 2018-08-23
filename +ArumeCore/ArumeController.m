@@ -268,11 +268,6 @@ classdef ArumeController < handle
             this.currentProject.save();
         end
         
-        function updateExperimentOptions( this, experiment, subject_Code, session_Code, options )
-            session = this.currentProject.findSession( experiment, subject_Code, session_Code);
-            session.experiment.UpdateExperimentOptions(options);
-        end
-        
         function renameSession( this, session, subjectCode, sessionCode)
             % Renames the current session
             
@@ -291,9 +286,9 @@ classdef ArumeController < handle
         function copySelectedSessions( this, newSubjectCodes, newSessionCodes)
             
             for i =1:length(this.selectedSessions)
-                ArumeCore.Session.CopySession( this.selectedSessions(i), newSubjectCodes{i}, newSessionCodes{i});
+                this.currentProject.addSession(this.selectedSessions(i).copy(newSubjectCodes{i}, newSessionCodes{i}));
             end
-                        
+            
             this.currentProject.save();
         end
         
@@ -325,6 +320,13 @@ classdef ArumeController < handle
             % Resumes running the experimental session
             
             this.currentSession.resume();
+            this.currentProject.save(); 
+        end
+        
+        function resumeSessionFrom( this, runNumber )
+            % Resumes running the experimental session
+            
+            this.currentSession.resumeFrom(runNumber);
             this.currentProject.save(); 
         end
         

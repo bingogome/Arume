@@ -10,7 +10,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods ( Access = protected )
-        function dlg = GetOptionsDialog( this )
+        function dlg = GetOptionsDialog( this, importing )
             dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
             
             dlg.TargetSize = 0.3;
@@ -253,10 +253,10 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
     % --------------------------------------------------------------------
     methods
         
-        function trialDataSet = PrepareTrialDataSet( this, ds)
+        function trialDataSet = PrepareTrialDataTable( this, ds)
             trialDataSet = ds;
             
-            eventFiles = this.Session.currentRun.LinkedFiles.vogEventsFile;
+             eventFiles = this.Session.currentRun.LinkedFiles.vogEventsFile;
             if (~iscell(eventFiles) )
                 eventFiles = {eventFiles};
             end
@@ -272,7 +272,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             for i=1:length(eventFiles)
                 eventFile = eventFiles{i};
                 disp(eventFile);
-                eventFilesPath = fullfile(this.Session.dataRawPath, eventFile);
+                eventFilesPath = fullfile(this.Session.dataPath, eventFile);
                 text = fileread(eventFilesPath);
                 matches = regexp(text,'[^\n]*new trial[^\n]*','match')';
                 eventsFromFile = struct2table(cell2mat(regexp(matches,'Time=(?<DateTime>[^\s]*) FrameNumber=(?<FrameNumber>[^\s]*)','names')));
@@ -285,7 +285,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 end
             end
             
-            trialDataSet = [dataset2table(trialDataSet) events1];
+            trialDataSet = [trialDataSet events1];
             
             trialData = trialDataSet(trialDataSet.TrialResult==0,:);
             data = this.Session.samplesDataSet;
@@ -307,7 +307,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             allRawData = {};
             for i=1:length(dataFiles)
                 dataFile = dataFiles{i}                
-                dataFilePath = fullfile(this.Session.dataRawPath, dataFile);
+                dataFilePath = fullfile(this.Session.dataPath, dataFile);
                 
                 % load data
                 rawData = dataset2table(VOG.LoadVOGdataset(dataFilePath));
@@ -383,8 +383,9 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             
         end
         
-        function samplesDataSet = PrepareSamplesDataSet(this, trialDataSet, dataFile, calibrationFile)
+        function [samplesDataSet rawDataTable] = PrepareSamplesDataTable(this, trialDataSet, dataFile, calibrationFile)
             samplesDataSet = [];
+            rawDataTable = [];
             
             dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
             calibrationFiles = this.Session.currentRun.LinkedFiles.vogCalibrationFile;
@@ -398,8 +399,8 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 dataFile = dataFiles{i}
                 calibrationFile = calibrationFiles{i};
                 
-                dataFilePath = fullfile(this.Session.dataRawPath, dataFile);
-                calibrationFilePath = fullfile(this.Session.dataRawPath, calibrationFile);
+                dataFilePath = fullfile(this.Session.dataPath, dataFile);
+                calibrationFilePath = fullfile(this.Session.dataPath, calibrationFile);
                 
                 % load data
                 rawData = VOG.LoadVOGdataset(dataFilePath);
@@ -414,8 +415,10 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                                 
                 if ( isempty(samplesDataSet) )
                     samplesDataSet = fileSamplesDataSet;
+                    rawDataTable = rawDataTable;
                 else
                     samplesDataSet = cat(1,samplesDataSet,fileSamplesDataSet);
+                    rawDataTable = cat(1,rawDataTable,rawDataTable);
                 end
             end
         end
