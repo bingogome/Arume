@@ -22,6 +22,9 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             %-- condition variables ---------------------------------------
             i= 0;
             
+            % This is necessary for basic imported sessions of eye movement
+            % recordings
+            
             i = i+1;
             conditionVars(i).name   = 'Recording';
             conditionVars(i).values = 1;

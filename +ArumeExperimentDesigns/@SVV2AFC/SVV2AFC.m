@@ -202,25 +202,25 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-        function trialDataSet = PrepareTrialDataSet( this, ds)
+        function trialDataTable = PrepareTrialDataTable( this, ds)
             % Every class inheriting from SVV2AFC should override this
             % method and add the proper PresentedAngle and
             % LeftRightResponse variables
             
-            trialDataSet = this.PrepareTrialDataSet@ArumeCore.ExperimentDesign(ds);
+            trialDataTable = this.PrepareTrialDataTable@ArumeCore.ExperimentDesign(ds);
             
-            trialDataSet.PresentedAngle = trialDataSet.Angle;
-            trialDataSet.LeftRightResponse = trialDataSet.Response;
+            trialDataTable.PresentedAngle = trialDataTable.Angle;
+            trialDataTable.LeftRightResponse = trialDataTable.Response;
         end
         
         function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
             
             
             angles = this.GetAngles();
-            angles(this.Session.trialDataSet.TrialResult>0) = [];
+            angles(this.Session.trialDataTable.TrialResult>0) = [];
             
             respones = this.GetLeftRightResponses();
-            respones(this.Session.trialDataSet.TrialResult>0) = [];
+            respones(this.Session.trialDataTable.TrialResult>0) = [];
             
 %             angles = angles(101:201);
 %             respones = respones(101:201);
@@ -246,13 +246,13 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
         % Function that gets the angles of each trial with 0 meaning
         % upright, positive tilted CW and negative CCW.
         function angles = GetAngles( this )
-            angles = this.Session.trialDataSet.Angle;
+            angles = this.Session.trialDataTable.Angle;
         end
         
         % Function that gets the left and right responses with 1 meaning
         % right and 0 meaning left.
         function responses = GetLeftRightResponses( this )
-            responses = this.Session.trialDataSet.Response;
+            responses = this.Session.trialDataTable.Response;
         end
         
     end
@@ -263,10 +263,10 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
         function plotResults = Plot_Sigmoid(this)
             
             angles = this.GetAngles();
-            angles(this.Session.trialDataSet.TrialResult>0) = [];
+            angles(this.Session.trialDataTable.TrialResult>0) = [];
             
             respones = this.GetLeftRightResponses();
-            respones(this.Session.trialDataSet.TrialResult>0) = [];
+            respones(this.Session.trialDataTable.TrialResult>0) = [];
             
 %             angles = angles(101:201);
 %             respones = respones(101:201);
@@ -349,9 +349,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
         function plotResults = Plot_SigmoidUpDown(this)
             analysisResults = 0;
             
-            ds = this.Session.trialDataSet;
+            ds = this.Session.trialDataTable;
             ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
             
             figure('position',[400 100 1000 600],'color','w','name',this.Session.name)
             
@@ -400,6 +399,11 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
         function [SVV, a, p, allAngles, allResponses, trialCounts, SVVth] = FitAngleResponses( angles, responses)
             
             % add values in the extremes to "support" the logistic fit
+            
+            if ( iscell(responses) )
+                % fix for new tables. Usually responses will come as a cell
+                responses = cell2mat(responses);
+            end
             
             ds = dataset;
             if ( max(responses)>10)

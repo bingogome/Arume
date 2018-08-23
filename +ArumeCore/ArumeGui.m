@@ -57,11 +57,6 @@ classdef ArumeGui < handle
         sessionContextMenuRenameSubjects
         sessionContextMenuDelete
         sessionContextMenuCopy
-        sessionContextMenuCopyTo
-        
-        % Analysis Contextual menu
-        analysisContextMenu
-        analysisContextMenuSendToWorkspace
     end
     
     %% Constructor
@@ -118,7 +113,7 @@ classdef ArumeGui < handle
             
             this.bottomPanel = uipanel ( ...
                 'Parent'    , this.figureHandle,... 
-                'Title'     , 'Session comments',...
+                'Title'     , 'Session notes',...
                 'FontName'	, 'consolas',...
                 'FontSize'	, 9,...
                 'BorderType', 'none',...
@@ -277,9 +272,6 @@ classdef ArumeGui < handle
             this.sessionContextMenuEditSettings = uimenu(this.sessionContextMenu, ...
                 'Label'     , 'Edit settings ...', ...
                 'Callback'  , @this.EditSessionSettings);
-            this.sessionContextMenuCopyTo = uimenu(this.sessionContextMenu, ...
-                'Label'     , 'Copy session to different project ...', ...
-                'Callback'  , @this.CopySessionsTo);
             set(this.sessionListBox, 'uicontextmenu', this.sessionContextMenu)
             
             
@@ -333,9 +325,11 @@ classdef ArumeGui < handle
         
         function menuFileCallback( this, source, eventdata )
             
+            % Clean up and refill the recent projects menu
+            
             delete(get(this.menuFileLoadRecentProject,'children'));
             
-            for i=1:length(this.arumeController.recentProjects) % Add recent projects
+            for i=1:length(this.arumeController.recentProjects)
                 uimenu(this.menuFileLoadRecentProject, ...
                 'Label'     , this.arumeController.recentProjects{i}, ...
                 'Callback'  , @this.loadProject);
@@ -344,13 +338,37 @@ classdef ArumeGui < handle
             
         function newProject(this, source, eventdata )
             if ( this.closeProjectQuestdlg() )
-                sDlg.Path = { {['uigetdir(''' this.arumeController.defaultDataFolder ''')']} };
-                sDlg.Name = 'ProjectName';
-                sDlg.Default_Experiment = {this.arumeController.possibleExperiments};
-
-                P = StructDlg(sDlg, 'New project');
-                if ( isempty( P ) )
-                    return
+               
+                P.Path = this.arumeController.defaultDataFolder;
+                P.Name = 'ProjectName';
+                
+                while(1)
+                    
+                    sDlg.Path = { {['uigetdir(''' P.Path ''')']} };
+                    sDlg.Name = P.Name;
+                    sDlg.Default_Experiment = {this.arumeController.possibleExperiments};
+                    
+                    P = StructDlg(sDlg, 'New project');
+                    if ( isempty( P ) )
+                        return
+                    end
+                    
+                    if ( ~exist( P.Path, 'dir' ) )
+                        uiwait(msgbox('The folder selected does not exist', 'Error', 'Modal'));
+                        continue;
+                    end
+                    
+                    if ( ~ArumeCore.Project.IsValidProjectName(P.Name) )
+                        uiwait(msgbox('The project name is not valid (no spaces or special signs)', 'Error', 'Modal'));
+                        continue;
+                    end
+                    
+                    if ( exist( fullfile(P.Path, P.Name), 'dir') )
+                        uiwait(msgbox('There is already a project with that name in that folder.', 'Error', 'Modal'));
+                        continue;
+                    end
+                    
+                    break;
                 end
                 
                 if ( ~isempty( this.arumeController.currentProject ) )
@@ -430,11 +448,11 @@ classdef ArumeGui < handle
         function saveProjectBackup(this, source, eventdata )
             
             [filename, pathname] = uiputfile([this.arumeController.defaultDataFolder '/*.zip'], 'Pick a project backup');
-            if ( ~isempty(filename) )
+            if ( isempty(filename) )
                 return
             end
             
-            backupFile = filename(pathname, filename);
+            backupFile = fullfile(pathname, filename);
             
             h=waitbar(0,'Please wait..');
             waitbar(1/2)
@@ -629,29 +647,6 @@ classdef ArumeGui < handle
             
              this.arumeController.copySelectedSessions(newSubjectCodes, newSessionCodes);
              this.updateGui();
-        end
-        
-        function CopySessionsTo( this, source, eventdata )
-            
-            sessions = this.arumeController.selectedSessions;
-            
-            
-            h=waitbar(0,'Please wait..');
-            
-            [filename, pathname] = uigetfile([this.arumeController.defaultDataFolder '/*.aruprj'], 'Pick a project file');
-            if ( ~filename  )
-                close(h)
-                return
-            end
-            
-            waitbar(1/2)
-            this.arumeController.copySelectedSessionsToDifferentProject(fullfile(pathname, filename));
-            waitbar(2/2)
-            this.updateGui();
-            
-            close(h)
-            
-            this.updateGui();
         end
         
         function DeleteSessions( this, source, eventdata )

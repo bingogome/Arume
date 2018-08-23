@@ -241,7 +241,8 @@ classdef ArumeController < handle
                 end
             end
             
-            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subjectCode, sessionCode, experimentOptions );
+            session = ArumeCore.Session.NewSession( this.currentProject.path, experiment, subjectCode, sessionCode, experimentOptions );
+            this.currentProject.addSession(session);
             this.selectedSessions = session;
             this.currentProject.save();
         end
@@ -250,9 +251,16 @@ classdef ArumeController < handle
             % Imports a session from external files containing the data. It
             % will not be possible to run this session
             
-            % check if session already exists
-            session = ArumeCore.Session.NewSession( this.currentProject, experiment, subject_Code, session_Code, options );
+            % check if session already exists with that subjectCode and
+            % sessionCode
+            for session = this.currentProject.sessions
+                if ( isequal(subject_Code, session.subjectCode) && isequal( session_Code, session.sessionCode) )
+                    error( 'Arume: session already exists use a diferent name' );
+                end
+            end
             
+            session = ArumeCore.Session.NewSession( this.currentProject.path, experiment, subject_Code, session_Code, options );
+            this.currentProject.addSession(session);
             this.selectedSessions = session;
             
             session.importSession();
@@ -287,21 +295,6 @@ classdef ArumeController < handle
             end
                         
             this.currentProject.save();
-        end
-        
-        function copySelectedSessionsToDifferentProject(this, newProjectFile)
-            if ( ~exist( newProjectFile, 'file') )
-                msgbox( 'The project file does not exist.');
-                return;
-            end
-            
-            secondProject = ArumeCore.Project.LoadProject( newProjectFile, [this.configuration.tempFolder '2'] );
-                      
-            for i =1:length(this.selectedSessions)
-                ArumeCore.Session.CopySessionToDifferentProject( this.selectedSessions(i), secondProject, this.selectedSessions(i).subjectCode, this.selectedSessions(i).sessionCode);
-            end
-            
-            secondProject.save();
         end
         
         function deleteSelectedSessions( this )
