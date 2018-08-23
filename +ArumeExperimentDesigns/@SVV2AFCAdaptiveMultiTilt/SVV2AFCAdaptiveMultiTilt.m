@@ -10,7 +10,7 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         
-        function dlg = GetOptionsDialog( this )
+        function dlg = GetOptionsDialog( this, importing )
              
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptive(this);
             

@@ -22,7 +22,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         
-        function dlg = GetOptionsDialog( this )
+        function dlg = GetOptionsDialog( this, importing)
             
             dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
             

@@ -387,13 +387,7 @@ classdef ArumeGui < handle
                     if ( isempty(pathname) || (isscalar(pathname) && (~pathname)) || ~exist(pathname,'dir')  )
                         return
                     end
-                    
-                    [~,projectName] = fileparts(pathname);
-                    if (  ~exist(fullfile(pathname, [projectName '_ArumeProject.mat']),'file'))
-                        msgbox('This folder does not appear to be an Arume project folder');
-                        return;
-                    end
-                    
+                                        
                     if ( ~isempty(this.arumeController.currentProject) )
                         this.arumeController.currentProject.save();
                     end

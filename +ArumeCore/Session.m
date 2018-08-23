@@ -302,6 +302,10 @@ classdef Session < ArumeCore.DataDB
     %% ANALYSIS METHODS
     methods
         function prepareForAnalysis( this )
+            if ( isempty(  this.currentRun ) )
+                return;
+            end
+            
             SHOULD_DO_TRIALS = 1;
             SHOULD_DO_SAMPLES = 1;
             SHOULD_DO_EVENTS = 0;
@@ -364,11 +368,11 @@ classdef Session < ArumeCore.DataDB
                 newSessionDataTable.Started = categorical(NoYes(this.isStarted+1));
                 newSessionDataTable.Finished = categorical(NoYes(this.isFinished+1));
                 if (~isempty(this.currentRun) && ~isempty(this.currentRun.pastTrialTable) && any(strcmp(this.currentRun.pastTrialTable.Properties.VariableNames,'DateTimeTrialStart')))
-                    newSessionDataTable.TimeFirstTrial = this.currentRun.pastTrialTable.DateTimeTrialStart(1,:);
-                    newSessionDataTable.TimeLastTrial = this.currentRun.pastTrialTable.DateTimeTrialStart(end,:);
+                    newSessionDataTable.TimeFirstTrial = string(this.currentRun.pastTrialTable.DateTimeTrialStart(1,:));
+                    newSessionDataTable.TimeLastTrial = string(this.currentRun.pastTrialTable.DateTimeTrialStart(end,:));
                 else
-                    newSessionDataTable.TimeLastTrial = '-';
-                    newSessionDataTable.TimeFirstTrial = '-';
+                    newSessionDataTable.TimeLastTrial = string('-');
+                    newSessionDataTable.TimeFirstTrial = string('-');
                 end
                 if (~isempty(this.currentRun))
                     newSessionDataTable.NumberOfTrialsCompleted = 0;
@@ -386,11 +390,14 @@ classdef Session < ArumeCore.DataDB
                 end
                 
                 opts = fieldnames(this.experiment.ExperimentOptions);
+                s = this.experiment.GetExperimentOptionsDialog(1);
                 for i=1:length(opts)
                     if ( ~ischar( this.experiment.ExperimentOptions.(opts{i})) )
                         newSessionDataTable.(['Option_' opts{i}]) = this.experiment.ExperimentOptions.(opts{i});
-                    else
+                    elseif (isfield( s, opts{i}) && iscell(s.(opts{i})) && iscell(s.(opts{i}){1}) && length(s.(opts{i}){1}) >1)
                         newSessionDataTable.(['Option_' opts{i}]) = categorical(cellstr(this.experiment.ExperimentOptions.(opts{i})));
+                    else
+                        newSessionDataTable.(['Option_' opts{i}]) = string(this.experiment.ExperimentOptions.(opts{i}));
                     end
                 end
             catch ex

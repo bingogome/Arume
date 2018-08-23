@@ -1,16 +1,16 @@
 classdef Project < handle
     %PROJECT Class handingling Arume projects
-    %   
+    %
     
     properties( SetAccess = private)
         name        % Name of the project
         path        % Working path of the uncompressed project (typically the temp folder)
         
         defaultExperiment % default experiment for this project
-                
+        
         sessions    % Sessions that belong to this project
     end
-        
+    
     methods(Access=private)
         %
         % Initialization methods
@@ -18,7 +18,7 @@ classdef Project < handle
         % Always use the static methods Load and Create to create new
         % project objects.
         function initNew( this, parentPath, projectName, defaultExperiment )
-        % Initializes a new project
+            % Initializes a new project
             
             if ( ~exist( parentPath, 'dir' ) )
                 error( 'Arume: folder does not exist.' );
@@ -42,8 +42,8 @@ classdef Project < handle
         end
         
         function initExisting( this, path )
-        % Initializes a project loading from a folder
-        
+            % Initializes a project loading from a folder
+            
             if ( ~exist( path, 'dir' ) )
                 error( 'Arume: project folder does not exist.' );
             end
@@ -82,13 +82,13 @@ classdef Project < handle
     methods
         %
         % Save project
-        %   
+        %
         function save( this )
             % for safer storage do not save the actual matlab Project
             % object. Instead create a struct and save that. It will be
             % more robust to version changes.
             data = [];
-            data.defaultExperiment = this.defaultExperiment; 
+            data.defaultExperiment = this.defaultExperiment;
             
             for session = this.sessions
                 session.save();
@@ -124,7 +124,7 @@ classdef Project < handle
                 zip(file , this.path);
             end
         end
-                
+        
         %
         % Other methods
         %
@@ -146,16 +146,16 @@ classdef Project < handle
             for i=1:length(this.sessions)
                 if ( exist('sessionCode','var') )
                     if ( strcmpi(this.sessions(i).experiment.Name, upper(experimentName)) &&  ...
-                        strcmpi(this.sessions(i).subjectCode, upper(subjectCode)) &&  ...
-                           strcmpi(this.sessions(i).sessionCode, upper(sessionCode)))
-                       session = this.sessions(i);
-                       return;
+                            strcmpi(this.sessions(i).subjectCode, upper(subjectCode)) &&  ...
+                            strcmpi(this.sessions(i).sessionCode, upper(sessionCode)))
+                        session = this.sessions(i);
+                        return;
                     end
                 else
                     if ( strcmpi(this.sessions(i).experiment.Name, upper(experimentName)) &&  ...
-                        strcmpi([upper(this.sessions(i).subjectCode) upper(this.sessions(i).sessionCode),], subjectCode))
-                       session = this.sessions(i);
-                       return;
+                            strcmpi([upper(this.sessions(i).subjectCode) upper(this.sessions(i).sessionCode),], subjectCode))
+                        session = this.sessions(i);
+                        return;
                     end
                 end
             end
@@ -177,7 +177,7 @@ classdef Project < handle
         
         %
         % Analysis methods
-        % 
+        %
         function dataTable = GetDataTable(this, subjectSelection, sessionSelection)
             allSubjects = {};
             allSessionCodes = {};
@@ -190,52 +190,28 @@ classdef Project < handle
                 sessionSelection = unique(allSessionCodes);
             end
             
-                dataTable = table();
-                for isess=1:length(this.sessions)
-                    session=this.sessions(isess);
-                    % if this is one of the sessions we want
-                    if ( any(categorical(subjectSelection) == session.subjectCode) && any(categorical(sessionSelection)==session.sessionCode))
-                        if ( isempty(dataTable) && ~isempty(session.sessionDataTable))
-                            dataTable = session.sessionDataTable;
-                        elseif ( ~isempty(session.sessionDataTable))
-                            t1 = dataTable;
-                            t2 = session.sessionDataTable;
-                            t1colmissing = setdiff(t2.Properties.VariableNames, t1.Properties.VariableNames);
-                            t2colmissing = setdiff(t1.Properties.VariableNames, t2.Properties.VariableNames);
-                            t1andt2 = intersect(t2.Properties.VariableNames, t1.Properties.VariableNames);
-                            % first concatenate the common columns
-                            t = [t1(:,t1andt2);t2(:,t1andt2)];
-                            % then add to the unique columns of t1 missing
-                            % rows for each element of t2
-                            t12 = t1(:,t2colmissing);
-                            t12{height(t1)+(1:height(t2)),:} = missing;
-                            % then add to the unique columns of t2 missing
-                            % rows for each element of t1
-                            t21 = t2(:,t1colmissing);
-                            t21{height(t2)+(1:height(t1)),:} = missing;
-                            % move the values up so the rows match
-                            t21 = [t21(height(t2)+1:end,:);t21(1:height(t2),:)];
-                            
-                            % concatenate the 3 tables
-                            if ( ~isempty( t) && ~isempty( t12) && ~isempty( t21) ) 
-                                dataTable = [t t12 t21];
-                            elseif ( ~isempty( t) && ~isempty( t12) && isempty( t21) ) 
-                                dataTable = [t t12];
-                            elseif ( ~isempty( t) && isempty( t12) && ~isempty( t21) )  
-                                dataTable = [t t21];
-                            elseif ( isempty( t) && ~isempty( t12) && ~isempty( t21) )  
-                                dataTable = [t12 t21];
-                            elseif ( ~isempty( t) && isempty( t12) && isempty( t21) )  
-                                dataTable = t;
-                            elseif ( isempty( t) && ~isempty( t12) && isempty( t21) )  
-                                dataTable = t12;
-                            elseif ( isempty( t) && isempty( t12) && ~isempty( t21) )  
-                                dataTable = t21;
-                            end
-                        end
+            dataTable = table();
+            for isess=1:length(this.sessions)
+                session=this.sessions(isess);
+                % if this is one of the sessions we want
+                if ( any(categorical(subjectSelection) == session.subjectCode) && any(categorical(sessionSelection)==session.sessionCode))
+                    sessionRow = session.sessionDataTable;
+                    if ( isempty( sessionRow ) )
+                        sessionRow = table();
+                        sessionRow.Subject = categorical(cellstr(session.subjectCode));
+                        sessionRow.SessionCode = categorical(cellstr(session.sessionCode));
+                        sessionRow.Experiment = categorical(cellstr(session.experiment.Name));
+                    end
+                    if ( isempty(dataTable))
+                        dataTable = sessionRow;
+                    else
+                        dataTable = VertCatTablesMissing(dataTable, sessionRow);
                     end
                 end
-                dataTable
+            end 
+            
+            disp(dataTable)
+            assignin('base','ProjectTable',dataTable);
         end
     end
     
@@ -245,7 +221,7 @@ classdef Project < handle
         %
         % Factory methods
         %
-        function project = NewProject( parentPath, projectName, defaultExperiment)            
+        function project = NewProject( parentPath, projectName, defaultExperiment)
             
             % check if parentFolder exists
             if ( ~exist( parentPath, 'dir' ) )
@@ -270,6 +246,7 @@ classdef Project < handle
             end
             
             project = ArumeCore.Project();
+            ArumeCore.Project.UpdateFileStructure(projectPath);
             project.initExisting( projectPath );
         end
         
@@ -352,7 +329,7 @@ classdef Project < handle
                     sessionData.pastRuns = newPastRuns;
                     
                     
-                                
+                    
                     filename = fullfile( fullfile(path, sessionName), [sessionName '_ArumeSession.mat']);
                     save( filename, 'sessionData' );
                 end
@@ -365,131 +342,132 @@ classdef Project < handle
         
         function newRun = UpdateRun(runData,experimentName)
             
-                    experimentDesign = ArumeCore.ExperimentDesign.Create( [], experimentName );
-                    experimentDesign.init();
-                    
-                    newRun = runData;
-                    
-                    futureConditions = runData.futureConditions;
-                    f2 = table();
-                    f2.TrialNumber = (1:length(futureConditions(:,1)))';
-                    f2.Condition = futureConditions(:,1);
-                    f2.BlockNumber = futureConditions(:,2);
-                    f2.BlockSequenceNumber = futureConditions(:,3);
-                     
-                     
-                    t2 = table();
-                    for i=1:height(f2)
-                        vars = experimentDesign.getVariablesCurrentCondition( f2.Condition(i) );
-                        t2 = cat(1,t2,struct2table(vars,'AsArray',true));
-                    end
-                    
-                    newRun.futureTrialTable = [f2 t2];
-                    
-                    
-                    futureConditions = runData.originalFutureConditions;
-                    f2 = table();
-                    f2.TrialNumber = (1:length(futureConditions(:,1)))';
-                    f2.Condition = futureConditions(:,1);
-                    f2.BlockNumber = futureConditions(:,2);
-                    f2.BlockSequenceNumber = futureConditions(:,3);
-                     
-                     
-                    t2 = table();
-                    for i=1:height(f2)
-                        vars = experimentDesign.getVariablesCurrentCondition( f2.Condition(i) );
-                        t2 = cat(1,t2,struct2table(vars,'AsArray',true));
-                    end
-                    
-                    newRun.originalFutureTrialTable = [f2 t2];
-                    
-                    
-                    pastConditions = runData.pastConditions;
-                    
-                    f2 = table();
-                    f2.TrialAttempt = (1:length(pastConditions(:,1)))';
-                    f2.Session = pastConditions(:,5);
-                    f2.TrialNumber = nan(size(f2.TrialAttempt));
-                    f2.Condition = pastConditions(:,1);
-                    f2.BlockNumber = pastConditions(:,3);
-                    f2.BlockSequenceNumber = pastConditions(:,4);
-                    
-                    t2 = table();
-                    for i=1:height(f2)
-                        vars = experimentDesign.getVariablesCurrentCondition( f2.Condition(i) );
-                        t2 = cat(1,t2,struct2table(vars,'AsArray',true));
-                    end
-                    f2 = [f2 t2];
-                    
-                    i=1;
-                    Enum.Events.EYELINK_START_RECORDING     = i;i=i+1;
-                    Enum.Events.EYELINK_STOP_RECORDING      = i;i=i+1;
-                    Enum.Events.PRE_TRIAL_START             = i;i=i+1;
-                    Enum.Events.PRE_TRIAL_STOP              = i;i=i+1;
-                    Enum.Events.TRIAL_START                 = i;i=i+1;
-                    Enum.Events.TRIAL_STOP                  = i;i=i+1;
-                    Enum.Events.POST_TRIAL_START            = i;i=i+1;
-                    Enum.Events.POST_TRIAL_STOP             = i;i=i+1;
-                    Enum.Events.TRIAL_EVENT                 = i;i=i+1;
-                    ev = runData.Events;
+            experimentDesign = ArumeCore.ExperimentDesign.Create( [], experimentName );
+            experimentDesign.init();
             
-                    f2.TimePreTrialStart = ev(ev(:,3)==Enum.Events.PRE_TRIAL_START ,1);
-                    if ( length(f2.TimePreTrialStart) == length(ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,1)))
-                        f2.TimePreTrialStop = ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,1);
-                        f2.TimeTrialStart = ev(ev(:,3)==Enum.Events.TRIAL_START ,1);
-                        f2.DateTimeTrialStart = datestr(ev(ev(:,3)==Enum.Events.TRIAL_START ,2));
-                    else
-                        % crashed during pre trial
-                        f2.TimePreTrialStop(pastConditions(:,2)<2) = ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,1);
-                        f2.TimeTrialStart(pastConditions(:,2)<2) = ev(ev(:,3)==Enum.Events.TRIAL_START ,1);
-                        f2.DateTimeTrialStart(find(pastConditions(:,2)<2),:) = datestr(ev(ev(:,3)==Enum.Events.TRIAL_START ,2));
-                    end
-                    f2.TrialResult = pastConditions(:,2);
-                    % from here on only if trialresult is correct or abort
-                    f2.TimeTrialStop(f2.TrialResult<2) = ev(ev(:,3)==Enum.Events.TRIAL_STOP ,1);
-                    f2.TimePostTrialStart(f2.TrialResult<2) = ev(ev(:,3)==Enum.Events.POST_TRIAL_START ,1);
-                    f2.TimePostTrialStop(f2.TrialResult<2) = ev(ev(:,3)==Enum.Events.POST_TRIAL_STOP ,1);
-                    f2.TrialNumber(f2.TrialResult<2) = 1:sum(f2.TrialResult<2);
-                    
-                    tout = table();
-                    for i=1:height(f2)
-                        if ( isfield(runData.Data{i}, 'trialOutput' ) )
-                            trialOutput = runData.Data{i}.trialOutput;
-                        else
-                            trialOutput = struct();
+            newRun = runData;
+            
+            futureConditions = runData.futureConditions;
+            f2 = table();
+            f2.TrialNumber = (1:length(futureConditions(:,1)))';
+            f2.Condition = futureConditions(:,1);
+            f2.BlockNumber = futureConditions(:,2);
+            f2.BlockSequenceNumber = futureConditions(:,3);
+            
+            t2 = table();
+            for i=1:height(f2)
+                vars = experimentDesign.getVariablesCurrentCondition( f2.Condition(i) );
+                t2 = cat(1,t2,struct2table(vars,'AsArray',true));
+            end
+            
+            newRun.futureTrialTable = [f2 t2];
+            
+            
+            futureConditions = runData.originalFutureConditions;
+            f2 = table();
+            f2.TrialNumber = (1:length(futureConditions(:,1)))';
+            f2.Condition = futureConditions(:,1);
+            f2.BlockNumber = futureConditions(:,2);
+            f2.BlockSequenceNumber = futureConditions(:,3);
+            
+            
+            t2 = table();
+            for i=1:height(f2)
+                vars = experimentDesign.getVariablesCurrentCondition( f2.Condition(i) );
+                t2 = cat(1,t2,struct2table(vars,'AsArray',true));
+            end
+            
+            newRun.originalFutureTrialTable = [f2 t2];
+            
+            
+            pastConditions = runData.pastConditions;
+            
+            f2 = table();
+            f2.TrialAttempt = (1:length(pastConditions(:,1)))';
+            f2.Session = pastConditions(:,5);
+            f2.TrialNumber = nan(size(f2.TrialAttempt));
+            f2.Condition = pastConditions(:,1);
+            f2.BlockNumber = pastConditions(:,3);
+            f2.BlockSequenceNumber = pastConditions(:,4);
+            
+            t2 = table();
+            for i=1:height(f2)
+                vars = experimentDesign.getVariablesCurrentCondition( f2.Condition(i) );
+                t2 = cat(1,t2,struct2table(vars,'AsArray',true));
+            end
+            f2 = [f2 t2];
+            
+            i=1;
+            Enum.Events.EYELINK_START_RECORDING     = i;i=i+1;
+            Enum.Events.EYELINK_STOP_RECORDING      = i;i=i+1;
+            Enum.Events.PRE_TRIAL_START             = i;i=i+1;
+            Enum.Events.PRE_TRIAL_STOP              = i;i=i+1;
+            Enum.Events.TRIAL_START                 = i;i=i+1;
+            Enum.Events.TRIAL_STOP                  = i;i=i+1;
+            Enum.Events.POST_TRIAL_START            = i;i=i+1;
+            Enum.Events.POST_TRIAL_STOP             = i;i=i+1;
+            Enum.Events.TRIAL_EVENT                 = i;i=i+1;
+            ev = runData.Events;
+            
+            f2.TimePreTrialStart = ev(ev(:,3)==Enum.Events.PRE_TRIAL_START ,1);
+            if ( length(f2.TimePreTrialStart) == length(ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,1)))
+                f2.TimePreTrialStop = ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,1);
+                f2.TimeTrialStart = ev(ev(:,3)==Enum.Events.TRIAL_START ,1);
+                f2.DateTimeTrialStart = datestr(ev(ev(:,3)==Enum.Events.TRIAL_START ,2));
+            else
+                % crashed during pre trial
+                f2.TimePreTrialStop(pastConditions(:,2)<2) = ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,1);
+                f2.TimeTrialStart(pastConditions(:,2)<2) = ev(ev(:,3)==Enum.Events.TRIAL_START ,1);
+                f2.DateTimeTrialStart(find(pastConditions(:,2)<2),:) = datestr(ev(ev(:,3)==Enum.Events.TRIAL_START ,2));
+            end
+            f2.TrialResult = pastConditions(:,2);
+            % from here on only if trialresult is correct or abort
+            f2.TimeTrialStop(f2.TrialResult<2) = ev(ev(:,3)==Enum.Events.TRIAL_STOP ,1);
+            f2.TimePostTrialStart(f2.TrialResult<2) = ev(ev(:,3)==Enum.Events.POST_TRIAL_START ,1);
+            f2.TimePostTrialStop(f2.TrialResult<2) = ev(ev(:,3)==Enum.Events.POST_TRIAL_STOP ,1);
+            f2.TrialNumber(f2.TrialResult<2) = 1:sum(f2.TrialResult<2);
+            
+            tout = table();
+            for i=1:height(f2)
+                if ( isfield(runData.Data{i}, 'trialOutput' ) && ~isempty(runData.Data{i}.trialOutput) )
+                    trialOutput = runData.Data{i}.trialOutput;
+                else
+                    trialOutput = struct();
+                end
+                
+                if ( ~isempty( tout ) )
+                    t1 = tout;
+                    t2 = struct2table(trialOutput,'AsArray',true);
+                    t1colmissing = setdiff(t2.Properties.VariableNames, t1.Properties.VariableNames);
+                    t2colmissing = setdiff(t1.Properties.VariableNames, t2.Properties.VariableNames);
+                    t1 = [t1 array2table(nan(height(t1), numel(t1colmissing)), 'VariableNames', t1colmissing)];
+                    t2 = [t2 array2table(nan(height(t2), numel(t2colmissing)), 'VariableNames', t2colmissing)];
+                    for colname = t1colmissing
+                        if iscell(t2.(colname{1}))
+                            t1.(colname{1}) = cell(height(t1), 1);
                         end
-                        
-                         if ( ~isempty( tout ) )
-                                t1 = tout;
-                                t2 = struct2table(trialOutput,'AsArray',true);
-                                t1colmissing = setdiff(t2.Properties.VariableNames, t1.Properties.VariableNames);
-                                t2colmissing = setdiff(t1.Properties.VariableNames, t2.Properties.VariableNames);
-                                t1 = [t1 array2table(nan(height(t1), numel(t1colmissing)), 'VariableNames', t1colmissing)];
-                                t2 = [t2 array2table(nan(height(t2), numel(t2colmissing)), 'VariableNames', t2colmissing)];
-                                for colname = t1colmissing
-                                    if iscell(t2.(colname{1}))
-                                        t1.(colname{1}) = cell(height(t1), 1);
-                                    end
-                                end
-                                for colname = t2colmissing
-                                    if iscell(t1.(colname{1}))
-                                        t2.(colname{1}) = cell(height(t2), 1);
-                                    end
-                                end
-                                tout = [t1; t2];
-                            else
-                                tout = struct2table(trialOutput,'AsArray',true);
-                         end
-                            
                     end
-                    
-                    f2 = [f2 tout];
-                    
-                    newRun.pastTrialTable = f2;
-                    
-                    newRun;
-        end
+                    for colname = t2colmissing
+                        if iscell(t1.(colname{1}))
+                            t2.(colname{1}) = cell(height(t2), 1);
+                        end
+                    end
+                    tout = [t1; t2];
+                else
+                    tout = struct2table(trialOutput,'AsArray',true);
+                end
+                
+            end
             
+            if ( ~isempty(tout) )
+                f2 = [f2 tout];
+            end
+            
+            newRun.pastTrialTable = f2;
+            
+            newRun;
+        end
+        
         %
         % Other methods
         %

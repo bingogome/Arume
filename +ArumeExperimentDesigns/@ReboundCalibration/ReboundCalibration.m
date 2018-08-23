@@ -12,7 +12,7 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods ( Access = protected )
-        function dlg = GetOptionsDialog( this )
+        function dlg = GetOptionsDialog( this, importing )
             dlg.UseEyeTracker = { {'0' '{1}'} };
             
             dlg.TargetSize  = 0.3;
@@ -205,7 +205,7 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
     % --------------------------------------------------------------------
     methods
         
-        function trialDataSet = PrepareTrialDataSet( this, ds)
+        function trialDataSet = PrepareTrialDataTable( this, ds)
             trialDataSet = ds;
             
             
@@ -225,7 +225,7 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
             for i=1:length(eventFiles)
                 eventFile = eventFiles{i};
                 disp(eventFile);
-                eventFilesPath = fullfile(this.Session.dataRawPath, eventFile);
+                eventFilesPath = fullfile(this.Session.dataPath, eventFile);
                 text = fileread(eventFilesPath);
                 matches = regexp(text,'[^\n]*new trial[^\n]*','match')';
                 eventsFromFile = struct2table(cell2mat(regexp(matches,'Time=(?<DateTime>[^\s]*) FrameNumber=(?<FrameNumber>[^\s]*)','names')));
@@ -238,8 +238,8 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
                 end
             end
             
-            trialDataSet = [dataset2table(trialDataSet) events1];  trialData = trialDataSet(trialDataSet.TrialResult==0,:);
-            data = this.Session.samplesDataSet;
+            trialDataSet = [trialDataSet events1];  trialData = trialDataSet(trialDataSet.TrialResult==0,:);
+            data = this.Session.samplesDataTable;
             
             dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
                         
@@ -249,7 +249,7 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
             allRawData = {};
             for i=1:length(dataFiles)
                 dataFile = dataFiles{i}                
-                dataFilePath = fullfile(this.Session.dataRawPath, dataFile);
+                dataFilePath = fullfile(this.Session.dataPath, dataFile);
                 
                 % load data
                 rawData = dataset2table(VOG.LoadVOGdataset(dataFilePath));
@@ -277,7 +277,7 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
             trialDataSet = trialData;
         end
         
-        function samplesDataSet = PrepareSamplesDataSet(this, trialDataSet, dataFile, calibrationFile)
+        function [samplesDataSet rawData] = PrepareSamplesDataTable(this)
             samplesDataSet = [];
             dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
             calibrationFiles = this.Session.currentRun.LinkedFiles.vogCalibrationFile;
@@ -293,8 +293,8 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
                 disp(dataFile); 
                 calibrationFile = calibrationFiles{i};
              
-                dataFilePath = fullfile(this.Session.dataRawPath, dataFile);
-                calibrationFilePath = fullfile(this.Session.dataRawPath, calibrationFile);
+                dataFilePath = fullfile(this.Session.dataPath, dataFile);
+                calibrationFilePath = fullfile(this.Session.dataPath, calibrationFile);
                 
                 % load data
                 rawData = VOG.LoadVOGdataset(dataFilePath);
@@ -318,7 +318,7 @@ classdef ReboundCalibration < ArumeCore.ExperimentDesign
     methods ( Access = public )
         function plotResults = Plot_Traces(this)
             
-            data = this.Session.samplesDataSet;
+            data = this.Session.samplesDataTable;
         
             
             MEDIUM_BLUE =  [0.1000 0.5000 0.8000];
