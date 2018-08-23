@@ -428,6 +428,10 @@ classdef Session < ArumeCore.DataDB
         end
         
         function session = CopySession( sourceSession, newSubjectCode, newSessionCode)
+            
+            session = ArumeCore.Session();
+            
+            
             data = sourceSession.save();
             
             newData = [];
@@ -437,7 +441,6 @@ classdef Session < ArumeCore.DataDB
             newData.experimentName = data.experimentName;
             newData.experimentOptions = data.experimentOptions;
             
-            session = ArumeCore.Session();
             session.initExisting( sourceSession.project, newData );
             sourceSession.project.addSession(session);
             
