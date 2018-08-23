@@ -102,7 +102,7 @@ classdef ExperimentDesign < handle
             
         end
         
-        %% run initialization before the first trial is run
+         %% run initialization before the first trial is run
         % Use this function to initialize things that need to be
         % initialized before running but don't need to be initialized for
         % every single trial
@@ -148,6 +148,73 @@ classdef ExperimentDesign < handle
             else
                 this.TrialStopCallbacks{end+1} = fun;
             end
+        end
+        
+        function trialTable = GetTrialTable(this)
+                        
+            % generate the sequence of blocks, a total of
+            % parameters.blocksToRun blocks will be run
+            nBlocks = length(this.blocks);
+            blockSequence = [];
+            switch(this.blockSequence)
+                case 'Sequential'
+                    blockSequence = mod( (1:this.blocksToRun)-1,  nBlocks ) + 1;
+                case 'Random'
+                    [~, blocks] = sort( rand(1,this.blocksToRun) ); % get a random shuffle of 1 ... blocks to run
+                    blockSequence = mod( blocks-1,  nBlocks ) + 1; % limit the random sequence to 1 ... nBlocks
+                case 'Random with repetition'
+                    blockSequence = ceil( rand(1,this.blocksToRun) * nBlocks ); % just get random block numbers
+                case 'Manual'
+                    blockSequence = [];
+                    
+                    while length(blockSequence) ~= this.blocksToRun
+                        S.Block_Sequence = [1:this.blocksToRun];
+                        S = StructDlg( S, ['Block Sequence'], [],  CorrGui.get_default_dlg_pos() );
+                        blockSequence =  S.Block_Sequence;
+                    end
+                    %                     if length(parameters.manualBlockSequence) == parameters.blocksToRun;
+                    %                         %                         blockSequence = parameters.manualBlockSequence;
+                    %
+                    %                     else
+                    %                         disp(['Error with the manual block sequence. Please fix.']);
+                    %                     end
+            end
+            blockSequence = repmat( blockSequence,1,this.numberOfTimesRepeatBlockSequence);
+            
+            futureConditions = [];
+            for iblock=1:length(blockSequence)
+                i = blockSequence(iblock);
+                possibleConditions = this.blocks(i).fromCondition : this.blocks(i).toCondition; % the possible conditions to select from in this block
+                nConditions = length(possibleConditions);
+                nTrials = this.blocks(i).trialsToRun;
+                
+                switch( this.trialSequence )
+                    case 'Sequential'
+                        trialSequence = possibleConditions( mod( (1:nTrials)-1,  nConditions ) + 1 );
+                    case 'Random'
+                        [junk conditions] = sort( rand(1,nTrials) ); % get a random shuffle of 1 ... nTrials
+                        conditionIndexes = mod( conditions-1,  nConditions ) + 1; % limit the random sequence to 1 ... nConditions
+                        trialSequence = possibleConditions( conditionIndexes ); % limit the random sequence to fromCondition ... toCondition for this block
+                    case 'Random with repetition'
+                        trialSequence = possibleConditions( ceil( rand(1,nTrials) * nConditions ) ); % nTrialss numbers between 1 and nConditions
+                end
+                futureConditions = cat(1,futureConditions, [trialSequence' ones(size(trialSequence'))*iblock  ones(size(trialSequence'))*i] );
+            end
+            
+            
+            newTrialTable = table();
+            newTrialTable.TrialNumber = (1:length(futureConditions(:,1)))';
+            newTrialTable.Condition = futureConditions(:,1);
+            newTrialTable.BlockNumber = futureConditions(:,2);
+            newTrialTable.BlockSequenceNumber = futureConditions(:,3);
+            
+            variableTable = table();
+            for i=1:height(newTrialTable)
+                vars = this.getVariablesCurrentCondition( newTrialTable.Condition(i) );
+                variableTable = cat(1,variableTable,struct2table(vars,'AsArray',true));
+            end
+            
+            trialTable = [newTrialTable variableTable];
         end
     end
     
@@ -693,73 +760,6 @@ classdef ExperimentDesign < handle
         function DisplayConditionMatrix(this)
             
             this.GetConditionTable()
-        end
-        
-        function trialTable = GetTrialTable(this)
-                        
-            % generate the sequence of blocks, a total of
-            % parameters.blocksToRun blocks will be run
-            nBlocks = length(this.blocks);
-            blockSequence = [];
-            switch(this.blockSequence)
-                case 'Sequential'
-                    blockSequence = mod( (1:this.blocksToRun)-1,  nBlocks ) + 1;
-                case 'Random'
-                    [~, blocks] = sort( rand(1,this.blocksToRun) ); % get a random shuffle of 1 ... blocks to run
-                    blockSequence = mod( blocks-1,  nBlocks ) + 1; % limit the random sequence to 1 ... nBlocks
-                case 'Random with repetition'
-                    blockSequence = ceil( rand(1,this.blocksToRun) * nBlocks ); % just get random block numbers
-                case 'Manual'
-                    blockSequence = [];
-                    
-                    while length(blockSequence) ~= this.blocksToRun
-                        S.Block_Sequence = [1:this.blocksToRun];
-                        S = StructDlg( S, ['Block Sequence'], [],  CorrGui.get_default_dlg_pos() );
-                        blockSequence =  S.Block_Sequence;
-                    end
-                    %                     if length(parameters.manualBlockSequence) == parameters.blocksToRun;
-                    %                         %                         blockSequence = parameters.manualBlockSequence;
-                    %
-                    %                     else
-                    %                         disp(['Error with the manual block sequence. Please fix.']);
-                    %                     end
-            end
-            blockSequence = repmat( blockSequence,1,this.numberOfTimesRepeatBlockSequence);
-            
-            futureConditions = [];
-            for iblock=1:length(blockSequence)
-                i = blockSequence(iblock);
-                possibleConditions = this.blocks(i).fromCondition : this.blocks(i).toCondition; % the possible conditions to select from in this block
-                nConditions = length(possibleConditions);
-                nTrials = this.blocks(i).trialsToRun;
-                
-                switch( this.trialSequence )
-                    case 'Sequential'
-                        trialSequence = possibleConditions( mod( (1:nTrials)-1,  nConditions ) + 1 );
-                    case 'Random'
-                        [junk conditions] = sort( rand(1,nTrials) ); % get a random shuffle of 1 ... nTrials
-                        conditionIndexes = mod( conditions-1,  nConditions ) + 1; % limit the random sequence to 1 ... nConditions
-                        trialSequence = possibleConditions( conditionIndexes ); % limit the random sequence to fromCondition ... toCondition for this block
-                    case 'Random with repetition'
-                        trialSequence = possibleConditions( ceil( rand(1,nTrials) * nConditions ) ); % nTrialss numbers between 1 and nConditions
-                end
-                futureConditions = cat(1,futureConditions, [trialSequence' ones(size(trialSequence'))*iblock  ones(size(trialSequence'))*i] );
-            end
-            
-            
-            f2 = table();
-            f2.TrialNumber = (1:length(futureConditions(:,1)))';
-            f2.Condition = futureConditions(:,1);
-            f2.BlockNumber = futureConditions(:,2);
-            f2.BlockSequenceNumber = futureConditions(:,3);
-            
-            t2 = table();
-            for i=1:height(f2)
-                vars = this.getVariablesCurrentCondition( f2.Condition(i) );
-                t2 = cat(1,t2,struct2table(vars,'AsArray',true));
-            end
-            
-            trialTable = [f2 t2];
         end
         
         %% function psyCortex_defaultConfig
