@@ -41,6 +41,7 @@ classdef ArumeGui < handle
         menuRunStartSession
         menuRunResumeSession
         menuRunRestartSession
+        menuResumeSessionFrom
         
         menuAnalyze
         menuAnalyzePrepare
@@ -229,6 +230,9 @@ classdef ArumeGui < handle
             this.menuRunRestartSession = uimenu(this.menuRun, ...
                 'Label'     , 'Restart session', ...
                 'Callback'  , @this.restartSession);
+            this.menuResumeSessionFrom = uimenu(this.menuRun, ...
+                'Label'     , 'Resume session from ...', ...
+                'Separator' , 'on' );
             
         
             this.menuAnalyze = uimenu(this.figureHandle, ...
@@ -619,6 +623,10 @@ classdef ArumeGui < handle
                 allgood = 1;
                 for i=1:length(sessions)
                     for session = this.arumeController.currentProject.sessions
+                        if ( ~ArumeCore.Session.IsValidSubjectCode(newSubjectCodes{i}) || ~ArumeCore.Session.IsValidSessionCode(newSessionCodes{i}) )
+                            allgood = 0;
+                            break;
+                        end
                         if ( strcmp(session.subjectCode, newSubjectCodes{i}) &&  strcmp(session.sessionCode, newSessionCodes{i}) )
                             uiwait(msgbox(['One of the names is repeated ' newSubjectCodes{i} '-' newSessionCodes{i} '.'], 'Error', 'Modal'));
                             allgood = 0;
@@ -772,7 +780,6 @@ classdef ArumeGui < handle
         
         function EditSessionSettings(this, source, eventdata )
             
-            
             session = this.arumeController.currentSession;
             
             if ( session.isStarted )
@@ -786,7 +793,7 @@ classdef ArumeGui < handle
             if ( ~isempty( optionsDlg) )
                 options = StructDlg(optionsDlg,'Edit experiment options',session.experiment.ExperimentOptions);
                 if ( isempty( options ) )
-                    options = StructDlg(optionsDlg,'',session.experiment,[],'off');
+                    return;
                 end
             else
                 options = [];
@@ -805,6 +812,21 @@ classdef ArumeGui < handle
         function resumeSession( this, source, eventdata ) 
             this.arumeController.resumeSession();
             this.updateGui();
+        end
+        
+        function resumeSessionFrom( this, source, eventdata ) 
+            
+            choice = questdlg('Are you sure you want to resume from a past point?', ...
+                'Closing', ...
+                'Yes','No','No');
+            switch choice
+                case 'Yes'
+                    pastRunNumber = regexp(source.Text, '\[(?<runNumber>\d+)\]', 'names');
+                    pastRunNumber = str2double(pastRunNumber.runNumber);
+                    
+                    this.arumeController.resumeSessionFrom(pastRunNumber);
+                    this.updateGui();
+            end
         end
         
         function restartSession( this, source, eventdata ) 
@@ -1057,9 +1079,26 @@ classdef ArumeGui < handle
                 set(this.menuRunRestartSession, 'Enable', 'off');
                 
                 set(this.sessionContextMenuDelete, 'Enable', 'off');
-                set(this.sessionContextMenuRename, 'Enable', 'off');
             end
             
+            % Update past runs
+            
+            delete(get(this.menuResumeSessionFrom,'children'));
+            set(this.menuResumeSessionFrom, 'Enable', 'off');
+            
+            session = this.arumeController.currentSession;
+            if (~isempty(session) )
+                for i=length(session.pastRuns):-1:1
+                    if ( ~isempty( session.pastRuns(i).pastTrialTable ) && ...
+                            any(strcmp(session.pastRuns(i).pastTrialTable.Properties.VariableNames, 'TrialNumber')) && ...
+                            any(strcmp(session.pastRuns(i).pastTrialTable.Properties.VariableNames, 'DateTimeTrialStart') ))
+                        uimenu(this.menuResumeSessionFrom, ...
+                            'Label'     , sprintf('[%d] Trial %d interrupted on %s', i, session.pastRuns(i).pastTrialTable{end,'TrialNumber'},session.pastRuns(i).pastTrialTable{end,'DateTimeTrialStart'}{1}), ...
+                            'Callback'  , @this.resumeSessionFrom);
+                        set(this.menuResumeSessionFrom, 'Enable', 'on');
+                    end
+                end
+            end
             
         end
     end

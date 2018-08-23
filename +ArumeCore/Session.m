@@ -45,8 +45,8 @@ classdef Session < ArumeCore.DataDB
         % Different experiments can load different columns.
         % Each experiment has to take care of preparing the dataset
         %
-        rawDataTable
         samplesDataTable
+        rawDataTable
         
         % DataTable with all the events data
         % 
@@ -196,6 +196,32 @@ classdef Session < ArumeCore.DataDB
             save( filename, 'sessionData' );
         end
         
+        function session = copy( this, newSubjectCode, newSessionCode)
+            projectFolder = fileparts(this.dataPath);
+            newSessionName = [this.experiment.Name '_' newSubjectCode newSessionCode];
+            newSessionDataPath = fullfile(projectFolder, newSessionName);
+            if ( exist( newSessionDataPath, 'dir') )
+                error( 'There is already a session in the current project with the same name.');
+            end
+            
+            mkdir(newSessionDataPath);
+            
+            sessionData = [];
+            
+            sessionData.subjectCode = newSubjectCode;
+            sessionData.sessionCode = newSessionCode;
+            sessionData.experimentName = this.experiment.Name;
+            sessionData.experimentOptions = this.experiment.ExperimentOptions;
+            sessionData.currentRun = [];
+            sessionData.pastRuns = [];
+            
+            filename = fullfile( newSessionDataPath, [newSessionName '_ArumeSession.mat']);
+            save( filename, 'sessionData' );
+            
+            session = ArumeCore.Session();
+            session.initExisting( newSessionDataPath );
+        end
+        
         function updateComment( this, comment)
             this.comment = comment;
         end
@@ -203,7 +229,9 @@ classdef Session < ArumeCore.DataDB
         function updateExperimentOptions( this, newExperimentOptions)
             
             if ( ~this.isStarted )
-                this.init( this.project, this.experiment.Name, this.subjectCode, this.sessionCode, newExperimentOptions );
+               % re initialize the experiment with the new options 
+                this.experiment = ArumeCore.ExperimentDesign.Create( this, this.experiment.Name );
+                this.experiment.init(this, newExperimentOptions);
             else
                 error('This is session is already started, cannot change settings.');
             end
@@ -271,6 +299,26 @@ classdef Session < ArumeCore.DataDB
             else
                 this.pastRuns( length(this.pastRuns) + 1 ) = this.currentRun;
             end
+            
+            % Start the experiment
+            this.experiment.run();
+        end
+        
+        function resumeFrom( this, runNumber )
+            
+            if ( this.isFinished )
+                error( 'This is session is finished it cannot be run' )
+            end
+            
+            % Save the status of the current run in  the past runs, useful
+            % to restart from a past point
+            if ( isempty( this.pastRuns) )
+                this.pastRuns = this.currentRun.Copy();
+            else
+                this.pastRuns( length(this.pastRuns) + 1 ) = this.currentRun;
+            end
+            
+            this.currentRun = this.pastRuns(runNumber).Copy();
             
             % Start the experiment
             this.experiment.run();
@@ -427,49 +475,19 @@ classdef Session < ArumeCore.DataDB
             session.initExisting( sessionPath );
         end
         
-        function session = CopySession( sourceSession, newSubjectCode, newSessionCode)
-            
-            session = ArumeCore.Session();
-            
-            
-            data = sourceSession.save();
-            
-            newData = [];
-            
-            newData.subjectCode = newSubjectCode;
-            newData.sessionCode = newSessionCode;
-            newData.experimentName = data.experimentName;
-            newData.experimentOptions = data.experimentOptions;
-            
-            session.initExisting( sourceSession.project, newData );
-            sourceSession.project.addSession(session);
-            
-            % JORGE 4/25/2018 Decided to not copy data because it was being
-            % too confusing.
-            %             if ( length(dir(sourceSession.dataAnalysisPath)) > 2 )
-            %                 copyfile(fullfile(sourceSession.dataAnalysisPath,'*'),fullfile(session.dataAnalysisPath));
-            %             end
-            %             if ( length(dir(sourceSession.dataPath)) > 2 )
-            %                 copyfile(fullfile(sourceSession.dataPath,'*'),fullfile(session.dataPath));
-            %             end
+        
+        %
+        % Other methods
+        %
+        function result = IsValidSubjectCode( name )
+            result = ~isempty(regexp(name,'^[_a-zA-Z0-9]+$','ONCE') );
         end
         
-        function session = CopySessionToDifferentProject( sourceSession, destinationProject, newSubjectCode, newSessionCode)
-            data = sourceSession.save();
-            
-            newData = data;
-            
-            newData.subjectCode = newSubjectCode;
-            newData.sessionCode = newSessionCode;
-            
-            session = ArumeCore.Session();
-            session.initExisting( destinationProject, newData );
-            
-            destinationProject.addSession(session);
-            
-            if ( length(dir(sourceSession.dataPath)) > 2 )
-                copyfile(fullfile(sourceSession.dataPath,'*'),fullfile(session.dataPath));
-            end
+        %
+        % Other methods
+        %
+        function result = IsValidSessionCode( name )
+            result = ~isempty(regexp(name,'^[_a-zA-Z0-9]+$','ONCE') );
         end
     end
     
