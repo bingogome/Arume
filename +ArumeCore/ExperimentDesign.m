@@ -150,6 +150,9 @@ classdef ExperimentDesign < handle
             end
         end
         
+    end
+    
+    methods (Access = public)
         function trialTable = GetTrialTable(this)
                         
             % generate the sequence of blocks, a total of

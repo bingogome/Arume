@@ -988,6 +988,12 @@ classdef ArumeGui < handle
                                     fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
                                 end
                                 row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, fieldText);
+                            case 'string'
+                                fieldText = dataTable{1,i};
+                                if ( length(fieldText) > 50 )
+                                    fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
+                                end
+                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, fieldText);
                             case 'categorical'
                                 row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, string(dataTable{1,i}));
                             case 'cell'
