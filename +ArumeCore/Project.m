@@ -30,7 +30,7 @@ classdef Project < handle
             
             % initialize the project
             this.name               = projectName;
-            this.path               = parentPath;
+            this.path               = fullfile(parentPath, projectName);
             this.defaultExperiment  = defaultExperiment;
             this.sessions           = [];
             
