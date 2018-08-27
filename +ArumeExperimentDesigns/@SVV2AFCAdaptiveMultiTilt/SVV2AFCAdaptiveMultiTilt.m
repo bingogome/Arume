@@ -129,7 +129,12 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
                             this.eyeTracker.RecordEvent('Tilt end');
                         end
                         disp('30 s pause');
-                        pause(30);
+                        result = this.Graph.DlgTimer('Waiting 30s...',30);
+                        if ( result < 0 )
+                            trialResult =  Enum.trialResult.ABORT;
+                            return;
+                        end
+                
                         if ( this.ExperimentOptions.UseEyeTracker )
                             this.eyeTracker.RecordEvent('Tilt 30 second pause end');
                         end
@@ -140,30 +145,19 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
             
             % adaptive paradigm
             
-            nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
-            previousValues = zeros(nCorrect,1);
-            previousResponses = zeros(nCorrect,1);
-            
-            n = 1;
-            for i=1:length(this.Session.currentRun.pastConditions(:,1))
-                if ( this.Session.currentRun.pastConditions(i,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT )
-                    previousValues(n) = this.Session.currentRun.Data{i}.trialOutput.Angle;
-                    previousResponses(n) = this.Session.currentRun.Data{i}.trialOutput.Response;
-                    n = n+1;
+            if ( ~isempty(this.Session.currentRun.pastTrialTable) )
+                correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  Enum.trialResult.CORRECT ,:);
+                
+                idxLastDifferentTilt = find(correctTrialsTable.Tilt ~=variables.Tilt,1,'last');
+                if (isempty( idxLastDifferentTilt ) )
+                    idxLastDifferentTilt = 0;
                 end
+                previousTrialsInSameTilt = correctTrialsTable((idxLastDifferentTilt+1):end);
+                
+                this.updateRange(variables, previousTrialsInSameTilt.Angle, previousTrialsInSameTilt.Response);
+            else
+                this.updateRange(variables, [], []);
             end
-            
-            t = this.Session.experiment.GetConditionTable();
-            previousTilts = t{ this.Session.currentRun.pastConditions(:,1),'Tilt'};
-             
-            idxLastDifferentTilt = find(previousTilts ~=variables.Tilt,1,'last');
-            if (isempty( idxLastDifferentTilt ) )
-                idxLastDifferentTilt = 0;
-            end
-            previousValues = previousValues((idxLastDifferentTilt+1):end);
-            previousResponses = previousResponses((idxLastDifferentTilt+1):end);
-            
-            this.updateRange(variables, previousValues, previousResponses);
             
             trialResult =  Enum.trialResult.CORRECT;
         end

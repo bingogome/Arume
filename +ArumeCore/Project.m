@@ -64,7 +64,7 @@ classdef Project < handle
             % find the session folders
             d = struct2table(dir(path));
             d = d(d.isdir & ~strcmp(d.name,'.') & ~strcmp(d.name,'..'),:);
-            
+            d = sortrows(d,'date');
             % load sessions
             for i=1:length(d.name)
                 sessionName = d.name{i};

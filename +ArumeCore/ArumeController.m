@@ -67,7 +67,8 @@ classdef ArumeController < handle
         
         function recentProjects = get.recentProjects( this )
             if (~isempty(this.configuration) && isfield( this.configuration, 'recentProjects' ) )
-                recentProjects = this.configuration.recentProjects;
+                recentProjects = this.configuration.recentProjects(~contains(this.configuration.recentProjects','.aruprj'));
+                
             else
                 recentProjects = '';
             end
