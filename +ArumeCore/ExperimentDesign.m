@@ -102,7 +102,7 @@ classdef ExperimentDesign < handle
             
         end
         
-         %% run initialization before the first trial is run
+        %% run initialization before the first trial is run
         % Use this function to initialize things that need to be
         % initialized before running but don't need to be initialized for
         % every single trial
@@ -150,6 +150,9 @@ classdef ExperimentDesign < handle
             end
         end
         
+    end
+    
+    methods (Access = public)
         function trialTable = GetTrialTable(this)
                         
             % generate the sequence of blocks, a total of

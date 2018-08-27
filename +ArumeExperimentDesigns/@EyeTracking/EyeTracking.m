@@ -116,11 +116,11 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         end
         
         
-        function [samplesDataSet, rawData] = PrepareSamplesDataSet(this)
-            samplesDataSet = [];
+        function [samplesDataTable, rawData] = PrepareSamplesDataTable(this)
+            samplesDataTable = [];
             rawData = [];
             
-            if ( ~isfield(this.Session.currentRun, 'LinkedFiles' ) || ~isfield(this.Session.currentRun.LinkedFiles,  'vogDataFile') )
+            if ( ~isprop(this.Session.currentRun, 'LinkedFiles' ) || ~isfield(this.Session.currentRun.LinkedFiles,  'vogDataFile') )
                 return;
             end
             
@@ -159,10 +159,10 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 fileSamplesDataSet = [table(repmat(i,height(fileSamplesDataSet),1),'variablenames',{'FileNumber'}), fileSamplesDataSet];
 
                                 
-                if ( isempty(samplesDataSet) )
-                    samplesDataSet = fileSamplesDataSet;
+                if ( isempty(samplesDataTable) )
+                    samplesDataTable = fileSamplesDataSet;
                 else
-                    samplesDataSet = cat(1,samplesDataSet,fileSamplesDataSet);
+                    samplesDataTable = cat(1,samplesDataTable,fileSamplesDataSet);
                 end
             end
         end
@@ -177,7 +177,7 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         
         function plotResults = Plot_Traces(this)
             
-            data = this.Session.samplesDataSet;
+            data = this.Session.samplesDataTable;
         
             
             MEDIUM_BLUE =  [0.1000 0.5000 0.8000];
