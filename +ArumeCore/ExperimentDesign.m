@@ -21,7 +21,7 @@ classdef ExperimentDesign < handle
         ConditionVars = [];
         RandomVars = [];
         
-        ConditionMatrix 
+        ConditionMatrix
         
         TrialStartCallbacks
         TrialStopCallbacks
@@ -69,14 +69,14 @@ classdef ExperimentDesign < handle
         trialsBeforeBreak	= 1000;
         trialDuration       = 5; %seconds
     end
-   
+    
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % THESE ARE THE METHODS THAT CAN BE IMPLEMENTED BY NEW EXPERIMENT
     % DESIGNS
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     methods (Access=protected)
         
-        % Gets the options that be set in the UI when creating a new 
+        % Gets the options that be set in the UI when creating a new
         % session of this experiment (in structdlg format)
         % Some common options will be added
         function dlg = GetOptionsDialog( this )
@@ -106,8 +106,8 @@ classdef ExperimentDesign < handle
         % Use this function to initialize things that need to be
         % initialized before running but don't need to be initialized for
         % every single trial
-        function initBeforeRunning( this )
-            
+        function shouldContinue = initBeforeRunning( this )
+            shouldContinue = 1;
         end
         
         %% runPreTrial
@@ -130,10 +130,6 @@ classdef ExperimentDesign < handle
         function cleanAfterRunning(this)
         end
         
-        %% runs after the session is completed
-        function runAfterSessionCompleted(this)
-        end
-        
         function AddTrialStartCallback(this, fun)
             if ( isempty(this.TrialStartCallbacks) )
                 this.TrialStartCallbacks = {fun};
@@ -154,7 +150,7 @@ classdef ExperimentDesign < handle
     
     methods (Access = public)
         function trialTable = GetTrialTable(this)
-                        
+            
             % generate the sequence of blocks, a total of
             % parameters.blocksToRun blocks will be run
             nBlocks = length(this.blocks);
@@ -276,111 +272,84 @@ classdef ExperimentDesign < handle
             this.initExperimentDesign( );
             
             this.Config = this.psyCortex_DefaultConfig();
-            this.Config.Debug = 1; 
+            this.Config.Debug = 1;
         end
         
         function run(this)
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
             % --------------------------------------------------------------------
-            %% -- HARDWARE SET UP ------------------------------------------------
-            % --------------------------------------------------------------------
-            try
-                this.SysInfo.PsychtoolboxVersion   = Screen('Version');
-                this.SysInfo.hostSO                = Screen('Computer');
-                
-                % -- GRAPHICS KEYBOARD and MOUSE
-                if ( this.Config.UsingVideoGraphics )
-                    
-                    %-- hide the mouse cursor during the experiment
-                    if ( ~this.Config.Debug )
-                        HideCursor;
-                        ListenChar(1);
-                    else
-                        ListenChar(1);
-                    end
-                    
-                    
-                    switch(this.DisplayToUse)
-                        case 'ptbScreen'
-                            Screen('Preference', 'VisualDebugLevel', 3);
-                            this.Graph = ArumeCore.Display( );
-                        case 'cmdline'    
-                            this.Graph = ArumeCore.DisplayCmdLine( );
-                    end
-                    this.Graph.Init( this );
-                else
-                    this.Graph = [];
-                end
-                
-            catch
-                % If any error during the start up
-                
-                err = psychlasterror;
-                
-                % display error
-                disp(['PSYCORTEX: Hardware set up failed: ' err.message ]);
-                disp(err.stack(1));
-                
-                if ( this.Config.UsingVideoGraphics )
-                    ShowCursor;
-                    ListenChar(0);
-                    Priority(0);
-                    
-                    Screen('CloseAll');
-                    commandwindow;
-                end
-                
-                return;
-            end
-            
-            
-            % --------------------------------------------------------------------
-            %% -- INITIALIZE EXPERIMENT ------------------------------------------
-            % --------------------------------------------------------------------
-            
-            try
-                this.TrialStartCallbacks = [];
-                this.TrialStopCallbacks = [];
-                
-                this.initBeforeRunning();
-            catch
-                err = psychlasterror;
-                disp(['Error initializing: ' err.message ]);
-                disp(err.stack(1));
-                
-                return;
-                                    
-                this.cleanAfterRunning();                
-                ShowCursor;
-                ListenChar(0);
-                Priority(0);
-                commandwindow;
-            end
-            
-            
-            % --------------------------------------------------------------------
             %% -- EXPERIMENT LOOP -------------------------------------------------
             % --------------------------------------------------------------------
-            try
-                
-                IDLE = 0;
-                RUNNING = 1;
-                SESSIONFINISHED = 2;
-                SAVEDATA = 3;
-                BREAK = 4;
-                INTERRUPTED = 5;
-                
-                status = RUNNING;
-                
-                trialsSinceBreak = 0;
-                
-                while(1)
-                    this.Graph.ResetBackground();
-                    
+            INITIALIZNG_HARDWARE = 0;
+            INITIALIZNG_EXPERIMENT = 1;
+            IDLE = 2;
+            RUNNING = 3;
+            FINILIZING_EXPERIMENT = 4;
+            SESSIONFINISHED = 5;
+            BREAK = 6;
+            ERRROR = 7;
+            FINALIZING_HARDWARE = 8;
+            
+            status = INITIALIZNG_HARDWARE;
+            
+            trialsSinceBreak = 0;
+            
+            while(1)
+                try
                     switch( status )
-                        
-                        %% ++ IDLE -------------------------------------------------------
+                        % -------------------------------------------------
+                        % ++ INITIALIZNG_HARDWARE -------------------------
+                        % -------------------------------------------------
+                        case INITIALIZNG_HARDWARE
+                            
+                            this.SysInfo.PsychtoolboxVersion   = Screen('Version');
+                            this.SysInfo.hostSO                = Screen('Computer');
+                            
+                            % -- GRAPHICS KEYBOARD and MOUSE
+                            if ( this.Config.UsingVideoGraphics )
+                                
+                                %-- hide the mouse cursor during the experiment
+                                if ( ~this.Config.Debug )
+                                    HideCursor;
+                                    ListenChar(1);
+                                else
+                                    ListenChar(1);
+                                end
+                                
+                                
+                                switch(this.DisplayToUse)
+                                    case 'ptbScreen'
+                                        Screen('Preference', 'VisualDebugLevel', 3);
+                                        this.Graph = ArumeCore.Display( );
+                                    case 'cmdline'
+                                        this.Graph = ArumeCore.DisplayCmdLine( );
+                                end
+                                this.Graph.Init( this );
+                            else
+                                this.Graph = [];
+                            end
+                            status = INITIALIZNG_EXPERIMENT;
+                            
+                            % ---------------------------------------------
+                            % ++ INITIALIZNG_EXPERIMENT -------------------
+                            % ---------------------------------------------
+                        case INITIALIZNG_EXPERIMENT
+                            
+                            this.TrialStartCallbacks = [];
+                            this.TrialStopCallbacks = [];
+                            
+                            shouldContinue = this.initBeforeRunning();
+                            
+                            if ( shouldContinue )
+                                status = RUNNING;
+                            else
+                                status = FINILIZING_EXPERIMENT;
+                            end
+                            
+                            % ---------------------------------------------
+                            % ++ IDLE -------------------------------------
+                            % ---------------------------------------------
                         case IDLE
                             result = this.Graph.DlgSelect( ...
                                 'Choose an option:', ...
@@ -393,16 +362,13 @@ classdef ExperimentDesign < handle
                                 case {'q' 0}
                                     dlgResult = this.Graph.DlgYesNo( 'Are you sure you want to exit?',[],[],20,20);
                                     if( dlgResult )
-                                        status = INTERRUPTED;
+                                        status = FINILIZING_EXPERIMENT;
                                     end
                             end
                             
-                        %% ++ INTERRUPTED -------------------------------------------------------
-                        case INTERRUPTED
-                            
-                            status = SAVEDATA;
-                            
-                            %% ++ BREAK -------------------------------------------------------
+                            % ---------------------------------------------
+                            % ++ BREAK ------------------------------------
+                            % ---------------------------------------------
                         case BREAK
                             dlgResult = this.Graph.DlgHitKey( 'Break: hit a key to continue',[],[] );
                             %             this.Graph.DlgTimer( 'Break');
@@ -415,7 +381,9 @@ classdef ExperimentDesign < handle
                                 status = RUNNING;
                             end
                             
-                            %% ++ RUNNING -------------------------------------------------------
+                            % ---------------------------------------------
+                            % ++ RUNNING ----------------------------------
+                            % ---------------------------------------------
                         case RUNNING
                             if ( (exist('trialResult', 'var') && trialResult == Enum.trialResult.ABORT) || this.HitKeyBeforeTrial )
                                 dlgResult = this.Graph.DlgHitKey( 'Hit a key to continue',[],[]);
@@ -549,10 +517,10 @@ classdef ExperimentDesign < handle
                                 status = BREAK;
                             end
                             
-                            %% ++ FINISHED -------------------------------------------------------
+                            % ---------------------------------------------
+                            % ++ FINISHED ---------------------------------
+                            % ---------------------------------------------
                         case {SESSIONFINISHED}
-                            
-                            this.runAfterSessionCompleted();
                             
                             if ( this.Session.currentRun.CurrentSession < this.Session.currentRun.SessionsToRun)
                                 % -- session finished
@@ -565,41 +533,58 @@ classdef ExperimentDesign < handle
                                 %this.Graph.DlgHitKey( 'Finished, hit a key to exit' );
                                 disp('ARUME:: Session finished! closing down and saving data ...');
                             end
-                            status = SAVEDATA;
-                        case SAVEDATA
-                            %% -- SAVE DATA --------------------------------------------------
+                            status = FINILIZING_EXPERIMENT;
                             
+                            % ---------------------------------------------
+                            % ++ FINILIZING_EXPERIMENT --------------------
+                            % ---------------------------------------------
+                        case FINILIZING_EXPERIMENT
+                            this.cleanAfterRunning();
+                            
+                            status = FINALIZING_HARDWARE;
+                            
+                            % ---------------------------------------------
+                            % ++ FINALIZING_HARDWARE ----------------------
+                            % ---------------------------------------------
+                        case FINALIZING_HARDWARE
+                            
+                            ShowCursor;
+                            ListenChar(0);
+                            Priority(0);
+                            commandwindow;
+                            
+                            this.Graph = [];
+                            Screen('CloseAll');
+                            disp('ARUME:: Done closing display and connections!');
                             break; % finish loop
+                            
+                            % ---------------------------------------------
+                            % ++ ERRROR -----------------------------------
+                            % ---------------------------------------------
+                        case ERRROR
+                            
+                            status = FINALIZING_HARDWARE;
                     end
+                catch lastError
+                    beep
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!! ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    disp(lastError.getReport);
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!! END ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    
+                    if ( status == FINILIZING_EXPERIMENT )
+                        break; % finish loop
+                    end
+                    
+                    status = ERRROR;
                 end
-                % --------------------------------------------------------------------
-                %% -------------------- END EXPERIMENT LOOP ---------------------------
-                % --------------------------------------------------------------------
-                
-                
-            catch err
-                disp('!!!!!!!!!!!!! ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-                disp(err.getReport);
-                disp('!!!!!!!!!!!!! END ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-            end %try..catch.
-            
-            
+            end
             % --------------------------------------------------------------------
-            %% -- FREE RESOURCES -------------------------------------------------
+            %% -------------------- END EXPERIMENT LOOP ---------------------------
             % --------------------------------------------------------------------
-            
-            this.cleanAfterRunning();                
-            ShowCursor;
-            ListenChar(0);
-            Priority(0);
-            commandwindow;
-                        
-            Screen('CloseAll');
-            % --------------------------------------------------------------------
-            %% -------------------- END FREE RESOURCES ----------------------------
-            % --------------------------------------------------------------------
-            
-            disp('ARUME:: Done closing display and connections!');
         end
         
         % run without display
@@ -625,41 +610,41 @@ classdef ExperimentDesign < handle
                         
                         %% ++ RUNNING -------------------------------------------------------
                         case RUNNING
-                                %-- find which condition to run and the variable values for that condition
-                                if ( ~isempty(this.Session.currentRun.pastConditions) )
-                                    trialnumber = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult)==Enum.trialResult.CORRECT)+1;
-                                else
-                                    trialnumber = 1;
-                                end
-                                currentCondition    = this.Session.currentRun.futureConditions(1,1);
-                                variables           = this.getVariablesCurrentCondition( currentCondition );
-                                
-                                %------------------------------------------------------------
-                                %% -- PRE TRIAL ----------------------------------------------
-                                %------------------------------------------------------------
-                                this.SaveEvent( Enum.Events.PRE_TRIAL_START);
-                                this.runPreTrial( variables );
-                                this.SaveEvent( Enum.Events.PRE_TRIAL_STOP);
-                                
-                                %------------------------------------------------------------
-                                %% -- TRIAL ---------------------------------------------------
-                                %------------------------------------------------------------                             
-                                %%-- Run the trial
-                                this.SaveEvent( Enum.Events.TRIAL_START);   
-                                clear data;
-                                data.variables = variables;
-                                
-                                trialResult = this.runTrial( variables );
-                                this.SaveEvent( Enum.Events.TRIAL_STOP);
-                                
-                                %------------------------------------------------------------
-                                %% -- POST TRIAL ----------------------------------------------
-                                %------------------------------------------------------------
-                               
-                                this.SaveEvent( Enum.Events.POST_TRIAL_START);
-                                [trialOutput] = this.runPostTrial(  );
-                                this.SaveEvent( Enum.Events.POST_TRIAL_STOP);
-                                
+                            %-- find which condition to run and the variable values for that condition
+                            if ( ~isempty(this.Session.currentRun.pastConditions) )
+                                trialnumber = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult)==Enum.trialResult.CORRECT)+1;
+                            else
+                                trialnumber = 1;
+                            end
+                            currentCondition    = this.Session.currentRun.futureConditions(1,1);
+                            variables           = this.getVariablesCurrentCondition( currentCondition );
+                            
+                            %------------------------------------------------------------
+                            %% -- PRE TRIAL ----------------------------------------------
+                            %------------------------------------------------------------
+                            this.SaveEvent( Enum.Events.PRE_TRIAL_START);
+                            this.runPreTrial( variables );
+                            this.SaveEvent( Enum.Events.PRE_TRIAL_STOP);
+                            
+                            %------------------------------------------------------------
+                            %% -- TRIAL ---------------------------------------------------
+                            %------------------------------------------------------------
+                            %%-- Run the trial
+                            this.SaveEvent( Enum.Events.TRIAL_START);
+                            clear data;
+                            data.variables = variables;
+                            
+                            trialResult = this.runTrial( variables );
+                            this.SaveEvent( Enum.Events.TRIAL_STOP);
+                            
+                            %------------------------------------------------------------
+                            %% -- POST TRIAL ----------------------------------------------
+                            %------------------------------------------------------------
+                            
+                            this.SaveEvent( Enum.Events.POST_TRIAL_START);
+                            [trialOutput] = this.runPostTrial(  );
+                            this.SaveEvent( Enum.Events.POST_TRIAL_STOP);
+                            
                             
                             %-- save data from trial
                             if ( exist( 'trialOutput', 'var') )
@@ -789,7 +774,7 @@ classdef ExperimentDesign < handle
     % to be called from any experiment
     % --------------------------------------------------------------------
     methods(Access=public)
-                
+        
         %% SaveEvent
         %--------------------------------------------------------------------------
         function SaveEvent( this, event )
@@ -959,7 +944,7 @@ classdef ExperimentDesign < handle
                 conditionMatrix = [ repmat(conditionMatrix,nValues(iVar),1)  ceil((1:prod(nValues))/prod(nValues(1:end-1)))' ];
             end
         end
-                
+        
         function PlaySound(this,trialResult)
             
             Enum = ArumeCore.ExperimentDesign.getEnum();
@@ -1015,23 +1000,23 @@ classdef ExperimentDesign < handle
             % -- useful key codes
             try
                 
-            KbName('UnifyKeyNames');
-            Enum.keys.SPACE     = KbName('space');
-            Enum.keys.ESCAPE    = KbName('ESCAPE');
-            Enum.keys.RETURN    = KbName('return');
-           % Enum.keys.BACKSPACE = KbName('backspace');
-%             
-%             Enum.keys.TAB       = KbName('tab');
-%             Enum.keys.SHIFT     = KbName('shift');
-%             Enum.keys.CONTROL   = KbName('control');
-%             Enum.keys.ALT       = KbName('alt');
-%             Enum.keys.END       = KbName('end');
-%             Enum.keys.HOME      = KbName('home');
-            
-            Enum.keys.LEFT      = KbName('LeftArrow');
-            Enum.keys.UP        = KbName('UpArrow');
-            Enum.keys.RIGHT     = KbName('RightArrow');
-            Enum.keys.DOWN      = KbName('DownArrow');
+                KbName('UnifyKeyNames');
+                Enum.keys.SPACE     = KbName('space');
+                Enum.keys.ESCAPE    = KbName('ESCAPE');
+                Enum.keys.RETURN    = KbName('return');
+                % Enum.keys.BACKSPACE = KbName('backspace');
+                %
+                %             Enum.keys.TAB       = KbName('tab');
+                %             Enum.keys.SHIFT     = KbName('shift');
+                %             Enum.keys.CONTROL   = KbName('control');
+                %             Enum.keys.ALT       = KbName('alt');
+                %             Enum.keys.END       = KbName('end');
+                %             Enum.keys.HOME      = KbName('home');
+                
+                Enum.keys.LEFT      = KbName('LeftArrow');
+                Enum.keys.UP        = KbName('UpArrow');
+                Enum.keys.RIGHT     = KbName('RightArrow');
+                Enum.keys.DOWN      = KbName('DownArrow');
             catch
             end
             
@@ -1063,7 +1048,7 @@ classdef ExperimentDesign < handle
         
         function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
         end
-            
+        
         function eventDataTable = PrepareEventDataTable(this, eventDataTable)
         end
         

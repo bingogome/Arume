@@ -48,7 +48,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             dlg.offset = {0 '* (deg)' [-20 20] };
         end
         
-        function initBeforeRunning( this )
+        function shouldContinue = initBeforeRunning( this )
+            shouldContinue = 1;
             
             % Initialize eyetracker
             initBeforeRunning@ArumeExperimentDesigns.EyeTracking(this);
@@ -66,11 +67,14 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
                 
                 if (isfield(this.ExperimentOptions, 'TiltHeadAtBegining') && this.ExperimentOptions.TiltHeadAtBegining )
-                    if ( isempty(this.Session.currentRun.pastConditions) )
+                    if ( isempty(this.Session.currentRun.pastTrialTable) )
                         this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
-                        pause(2);
                         disp('30 s pause');
-                        pause(30);
+                        result = this.Graph.DlgTimer('Waiting 30s...',30);
+                        if ( result < 0 )
+                            shouldContinue = 0;
+                            return;
+                        end
                         disp('done');
                     end
                 end

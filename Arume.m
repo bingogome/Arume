@@ -43,7 +43,7 @@ if ( useGui && isempty(arumeController.gui))
 end
 
 if ( exist('projectPath','var') )
-    arumeSingleton.loadProject( projectPath )
+    arumeSingleton.loadProject( projectPath );
 end
 
 if ( useGui )

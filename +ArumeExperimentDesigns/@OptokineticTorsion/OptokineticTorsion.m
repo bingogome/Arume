@@ -270,10 +270,7 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
         function trialOutput = runPostTrial(this)
             trialOutput = [];
         end
-        
-        function runAfterSessionCompleted(this)
-        end
-        
+                
         function cleanAfterRunning(this)
         end
         

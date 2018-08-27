@@ -11,8 +11,8 @@ classdef Display < handle
         black = [];
         white = [];
         
-        dlgTextColor = [];
-        dlgBackgroundScreenColor = [];
+        dlgTextColor = [255 255 255];
+        dlgBackgroundScreenColor = [0 0 0];
         
         frameRate = [];
         nominalFrameRate = [];
@@ -54,13 +54,13 @@ classdef Display < handle
             
             graph.screens = Screen('Screens');
             screens=Screen('Screens');
-         	graph.selectedScreen=max(screens);
-%           	graph.selectedScreen=1;
+%          	graph.selectedScreen=max(screens);
+          	graph.selectedScreen=2;
     
             %-- window
             Screen('Preference', 'ConserveVRAM', 64);
-            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [10 10 600 400], [], [], 0, 10);
-%             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
+%             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [10 10 600 400], [], [], 0, 10);
+            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
 %             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0);
          
             %-- color
@@ -68,8 +68,10 @@ classdef Display < handle
             graph.black = BlackIndex( graph.window );
             graph.white = WhiteIndex( graph.window );
             
-            graph.dlgTextColor = exper.ForegroundColor;
-            graph.dlgBackgroundScreenColor = exper.BackgroundColor;
+            if ( exist('exper','var') && ~isempty(exper) )
+                graph.dlgTextColor = exper.ForegroundColor;
+                graph.dlgBackgroundScreenColor = exper.BackgroundColor;
+            end
             
             
             
@@ -89,8 +91,7 @@ classdef Display < handle
             %TODO: force resolution and refresh rate
             
             
-            if ( ~isempty( exper ) )
-                
+            if ( exist('exper','var') && ~isempty(exper) )
                 %-- physical dimensions
                 graph.mmWidth           = exper.Config.Graphical.mmMonitorWidth;
                 graph.mmHeight          = exper.Config.Graphical.mmMonitorHeight;
@@ -100,18 +101,6 @@ classdef Display < handle
                 %-- scale
                 horPixPerDva = graph.pxWidth/2 / (atan(graph.mmWidth/2/graph.distanceToMonitor)*180/pi);
                 verPixPerDva = graph.pxHeight/2 / (atan(graph.mmHeight/2/graph.distanceToMonitor)*180/pi);
-                
-                
-                
-                %-- if we are resuming an experiment, test if graph set up is the same
-                
-                if ( ~isempty( exper.Graph ) )
-                    
-                    % TODO improve
-                    if ( graph.wRect(3) ~= exper.Graph.wRect(3) || graph.wRect(4) ~= exper.Graph.wRect(4) )
-                        error( 'monitor resoluting is different from the first run, recommended to change settings or to restart the experiment');
-                    end
-                end
             end
             
             
@@ -125,6 +114,7 @@ classdef Display < handle
         
         function ResetBackground( this )
             Screen('FillRect', this.window, this.dlgBackgroundScreenColor);
+            Screen('Flip', graph.window);
         end
         
         %% Flip
@@ -394,6 +384,7 @@ classdef Display < handle
         function result = DlgTimer( this, message, maxTime, varargin )
             % DlgTimer(window, message [, maxTime][, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical])
             
+            result = 0;
             
             if nargin < 1
                 error('DlgHitKey: Must provide at least the first argument.');
@@ -408,7 +399,7 @@ classdef Display < handle
             end
             
             oldDefaultColor = Screen( 'TextColor', this.window); % recover previous default color
-            Screen( 'TextColor', this.window, this.dlgTextColor);
+            Screen( 'TextColor', this.window, 255);
             
             % relevant keycodes
             ESCAPE = 27;
@@ -416,10 +407,18 @@ classdef Display < handle
             % remove previous key presses
             FlushEvents('keyDown');
             
-            tini = getSecs;
+            tini = GetSecs;
             while(1)
-                t = getSecs-tini;
-                DrawFormattedText( this.window, sprintf('%s - %d'' %4.1f seconds',message,floor(t/60),mod(t,60)), varargin{:} );
+                t = GetSecs-tini;
+                DrawFormattedText( this.window, sprintf('%s - %4.1f seconds',message,maxTime-t), varargin{:} );
+                
+                % draw a fixation spot in the center;
+                [mx, my] = RectCenter(this.wRect);
+                fixRect = [0 0 10 10];
+                fixRect = CenterRectOnPointd( fixRect, mx, my );
+                Screen('FillOval', this.window,  255, fixRect);
+                fliptime = Screen('Flip', this.window);
+                
                 Screen('Flip', this.window);
                 
                 if ( CharAvail )
@@ -427,11 +426,11 @@ classdef Display < handle
                     switch(char)
                         
                         case ESCAPE
-                            result = 0;
+                            result = -1;
                             break;
                     end
                 end
-                if ( maxTime > 0 && (getSecs-tini> maxTime ) )
+                if ( maxTime > 0 && (GetSecs-tini> maxTime ) )
                     break
                 end
             end

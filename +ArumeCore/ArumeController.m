@@ -196,7 +196,7 @@ classdef ArumeController < handle
             end
             
             % remove the current file
-            this.configuration.recentProjects = unique(this.configuration.recentProjects);
+            this.configuration.recentProjects = unique(this.configuration.recentProjects,'legacy');
             if (~isempty( this.configuration.recentProjects ) )
                 this.configuration.recentProjects =  this.configuration.recentProjects(1:min(30,length(this.configuration.recentProjects)));
             end

@@ -19,6 +19,11 @@ classdef VOG  < handle
                 if ( ~exist('ip','var') )
                     ip = fileread('C:\secure\Code\EyeTracker\bin\x64\Debug\IP.txt');
                 end
+            elseif exist('C:\secure\EyeTracker Debug 2018-22-08\EyeTrackerRemoteClient.dll')
+                asm = NET.addAssembly('C:\secure\EyeTracker Debug 2018-22-08\EyeTrackerRemoteClient.dll');
+                if ( ~exist('ip','var') )
+                    ip = fileread('C:\secure\EyeTracker Debug 2018-22-08\IP.txt');
+                end
             else
                 asm = NET.addAssembly('C:\secure\code\Debug\EyeTrackerRemoteClient.dll');
                 
@@ -27,7 +32,7 @@ classdef VOG  < handle
                 end
             end
             
-            this.eyeTracker = OculomotorLab.VOG.Remote.EyeTrackerClientMatlab(ip, port);
+            this.eyeTracker = VORLab.VOG.Remote.EyeTrackerClient(ip, port);
         end
         
         function result = IsRecording(this)
@@ -57,6 +62,19 @@ classdef VOG  < handle
             frameNumber = [];
             if ( ~isempty( this.eyeTracker) )
                 frameNumber = this.eyeTracker.RecordEvent([num2str(GetSecs) ' ' message]);
+                frameNumber = double(frameNumber);
+            end
+        end
+        
+        function [files]= DownloadFile(this, path)
+            files = [];
+            if ( ~isempty( this.eyeTracker) )
+                try
+                    files = this.eyeTracker.DownloadFile();
+                catch ex
+                    ex
+                end
+                files = cell(files.ToArray)';
             end
         end
     end

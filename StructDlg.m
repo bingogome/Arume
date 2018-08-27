@@ -190,7 +190,7 @@ if (isstruct(struct_def)) % Init
    recurssion_offset = 7*(rec_level-1);
    if ((exist('fig_pos','var') ~= 1) | isempty(fig_pos))
       fig_pos = [screen_size(3)/5+recurssion_offset  screen_size(4)-tot_height-4-recurssion_offset/aspec_ratio ...
-         screen_size(3)*3/5  tot_height+2];
+         screen_size(3)*2/5  tot_height+2];
       specified_pos = 0;
    else
       if (tot_height+2 > fig_pos(4))
