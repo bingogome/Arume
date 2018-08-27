@@ -358,7 +358,7 @@ classdef Project < handle
             if ( isempty( runData) )
                 newRun = ArumeCore.ExperimentRun.SetUpNewRun( experimentDesign );
                 vars = newRun.futureTrialTable;
-                vars.TrialResult = 0;
+                vars.TrialResult = zeros(size(vars.TrialNumber));
                 newRun.AddPastTrialData(vars);
                 newRun.futureTrialTable(:,:) = [];
             else
