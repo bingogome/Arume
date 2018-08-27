@@ -11,7 +11,7 @@ classdef PSPAntiSaccades < ArumeCore.ExperimentDesign
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods ( Access = protected )
-        function dlg = GetOptionsDialog( this )
+        function dlg = GetOptionsDialog( this, importing )
             dlg.UseEyeTracker = { {'{0}' '1'} };
             
             dlg.TargetSize = 0.3;

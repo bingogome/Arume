@@ -1099,10 +1099,16 @@ classdef ArumeGui < handle
                     if ( ~isempty( session.pastRuns(i).pastTrialTable ) && ...
                             any(strcmp(session.pastRuns(i).pastTrialTable.Properties.VariableNames, 'TrialNumber')) && ...
                             any(strcmp(session.pastRuns(i).pastTrialTable.Properties.VariableNames, 'DateTimeTrialStart') ))
-                        uimenu(this.menuResumeSessionFrom, ...
-                            'Label'     , sprintf('[%d] Trial %d interrupted on %s', i, session.pastRuns(i).pastTrialTable{end,'TrialNumber'},session.pastRuns(i).pastTrialTable{end,'DateTimeTrialStart'}{1}), ...
-                            'Callback'  , @this.resumeSessionFrom);
-                        set(this.menuResumeSessionFrom, 'Enable', 'on');
+                        label = [];
+                        try
+                            label = sprintf('[%d] Trial %d interrupted on %s', i, session.pastRuns(i).pastTrialTable{end,'TrialNumber'},session.pastRuns(i).pastTrialTable{end,'DateTimeTrialStart'}{1});
+                        end
+                        if ( ~isempty(label) )
+                            uimenu(this.menuResumeSessionFrom, ...
+                                'Label'     , label, ...
+                                'Callback'  , @this.resumeSessionFrom);
+                            set(this.menuResumeSessionFrom, 'Enable', 'on');
+                        end
                     end
                 end
             end

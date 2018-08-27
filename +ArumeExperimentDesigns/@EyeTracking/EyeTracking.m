@@ -208,7 +208,7 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         end
         
         function plotResults = Plot_Saccades(this)
-            data = this.Session.samplesDataSet;
+            data = this.Session.samplesDataTable;
             VOG.PlotQuickPhaseDebug(data)
         end
         
