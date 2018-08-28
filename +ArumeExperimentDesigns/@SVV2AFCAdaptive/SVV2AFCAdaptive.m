@@ -173,7 +173,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                         end
                     end
                     
-                    if ( this.lastResponse >= 0 )
+                    if ( ~isempty(this.lastResponse) )
                         
                         % SEND TO PARALEL PORT TRIAL NUMBER
                         %write a value to the default LPT1 printer output port (at 0x378)
