@@ -149,10 +149,10 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 calibrationFilePath = fullfile(this.Session.dataPath, calibrationFile);
                 
                 % load data
-                rawData = VOG.LoadVOGdataset(dataFilePath);
+                rawDataFile = VOG.LoadVOGdataset(dataFilePath);
                 
                 % calibrate data
-                [calibratedData leftEyeCal rightEyeCal] = VOG.CalibrateData(rawData, calibrationFilePath);
+                [calibratedData leftEyeCal rightEyeCal] = VOG.CalibrateData(rawDataFile, calibrationFilePath);
                 
                 [cleanedData, fileSamplesDataSet] = VOG.ResampleAndCleanData3(calibratedData, 1000);
                                 
@@ -163,6 +163,12 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                     samplesDataTable = fileSamplesDataSet;
                 else
                     samplesDataTable = cat(1,samplesDataTable,fileSamplesDataSet);
+                end   
+                
+                if ( isempty(rawData) )
+                    rawData = rawDataFile;
+                else
+                    rawData = cat(1,rawData,rawDataFile);
                 end
             end
         end
@@ -175,7 +181,38 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-        function plotResults = Plot_Traces(this)
+        function plotResults = Plot_VOG_RawData(this)
+            data = this.Session.rawDataTable;
+        
+            
+            MEDIUM_BLUE =  [0.1000 0.5000 0.8000];
+            MEDIUM_RED = [0.9000 0.2000 0.2000];
+            
+            figure
+            timeL = data.LeftSeconds;
+            timeR = data.RightSeconds;
+            
+            subplot(3,1,1,'nextplot','add')
+            plot(timeL, data.LeftX, 'color', [ MEDIUM_BLUE ])
+            plot(timeR, data.RightX, 'color', [ MEDIUM_RED])
+            set(gca,'ylim',[-50 50])
+            ylabel('Horizontal (deg)','fontsize', 16);
+            
+            subplot(3,1,2,'nextplot','add')
+            plot(timeL, data.LeftY, 'color', [ MEDIUM_BLUE ])
+            plot(timeR, data.RightY, 'color', [ MEDIUM_RED])
+            set(gca,'ylim',[-50 50])
+            ylabel('Vertical (deg)','fontsize', 16);
+            
+            subplot(3,1,3,'nextplot','add')
+            plot(timeL, data.LeftTorsion, 'color', [ MEDIUM_BLUE ])
+            plot(timeR, data.RightTorsion, 'color', [ MEDIUM_RED])
+            set(gca,'ylim',[-50 50])
+            ylabel('Torsion (deg)','fontsize', 16);
+            xlabel('Time (s)');
+        end
+        
+        function plotResults = Plot_VOG_Traces(this)
             
             data = this.Session.samplesDataTable;
         
@@ -207,12 +244,12 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             
         end
         
-        function plotResults = Plot_Saccades(this)
+        function plotResults = Plot_VOG_Saccades(this)
             data = this.Session.samplesDataTable;
             VOG.PlotQuickPhaseDebug(data)
         end
         
-        function plotResults = Plot_SPV(this)
+        function plotResults = Plot_VOG_SPV(this)
                
             data = this.Session.samplesDataSet;
             trialData = this.Session.trialDataSet;
@@ -233,7 +270,7 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             a=1;
         end
         
-        function plotResults = PlotAggregate_SPVAvg(this, sessions)
+        function plotResults = PlotAggregate_VOG_SPVAvg(this, sessions)
             
             reboundSessions = [];
             calibrationSessions = [];

@@ -207,7 +207,7 @@ classdef Project < handle
                 end
             end 
             
-            disp(dataTable)
+            %disp(dataTable);
             assignin('base','ProjectTable',dataTable);
         end
     end

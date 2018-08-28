@@ -39,7 +39,7 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVV2AFCAdaptive
         function trialResult = runTrial( this, variables )
             
             try
-                this.lastResponse = '';
+                this.lastResponse = [];
                 this.reactionTime = nan;
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
@@ -178,7 +178,7 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVV2AFCAdaptive
                         end
                     end
                     
-                    if ( this.lastResponse >= 0 )
+                    if ( ~isempty(this.lastResponse) )
                         this.reactionTime = secondsElapsed-1;
                         disp(num2str(this.lastResponse));
                         

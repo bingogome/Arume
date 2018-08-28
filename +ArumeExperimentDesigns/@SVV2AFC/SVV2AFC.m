@@ -373,26 +373,26 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             ds = dataset;
             if ( max(responses)>10)
                 n = length(angles);
-                angles(end+1) = -40;
-                angles(end+1) = 40;
-                angles(end+1) = -40;
-                angles(end+1) = 40;
+                angles(end+1,1) = -40;
+                angles(end+1,1) = 40;
+                angles(end+1,1) = -40;
+                angles(end+1,1) = 40;
                 
-                responses(end+1) = 'L';
-                responses(end+1) = 'R';
-                responses(end+1) = 'L';
-                responses(end+1) = 'R';
+                responses(end+1,1) = 'L';
+                responses(end+1,1) = 'R';
+                responses(end+1,1) = 'L';
+                responses(end+1,1) = 'R';
                 ds.Response = responses=='R';
             else
-                angles(end+1) = -40;
-                angles(end+1) = 40;
-                angles(end+1) = -40;
-                angles(end+1) = 40;
+                angles(end+1,1) = -40;
+                angles(end+1,1) = 40;
+                angles(end+1,1) = -40;
+                angles(end+1,1) = 40;
 
-                responses(end+1) = 0;
-                responses(end+1) = 1;
-                responses(end+1) = 0;
-                responses(end+1) = 1;
+                responses(end+1,1) = 0;
+                responses(end+1,1) = 1;
+                responses(end+1,1) = 0;
+                responses(end+1,1) = 1;
                 ds.Response = responses;
             end
             ds.Angle = angles;

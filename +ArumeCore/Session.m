@@ -373,7 +373,7 @@ classdef Session < ArumeCore.DataDB
                 end
                 
                 if ( ~isempty(rawData) )
-                    this.WriteVariable(rawData,'rawDataSet');
+                    this.WriteVariable(rawData,'rawDataTable');
                 end
             end
 

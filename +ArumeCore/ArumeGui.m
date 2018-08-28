@@ -73,7 +73,7 @@ classdef ArumeGui < handle
             end
             defaultBackground = get(0,'defaultUicontrolBackgroundColor');
             
-            w = 1200;
+            w = 900;
             h = 600;
             
             this.arumeController = parent;
@@ -860,7 +860,8 @@ classdef ArumeGui < handle
             delete(get(this.menuPlotGeneratePlotsAggregated,'children'));
             
             
-            if ( ~isempty( this.arumeController.currentSession ) && this.arumeController.currentSession.isReadyForAnalysis)
+%             if ( ~isempty( this.arumeController.currentSession ) && this.arumeController.currentSession.isReadyForAnalysis)
+            if ( ~isempty( this.arumeController.currentSession ) )
             
                 plotsList = {};
                 plotsListAgg = {};

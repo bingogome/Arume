@@ -385,7 +385,12 @@ classdef ExperimentDesign < handle
                             % ++ RUNNING ----------------------------------
                             % ---------------------------------------------
                         case RUNNING
-                            if ( (exist('trialResult', 'var') && trialResult == Enum.trialResult.ABORT) || this.HitKeyBeforeTrial )
+                            % force to hit a key to continue if the
+                            % previous trial was an abort or if the
+                            % experiment is set to ask for hit key before
+                            % every trial
+                            if ( (~isempty(this.Session.currentRun.pastTrialTable) && this.Session.currentRun.pastTrialTable.TrialResult(end) == Enum.trialResult.ABORT) ...
+                                     || this.HitKeyBeforeTrial )
                                 dlgResult = this.Graph.DlgHitKey( 'Hit a key to continue',[],[]);
                                 if ( ~dlgResult )
                                     status = IDLE;

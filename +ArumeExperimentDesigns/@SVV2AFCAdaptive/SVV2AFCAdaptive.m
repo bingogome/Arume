@@ -68,7 +68,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
         function trialResult = runTrial( this, variables )
                         
             try
-                this.lastResponse = '';
+                this.lastResponse = [];
                 this.reactionTime = nan;
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
@@ -198,7 +198,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             end
             
             
-            if ( this.lastResponse < 0)
+            if ( isempty(this.lastResponse) )
                 trialResult =  Enum.trialResult.ABORT;
             end
         end
