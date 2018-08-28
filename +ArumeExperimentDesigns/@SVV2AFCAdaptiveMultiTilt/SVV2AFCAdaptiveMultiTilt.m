@@ -28,7 +28,7 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
                 dlg.FirstSide = { {'{Left}','Right'} };
             else
                 dlg.FirstSide = { {'Left','{Right}'} };
-            end
+            end 
             
             dlg.Prisms = { {'{No}','2020Converge'} };
         end
