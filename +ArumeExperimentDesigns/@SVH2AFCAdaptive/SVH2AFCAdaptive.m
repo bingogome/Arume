@@ -15,6 +15,8 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVV2AFCAdaptive
         
         function dlg = GetOptionsDialog( this, importing )
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptive(this);
+            dlg.UseGamePad = { {'{0}','1'} };
+            dlg.UseMouse = { {'0','{1}'} };
             dlg.responseDuration = { 5000 '* (ms)' [100 10000] };
         end
         

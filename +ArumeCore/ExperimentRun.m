@@ -73,6 +73,26 @@ classdef ExperimentRun < matlab.mixin.Copyable
         end
         
         function trialData = AddPastTrialData(this, trialData)
+            
+            % remove empty fields. This will avoid problems when adding an
+            % empty or missing element to the first row.
+            % It is better to wait until some none empty element is added
+            % so the type of the column is stablished. Then, the trials
+            % without that column will receive the proper missing value.
+            fs = fieldnames(trialData);
+            for i=1:length(fs)
+                if ( isempty( trialData.(fs{i})) )
+                    trialData = rmfield(trialData,fs{i});
+                elseif ( iscell(trialData.(fs{i})) && length(trialData.(fs{i}))==1 && isempty(trialData.(fs{i}){1}) )
+                    trialData = rmfield(trialData,fs{i});
+                elseif ( ismissing(trialData.(fs{i})) )
+                    trialData = rmfield(trialData,fs{i});
+                end
+            end
+            
+            
+            trialData = struct2table(trialData,'AsArray',true);
+            
             this.pastTrialTable  = VertCatTablesMissing(this.pastTrialTable,trialData);
         end
     end
