@@ -414,12 +414,19 @@ classdef Session < ArumeCore.DataDB
                 NoYes = {'No' 'Yes'};
                 newSessionDataTable.Started = categorical(NoYes(this.isStarted+1));
                 newSessionDataTable.Finished = categorical(NoYes(this.isFinished+1));
-                if (~isempty(this.currentRun) && ~isempty(this.currentRun.pastTrialTable) && any(strcmp(this.currentRun.pastTrialTable.Properties.VariableNames,'DateTimeTrialStart')))
+                if (~isempty(this.currentRun) && ~isempty(this.currentRun.pastTrialTable)...
+                        && any(strcmp(this.currentRun.pastTrialTable.Properties.VariableNames,'DateTimeTrialStart'))...
+                        && ~isempty(this.currentRun.pastTrialTable.DateTimeTrialStart(1,:)))
                     newSessionDataTable.TimeFirstTrial = string(this.currentRun.pastTrialTable.DateTimeTrialStart(1,:));
+                else
+                    newSessionDataTable.TimeFirstTrial = "-";
+                end
+                if (~isempty(this.currentRun) && ~isempty(this.currentRun.pastTrialTable)...
+                        && any(strcmp(this.currentRun.pastTrialTable.Properties.VariableNames,'DateTimeTrialStart'))...
+                        && ~isempty(this.currentRun.pastTrialTable.DateTimeTrialStart(end,:)))
                     newSessionDataTable.TimeLastTrial = string(this.currentRun.pastTrialTable.DateTimeTrialStart(end,:));
                 else
-                    newSessionDataTable.TimeLastTrial = string('-');
-                    newSessionDataTable.TimeFirstTrial = string('-');
+                    newSessionDataTable.TimeLastTrial = "-";
                 end
                 if (~isempty(this.currentRun))
                     newSessionDataTable.NumberOfTrialsCompleted = 0;

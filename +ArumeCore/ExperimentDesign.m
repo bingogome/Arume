@@ -18,7 +18,7 @@ classdef ExperimentDesign < handle
         ExperimentOptions = [];  % Options of this specific experiment design
         
         % Experimental variables
-        ConditionVars = [];
+        ConditionVars = table();
         RandomVars = [];
         
         ConditionMatrix
@@ -467,7 +467,7 @@ classdef ExperimentDesign < handle
                             end
                             
                             % -- Update past trial table
-                            this.Session.currentRun.AddPastTrialData(struct2table(variables,'AsArray',true));
+                            this.Session.currentRun.AddPastTrialData(variables);
                             
                             if ( variables.TrialResult == Enum.trialResult.CORRECT )
                                 %-- remove the condition that has just run from the future conditions list

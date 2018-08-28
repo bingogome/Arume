@@ -111,7 +111,7 @@ classdef ForTabletSVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             % Add stuff here
             
             correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  Enum.trialResult.CORRECT ,:);            
-            this.updateRange(variables, correctTrialsTable.Angle, correctTrialsTable.Response);
+            this.updateRange(variables, correctTrialsTable);
             
             trialResult =  Enum.trialResult.CORRECT;
         end

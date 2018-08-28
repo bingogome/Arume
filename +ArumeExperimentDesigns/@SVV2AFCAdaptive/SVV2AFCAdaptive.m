@@ -49,6 +49,13 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             i = i+1;
             conditionVars(i).name   = 'Position';
             conditionVars(i).values = {'Up' 'Down'};
+            
+            %%
+            conditionVars
+            conditionVars{:,{'name','values'}} = { ...
+                'AnglePercentRange',    ([-100:100/2.5:100-100/5]+100/5); ...
+                'Position',             categorical({'Up','Down'}); ...
+                };
         end
                 
         function trialResult = runPreTrial(this, variables )
@@ -57,7 +64,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             
             if ( ~isempty(this.Session.currentRun.pastTrialTable) )
                 correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  Enum.trialResult.CORRECT ,:);
-                this.updateRange(variables, correctTrialsTable.Angle, correctTrialsTable.Response);
+                this.updateRange(variables, correctTrialsTable);
             else
                 this.updateRange(variables, [], []);
             end
@@ -213,7 +220,17 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             trialOutput.RangeCenter = this.currentCenterRange;
         end
         
-        function updateRange(this, variables, previousValues, previousResponses)
+        function updateRange(this, variables, previousTrialTableSelection)
+            
+            if ( isempty(previousTrialTableSelection) || ...
+                    ~any(strcmp(previousTrialTableSelection.Properties.VariableNames,'Response')))
+                previousValues = [];
+                previousResponses = [];
+            else
+                previousValues = previousTrialTableSelection.Angle;
+                previousResponses = previousTrialTableSelection.Response;
+            end
+            
             NtrialPerBlock = 10;
             
             % recalculate every 10 trials
