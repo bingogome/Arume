@@ -197,10 +197,7 @@ classdef Project < handle
                 if ( any(categorical(subjectSelection) == session.subjectCode) && any(categorical(sessionSelection)==session.sessionCode))
                     sessionRow = session.sessionDataTable;
                     if ( isempty( sessionRow ) )
-                        sessionRow = table();
-                        sessionRow.Subject = categorical(cellstr(session.subjectCode));
-                        sessionRow.SessionCode = categorical(cellstr(session.sessionCode));
-                        sessionRow.Experiment = categorical(cellstr(session.experiment.Name));
+                        session.GetBasicSessionDataTable();
                     end
                     if ( isempty(dataTable))
                         dataTable = sessionRow;
@@ -315,15 +312,17 @@ classdef Project < handle
                 for sessionData = data.sessions
                     
                     % TEMPORARY
+                    oldSessionName = [sessionData.experimentName '_' sessionData.subjectCode sessionData.sessionCode];
                     if ( strcmp(sessionData.experimentName, 'MVSTorsion') )
-                        oldSessionName = [sessionData.experimentName '_' sessionData.subjectCode sessionData.sessionCode];
                         sessionData.experimentName = 'EyeTracking';
-                        newSessionName = [sessionData.experimentName '_' sessionData.subjectCode sessionData.sessionCode];
+                    end
+                    newSessionName = [sessionData.experimentName '__' sessionData.subjectCode '__' sessionData.sessionCode];
+                    if ( ~strcmp(oldSessionName, newSessionName) )
                         movefile(fullfile(path,oldSessionName) ,fullfile(path,newSessionName))
                     end
                     
                     
-                    sessionName = [sessionData.experimentName '_' sessionData.subjectCode sessionData.sessionCode];
+                    sessionName = [sessionData.experimentName '__' sessionData.subjectCode '__' sessionData.sessionCode];
                     
                     disp(sprintf('... updating %s ...',sessionName));
                     sessionData.currentRun = ArumeCore.Project.UpdateRun(sessionData.currentRun, sessionData.experimentName );
@@ -340,7 +339,7 @@ classdef Project < handle
                     
                     
                     
-                    filename = fullfile( fullfile(path, sessionName), [sessionName '_ArumeSession.mat']);
+                    filename = fullfile( fullfile(path, sessionName), 'ArumeSession.mat');
                     save( filename, 'sessionData' );
                 end
                 data = rmfield(data,'sessions');
@@ -357,10 +356,10 @@ classdef Project < handle
             
             if ( isempty( runData) )
                 newRun = ArumeCore.ExperimentRun.SetUpNewRun( experimentDesign );
-                vars = newRun.futureTrialTable;
-                vars.TrialResult = zeros(size(vars.TrialNumber));
-                newRun.AddPastTrialData(vars);
-                newRun.futureTrialTable(:,:) = [];
+%                 vars = newRun.futureTrialTable;
+%                 vars.TrialResult = zeros(size(vars.TrialNumber));
+%                 newRun.AddPastTrialData(vars);
+%                 newRun.futureTrialTable(:,:) = [];
             else
                 
                 newRun = runData;
@@ -428,33 +427,35 @@ classdef Project < handle
                 ev = runData.Events;
                 
                 f2.TimePreTrialStart = ev(ev(:,3)==Enum.Events.PRE_TRIAL_START ,1);
-                if ( length(f2.TimePreTrialStart) == length(ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,1)))
-                    f2.TimePreTrialStop = ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,1);
-                    f2.TimeTrialStart = ev(ev(:,3)==Enum.Events.TRIAL_START ,1);
-                    f2.DateTimeTrialStart = datestr(ev(ev(:,3)==Enum.Events.TRIAL_START ,2));
-                else
-                    % crashed during pre trial
-                    f2.TimePreTrialStop(pastConditions(:,2)<2) = ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,1);
-                    f2.TimeTrialStart(pastConditions(:,2)<2) = ev(ev(:,3)==Enum.Events.TRIAL_START ,1);
-                    f2.DateTimeTrialStart(find(pastConditions(:,2)<2),:) = datestr(ev(ev(:,3)==Enum.Events.TRIAL_START ,2));
-                end
+                f2.TimePreTrialStop(ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,4)) = ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,1);
+                f2.TimeTrialStart(ev(ev(:,3)==Enum.Events.TRIAL_START ,4)) = ev(ev(:,3)==Enum.Events.TRIAL_START ,1);
+                f2.DateTimeTrialStart(ev(ev(:,3)==Enum.Events.TRIAL_START ,4),:) = datestr(ev(ev(:,3)==Enum.Events.TRIAL_START ,2));
                 f2.TrialResult = pastConditions(:,2);
                 % from here on only if trialresult is correct or abort
-                f2.TimeTrialStop(f2.TrialResult<2) = ev(ev(:,3)==Enum.Events.TRIAL_STOP ,1);
-                f2.TimePostTrialStart(f2.TrialResult<2) = ev(ev(:,3)==Enum.Events.POST_TRIAL_START ,1);
-                f2.TimePostTrialStop(f2.TrialResult<2) = ev(ev(:,3)==Enum.Events.POST_TRIAL_STOP ,1);
+                
+                f2.TimeTrialStop(ev(ev(:,3)==Enum.Events.TRIAL_STOP ,4)) = ev(ev(:,3)==Enum.Events.TRIAL_STOP ,1);
+                f2.TimePostTrialStart( ev(ev(:,3)==Enum.Events.POST_TRIAL_START ,4)) = ev(ev(:,3)==Enum.Events.POST_TRIAL_START ,1);
+                f2.TimePostTrialStop(ev(ev(:,3)==Enum.Events.POST_TRIAL_STOP ,4)) = ev(ev(:,3)==Enum.Events.POST_TRIAL_STOP ,1);
+                
                 f2.TrialNumber(f2.TrialResult<2) = 1:sum(f2.TrialResult<2);
                 
                 tout = table();
                 for i=1:height(f2)
                     if ( isfield(runData.Data{i}, 'trialOutput' ) && ~isempty(runData.Data{i}.trialOutput) )
                         trialOutput = runData.Data{i}.trialOutput;
+                        if ( isfield(trialOutput,'Response') && trialOutput.Response == -1 )
+                            trialOutput = rmfield(trialOutput,'Response');
+                        end
+                        if ( isfield(trialOutput,'ReactionTime') && trialOutput.ReactionTime == -1 )
+                            trialOutput = rmfield(trialOutput,'ReactionTime');
+                        end
                     else
                         trialOutput = struct();
                     end
                     
                     if ( ~isempty( tout ) )
-                        tout = VertCatTablesMissing(tout,struct2table(trialOutput,'AsArray',true));
+                        trialOutputTable = struct2table(trialOutput,'AsArray',true);
+                        tout = VertCatTablesMissing(tout,trialOutputTable);
 %                         t1 = tout;
 %                         t2 = struct2table(trialOutput,'AsArray',true);
 %                         t1colmissing = setdiff(t2.Properties.VariableNames, t1.Properties.VariableNames);

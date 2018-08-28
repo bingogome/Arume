@@ -394,24 +394,33 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
         function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)            
                         
             angles = this.GetAngles();
-            angles(this.Session.trialDataTable.TrialResult>0) = [];
-            
-            respones = this.GetLeftRightResponses();
-            respones(this.Session.trialDataTable.TrialResult>0) = [];
-            
-            [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
-            
-            ds = this.Session.trialDataTable;
-            ds(ds.TrialResult>0,:) = [];
-            
-            times = ds.ReactionTime;
-            
-            sessionDataTable.SVV = SVV;
-            sessionDataTable.SVVth = SVVth;
-            
-            sessionDataTable.RTmean = nanmean(times);
-            sessionDataTable.RTstd = nanstd(times);
-            sessionDataTable.RTmedian = nanmedian(times);
+            if ( ~isempty(angles) )
+                angles(this.Session.trialDataTable.TrialResult>0) = [];
+                
+                respones = this.GetLeftRightResponses();
+                respones(this.Session.trialDataTable.TrialResult>0) = [];
+                
+                [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
+                
+                ds = this.Session.trialDataTable;
+                ds(ds.TrialResult>0,:) = [];
+                
+                times = ds.ReactionTime;
+                
+                sessionDataTable.SVV = SVV;
+                sessionDataTable.SVVth = SVVth;
+                
+                sessionDataTable.RTmean = nanmean(times);
+                sessionDataTable.RTstd = nanstd(times);
+                sessionDataTable.RTmedian = nanmedian(times);
+            else
+                sessionDataTable.SVV = nan;
+                sessionDataTable.SVVth = nan;
+                
+                sessionDataTable.RTmean = nan;
+                sessionDataTable.RTstd = nan;
+                sessionDataTable.RTmedian = nan;
+            end
         end
     end
     % ---------------------------------------------------------------------
@@ -419,22 +428,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
     % ---------------------------------------------------------------------
     methods ( Access = public )
                 
-        function plotResults = Plot_TorsionSVV(this)
-            
-            ds = this.Session.trialDataTable;
-            
-            figure
-            plot(ds.TrialNumber, ds.Bin100SVV,'linewidth',3,'color','b');
-            hold
-            plot(ds.TrialNumber, ds.Bin100Torsion,'linewidth',3,'color','r');
-            
-            legend({ 'SVV' 'Torsion'});
-             
-            xlabel('TrialNumber');
-            ylabel('Deg');
-        end
-        
-        function plotResults = Plot_ExperimentTimeCourse(this)
+        function plotResults = Plot_SVV_TimeCourse(this)
             analysisResults = 0;
             
             MEDIUM_BLUE =  [0.1000 0.5000 0.8000];
@@ -492,7 +486,7 @@ T = [];
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
         end
         
-        function plotResults = Plot_ReactionTimes(this)
+        function plotResults = Plot_SVV_ReactionTimes(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataTable;

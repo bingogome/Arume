@@ -10,8 +10,11 @@ classdef SVV2AFCAdaptiveLong < ArumeExperimentDesigns.SVV2AFCAdaptive
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         
-        function dlg = GetOptionsDialog( this )
-            dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptive(this);
+        function dlg = GetOptionsDialog( this, importing)
+            if (~exist('importing','var' ))
+                importing = 0;
+            end
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptive(this,importing);
             dlg.PreviousTrialsForRange = { {'All','{Previous30}'} }; % change the default
             dlg.TotalNumberOfTrials = 1000; % change the default
         end

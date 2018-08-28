@@ -2,10 +2,10 @@ function dataTable = VertCatTablesMissing(t1,t2)
 % Concatenates two tables that may have different variables
 % adding missing elements where it corresponds.
 
-if ( isempty(t1) )
+if ( ~istable(t1) )
     t1 = table();
 end
-if ( isempty(t2) )
+if ( ~istable(t2) )
     t2 = table();
 end
 
@@ -43,13 +43,13 @@ t = [t1(:,t1andt2);t2(:,t1andt2)];
 % then add to the unique columns of t1 missing
 % rows for each element of t2
 t12 = t1(:,t2colmissing);
-if ( ~isempty(t2) && ~isempty(t2colmissing))
+if ( height(t2)>0 && ~isempty(t2colmissing))
     t12{height(t1)+(1:height(t2)),:} = missing;
 end
 % then add to the unique columns of t2 missing
 % rows for each element of t1
 t21 = t2(:,t1colmissing);
-if ( ~isempty(t1) && ~isempty(t1colmissing))
+if ( height(t1)>0 && ~isempty(t1colmissing))
     t21{height(t2)+(1:height(t1)),:} = missing;
     % move the values up so the rows match
     t21 = [t21(height(t2)+1:end,:);t21(1:height(t2),:)];

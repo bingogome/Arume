@@ -251,13 +251,21 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
         % Function that gets the angles of each trial with 0 meaning
         % upright, positive tilted CW and negative CCW.
         function angles = GetAngles( this )
-            angles = this.Session.trialDataTable.Angle;
+            if ( ~isempty(this.Session.trialDataTable) )
+                angles = this.Session.trialDataTable.Angle;
+            else
+                angles = [];
+            end
         end
         
         % Function that gets the left and right responses with 1 meaning
         % right and 0 meaning left.
         function responses = GetLeftRightResponses( this )
-            responses = this.Session.trialDataTable.Response;
+            if ( ~isempty(this.Session.trialDataTable) )
+                responses = this.Session.trialDataTable.Response;
+            else
+                responses = [];
+            end
         end
         
     end
@@ -265,7 +273,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
     % Plot methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
-        function plotResults = Plot_Sigmoid(this)
+        function plotResults = Plot_SVV_Sigmoid(this)
             
             angles = this.GetAngles();
             angles(this.Session.trialDataTable.TrialResult>0) = [];
@@ -303,55 +311,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             xlabel('Angle (deg)', 'fontsize',16);
         end
         
-        function plotResults = Plot_Sigmoid_Tilt_Aftereffect(this)
-            angles = this.GetAngles();
-            
-            dangles = diff(angles);
-            
-            angles = angles(2:end);
-            angles1 = angles(dangles>0);
-            angles2 = angles(dangles<0);
-            
-            respones = this.GetLeftRightResponses();
-            respones = respones(2:end);
-            respones1 = respones(dangles>0);
-            respones2 = respones(dangles<0);
-            
-            
-            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-            ax1=axes('nextplot','add', 'fontsize',12);
-            
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles1, respones1);
-            plot( allAngles, allResponses,'o', 'color', [1 0 0], 'markersize',10,'linewidth',2,'markerfacecolor',[1 0.7 0.7])
-            plot(a,p, 'color', [1 0 0],'linewidth',2);
-            line([SVV, SVV], [0 100], 'color',[1 0 0],'linewidth',2);
-            
-            %xlabel('Angle (deg)', 'fontsize',16);
-            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(30, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
-            
-            set(gca,'xlim',[-30 30],'ylim',[-10 110])
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xticklabel',[])
-            
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles2, respones2);
-            plot( allAngles, allResponses,'o', 'color', [0 0 1], 'markersize',10,'linewidth',2,'markerfacecolor',[0.7 0.7 1])
-            plot(a,p, 'color', [0 0 1],'linewidth',2);
-            line([SVV, SVV], [0 100], 'color',[0 0 1],'linewidth',2);
-            
-            %xlabel('Angle (deg)', 'fontsize',16);
-            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(30, 60, sprintf('SVV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
-            
-            set(gca,'xlim',[-30 30],'ylim',[-10 110])
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xticklabel',[])
-            
-        end
-        
-        function plotResults = Plot_SigmoidUpDown(this)
+        function plotResults = Plot_SVV_SigmoidUpDown(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataTable;

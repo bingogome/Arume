@@ -489,12 +489,11 @@ classdef ArumeGui < handle
                     return
                 end
                 
-                if ( isempty(regexp(session.Subject_Code,'^[_a-zA-Z0-9]+$','ONCE') ))
+                if ( ~ArumeCore.Session.IsValidSubjectCode(session.Subject_Code) )
                     uiwait(msgbox('The subject code is not valid', 'Error', 'Modal'));
                     continue;
                 end
-                
-                if ( isempty(regexp(session.Session_Code,'^[_a-zA-Z0-9]+$','ONCE') ))
+                if ( ~ArumeCore.Session.IsValidSessionCode(session.Session_Code) )
                     uiwait(msgbox('The session code is not valid', 'Error', 'Modal'));
                     continue;
                 end
@@ -546,12 +545,11 @@ classdef ArumeGui < handle
                     return
                 end
                 
-                if ( isempty(regexp(session.Subject_Code,'^[_a-zA-Z0-9]+$','ONCE') ))
+                if ( ~ArumeCore.Session.IsValidSubjectCode(session.Subject_Code) )
                     uiwait(msgbox('The subject code is not valid', 'Error', 'Modal'));
                     continue;
                 end
-                
-                if ( isempty(regexp(session.Session_Code,'^[_a-zA-Z0-9]+$','ONCE') ))
+                if ( ~ArumeCore.Session.IsValidSessionCode(session.Session_Code) )
                     uiwait(msgbox('The session code is not valid', 'Error', 'Modal'));
                     continue;
                 end
@@ -695,6 +693,10 @@ classdef ArumeGui < handle
                 allgood = 1;
                 for i=1:length(sessions)
                     for session = this.arumeController.currentProject.sessions
+                        if ( ~ArumeCore.Session.IsValidSubjectCode(newSubjectCodes{i}) || ~ArumeCore.Session.IsValidSessionCode(newSessionCodes{i}) )
+                            allgood = 0;
+                            break;
+                        end
                         if ( streq(upper(session.subjectCode), upper(newSubjectCodes{i})) && streq(upper(session.sessionCode), upper(newSessionCodes{i})) )
                             uiwait(msgbox(['One of the names is repeated ' newSubjectCodes{i} '-' newSessionCodes{i} '.'], 'Error', 'Modal'));
                             allgood = 0;
@@ -754,6 +756,10 @@ classdef ArumeGui < handle
                 allgood = 1;
                 for i=1:length(sessions)
                     for session = this.arumeController.currentProject.sessions
+                        if ( ~ArumeCore.Session.IsValidSubjectCode(newSubjectCodes{i}) || ~ArumeCore.Session.IsValidSessionCode(newSessionCodes{i}) )
+                            allgood = 0;
+                            break;
+                        end
                         if ( streq(session.subjectCode, newSubjectCodes{i}) &&  streq(session.sessionCode, newSessionCodes{i}) )
                             uiwait(msgbox(['One of the names is repeated ' newSubjectCodes{i} '-' newSessionCodes{i} '.'], 'Error', 'Modal'));
                             allgood = 0;

@@ -67,7 +67,7 @@ classdef Session < ArumeCore.DataDB
     methods
         
         function name = get.name(this)
-            name = [this.experiment.Name '_' this.subjectCode this.sessionCode];
+            name = [this.experiment.Name '__' this.subjectCode '__' this.sessionCode];
         end
         
         function result = get.isStarted(this)
@@ -138,12 +138,15 @@ classdef Session < ArumeCore.DataDB
         function initExisting( this, sessionPath )
              
             [projectPath,sessionName] = fileparts(sessionPath);
-            filename = fullfile( sessionPath, [sessionName '_ArumeSession.mat']);
+            filename = fullfile( sessionPath, 'ArumeSession.mat');
             
             sessionData = load( filename, 'sessionData' );
             data = sessionData.sessionData;          
-            
-            this.init( projectPath, data.experimentName, data.subjectCode, data.sessionCode, data.experimentOptions );
+            parts = split(sessionName,'__');
+            newExperimentName = parts{1};
+            newSubjectCode = parts{2};
+            newSessionCode = parts{3};
+            this.init( projectPath, newExperimentName, newSubjectCode, newSessionCode, data.experimentOptions );
             
             if (isfield(data, 'currentRun') && ~isempty( data.currentRun ))
                 this.currentRun  = ArumeCore.ExperimentRun.LoadRunData( data.currentRun, this.experiment );
@@ -178,9 +181,6 @@ classdef Session < ArumeCore.DataDB
         function sessionData = save( this )
             sessionData = [];
             
-            sessionData.experimentName     = this.experiment.Name;
-            sessionData.subjectCode        = this.subjectCode;
-            sessionData.sessionCode        = this.sessionCode;
             sessionData.comment            = this.comment;
             sessionData.experimentOptions  = this.experiment.ExperimentOptions;
             
@@ -192,13 +192,13 @@ classdef Session < ArumeCore.DataDB
                 sessionData.pastRuns = [];
             end
             
-            filename = fullfile( this.dataPath, [this.name '_ArumeSession.mat']);
+            filename = fullfile( this.dataPath, 'ArumeSession.mat');
             save( filename, 'sessionData' );
         end
         
         function session = copy( this, newSubjectCode, newSessionCode)
             projectFolder = fileparts(this.dataPath);
-            newSessionName = [this.experiment.Name '_' newSubjectCode newSessionCode];
+            newSessionName = [this.experiment.Name '__' newSubjectCode '__' newSessionCode];
             newSessionDataPath = fullfile(projectFolder, newSessionName);
             if ( exist( newSessionDataPath, 'dir') )
                 error( 'There is already a session in the current project with the same name.');
@@ -208,14 +208,11 @@ classdef Session < ArumeCore.DataDB
             
             sessionData = [];
             
-            sessionData.subjectCode = newSubjectCode;
-            sessionData.sessionCode = newSessionCode;
-            sessionData.experimentName = this.experiment.Name;
             sessionData.experimentOptions = this.experiment.ExperimentOptions;
             sessionData.currentRun = [];
             sessionData.pastRuns = [];
             
-            filename = fullfile( newSessionDataPath, [newSessionName '_ArumeSession.mat']);
+            filename = fullfile( newSessionDataPath, 'ArumeSession.mat');
             save( filename, 'sessionData' );
             
             session = ArumeCore.Session();
@@ -362,7 +359,9 @@ classdef Session < ArumeCore.DataDB
             %% 0) Create the basic trial dataaset (without custom experiment stuff)
             newTrialDataTable = this.currentRun.pastTrialTable;
             % remove errors and aborts for analysis
-            newTrialDataTable(newTrialDataTable.TrialResult > 0 ,:) = [];
+            if (~isempty(newTrialDataTable))
+                newTrialDataTable(newTrialDataTable.TrialResult > 0 ,:) = [];
+            end
             this.WriteVariable(newTrialDataTable,'trialDataTable');
             
             if (SHOULD_DO_SAMPLES)
@@ -464,8 +463,7 @@ classdef Session < ArumeCore.DataDB
         
         function session = LoadSession( sessionPath )
             
-            [~,sessionName] = fileparts(sessionPath);
-            filename = fullfile( sessionPath, [sessionName '_ArumeSession.mat']);
+            filename = fullfile( sessionPath, 'ArumeSession.mat');
             if  (~exist(filename,'file') )
                 session = [];
                 return 
@@ -481,6 +479,7 @@ classdef Session < ArumeCore.DataDB
         %
         function result = IsValidSubjectCode( name )
             result = ~isempty(regexp(name,'^[_a-zA-Z0-9]+$','ONCE') );
+            result = result && ~contains(name,'__');
         end
         
         %
@@ -488,6 +487,7 @@ classdef Session < ArumeCore.DataDB
         %
         function result = IsValidSessionCode( name )
             result = ~isempty(regexp(name,'^[_a-zA-Z0-9]+$','ONCE') );
+            result = result && ~contains(name,'__');
         end
     end
     
