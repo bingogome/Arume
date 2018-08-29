@@ -17,7 +17,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             if ( ~exist('importing','var') )
                 importing = 0;
             end
-            dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFC(this);
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFC(this, importing);
             
             dlg.PreviousTrialsForRange = { {'{All}','Previous30'} };
             dlg.RangeChanges = { {'{Slow}','Fast'} };
@@ -32,7 +32,8 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
-            this.trialsPerSession   = this.ExperimentOptions.TotalNumberOfTrials;
+            this.trialsPerSession   = 20;
+            this.trialsBeforeBreak     = 5;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...

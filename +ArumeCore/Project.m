@@ -351,10 +351,6 @@ classdef Project < handle
             
             if ( isempty( runData) )
                 newRun = ArumeCore.ExperimentRun.SetUpNewRun( experimentDesign );
-%                 vars = newRun.futureTrialTable;
-%                 vars.TrialResult = zeros(size(vars.TrialNumber));
-%                 newRun.AddPastTrialData(vars);
-%                 newRun.futureTrialTable(:,:) = [];
             else
                 
                 newRun = runData;
@@ -398,6 +394,7 @@ classdef Project < handle
                 f2.Condition = pastConditions(:,1);
                 f2.BlockNumber = pastConditions(:,3);
                 f2.BlockSequenceNumber = pastConditions(:,4);
+                f2.Session = ones(size(f2.TrialNumber));
                 
                 t2 = table();
                 for i=1:height(f2)

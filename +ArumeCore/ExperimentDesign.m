@@ -17,7 +17,6 @@ classdef ExperimentDesign < handle
         
         % Experimental variables
         ConditionVars = [];
-        
         ConditionMatrix
         
         TrialStartCallbacks
@@ -56,6 +55,7 @@ classdef ExperimentDesign < handle
         trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
         trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
         trialsPerSession = 1;
+        trialsBeforeBreak = 1;
         
         blockSequence       = 'Sequential';	% Sequential, Random, Random with repetition, ...numberOfTimesRepeatBlockSequence = 1;
         blocksToRun         = 1;
@@ -63,7 +63,6 @@ classdef ExperimentDesign < handle
         numberOfTimesRepeatBlockSequence = 1;
         
         % Other parameters
-        trialsBeforeBreak	= 1000;
         trialDuration       = 5; %seconds
     end
     
@@ -193,6 +192,7 @@ classdef ExperimentDesign < handle
             newTrialTable.Condition = futureConditions(:,1);
             newTrialTable.BlockNumber = futureConditions(:,2);
             newTrialTable.BlockSequenceNumber = futureConditions(:,3);
+            newTrialTable.Session = ceil((1:height(newTrialTable))/this.trialsPerSession)';
             
             variableTable = table();
             for i=1:height(newTrialTable)
@@ -265,7 +265,8 @@ classdef ExperimentDesign < handle
             end
             
             % default parameters of any experiment
-            this.trialsPerSession = this.NumberOfConditions;
+            this.trialsPerSession   = this.NumberOfConditions;
+            this.trialsBeforeBreak  = this.NumberOfConditions;            
             
             %-- Blocking
             this.blocks(1).toCondition    = this.NumberOfConditions;
@@ -375,7 +376,7 @@ classdef ExperimentDesign < handle
                             if ( ~dlgResult )
                                 status = IDLE;
                             else
-                                trialsSinceBreak            = 0;
+                                trialsSinceBreak = 0;
                                 status = RUNNING;
                             end
                             
@@ -397,58 +398,58 @@ classdef ExperimentDesign < handle
                             end
                             
                             try
-                                DISPLAY_VARS = 0;
+                                commandwindow;
                                 
                                 %-- find which condition to run and the variable values for that condition
-                                variables = table();
-                                variables.TrialNumber  = height(this.Session.currentRun.pastTrialTable)+1;
-                                variables = [variables this.Session.currentRun.futureTrialTable(1,:)];
+                                trialData = table();
+                                trialData.TrialNumber  = height(this.Session.currentRun.pastTrialTable)+1;
+                                trialData = [trialData this.Session.currentRun.futureTrialTable(1,:)];
                                 
-                                fprintf('\nARUME :: TRIAL %d START: ...\n', variables.TrialNumber);
+                                fprintf('\nARUME :: TRIAL %d START: ...\n', trialData.TrialNumber);
                                 
                                 %------------------------------------------------------------
                                 %% -- PRE TRIAL ----------------------------------------------
                                 %------------------------------------------------------------
-                                variables.TimePreTrialStart = GetSecs;
+                                trialData.TimePreTrialStart = GetSecs;
                                 
-                                this.runPreTrial( variables );
+                                this.runPreTrial( trialData );
                                 
-                                variables.TimePreTrialStop = GetSecs;
+                                trialData.TimePreTrialStop = GetSecs;
                                 
                                 %------------------------------------------------------------
                                 %% -- TRIAL ---------------------------------------------------
                                 %------------------------------------------------------------
-                                variables.TimeTrialStart = GetSecs;
+                                trialData.TimeTrialStart = GetSecs;
                                 for i=1:length(this.TrialStartCallbacks)
-                                    variables = feval(this.TrialStartCallbacks{i}, variables);
+                                    trialData = feval(this.TrialStartCallbacks{i}, trialData);
                                 end
-                                variables.DateTimeTrialStart = datestr(now);
+                                trialData.DateTimeTrialStart = datestr(now);
                                 
-                                variables.TrialResult = this.runTrial( variables );
+                                trialData.TrialResult = this.runTrial( trialData );
                                 
-                                variables.TimeTrialStop = GetSecs;
+                                trialData.TimeTrialStop = GetSecs;
                                 for i=1:length(this.TrialStopCallbacks)
-                                    variables = feval(this.TrialStopCallbacks{i}, variables);
+                                    trialData = feval(this.TrialStopCallbacks{i}, trialData);
                                 end
                                 
                                 %------------------------------------------------------------
                                 %% -- POST TRIAL ----------------------------------------------
                                 %------------------------------------------------------------
                                 
-                                this.PlaySound(variables.TrialResult);
+                                this.PlaySound(trialData.TrialResult);
                                 
-                                variables.TimePostTrialStart = GetSecs;
+                                trialData.TimePostTrialStart = GetSecs;
                                 
                                 trialOutput = this.runPostTrial(  );
                                 
-                                variables.TimePostTrialStop = GetSecs;
+                                trialData.TimePostTrialStop = GetSecs;
                                 
                             catch err
                                 if ( streq(err.identifier, 'PSYCORTEX:USERQUIT' ) )
-                                    variables.TrialResult = Enum.trialResult.QUIT;
+                                    trialData.TrialResult = Enum.trialResult.QUIT;
                                 else
-                                    variables.TrialResult = Enum.trialResult.ERROR;
-                                    variables.ErrorMessage = err.message;
+                                    trialData.TrialResult = Enum.trialResult.ERROR;
+                                    trialData.ErrorMessage = err.message;
                                     % display error
                                     disp('!!!!!!!!!!!!! ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
                                     disp(err.getReport);
@@ -458,7 +459,7 @@ classdef ExperimentDesign < handle
                             end
                             
                             % -- Update past trial table
-                            this.Session.currentRun.AddPastTrialData(variables, trialOutput);
+                            this.Session.currentRun.AddPastTrialData(trialData, trialOutput);
                             
                             % -- Display trial Table for last 20 trials
                             condvars = struct2table(this.Session.experimentDesign.ConditionVars);
@@ -472,13 +473,12 @@ classdef ExperimentDesign < handle
                             disp(trials(max(1,height(trials)-20):end,varSelection));
                             
                             
-                            if ( variables.TrialResult == Enum.trialResult.CORRECT )
+                            if ( trialData.TrialResult == Enum.trialResult.CORRECT )
                                 %-- remove the condition that has just run from the future conditions list
                                 this.Session.currentRun.futureTrialTable(1,:) = [];
                                 
                                 %-- save to disk temporary data
                                 %//TODO this.SaveTempData();
-                                
                                 
                                 trialsSinceBreak = trialsSinceBreak + 1;
                             else
@@ -505,7 +505,7 @@ classdef ExperimentDesign < handle
                             end
                             
                             %-- handle errors
-                            switch ( variables.TrialResult )
+                            switch ( trialData.TrialResult )
                                 case Enum.trialResult.ERROR
                                     status = IDLE;
                                     continue;
@@ -515,37 +515,39 @@ classdef ExperimentDesign < handle
                             end
                             
                             % -- Experiment or session finished ?
-%                             stats = this.Session.currentRun.GetStats();
-%                             if ( stats.trialsToFinishExperiment == 0 )
-%                                 status = SESSIONFINISHED;
-%                             elseif ( stats.trialsToFinishSession == 0 )
-%                                 status = SESSIONFINISHED;
-%                             elseif ( trialsSinceBreak >= this.trialsBeforeBreak )
-%                                 status = BREAK;
-%                             end
+                            if ( trialsSinceBreak >= this.trialsBeforeBreak )
+                                status = BREAK;
+                            end
+                            if ( ~isempty(this.Session.currentRun.futureTrialTable) && ~isempty(this.Session.currentRun.pastTrialTable) )
+                                if ( this.Session.currentRun.pastTrialTable.Session(end) ~= this.Session.currentRun.futureTrialTable.Session(1) )
+                                    status = SESSIONFINISHED;
+                                end
+                            end
+                            if ( isempty(this.Session.currentRun.futureTrialTable) )
+                                status = FINILIZING_EXPERIMENT;
+                            end
                             
                             % ---------------------------------------------
                             % ++ FINISHED ---------------------------------
                             % ---------------------------------------------
                         case {SESSIONFINISHED}
-                            
-                            if ( this.Session.currentRun.CurrentSession < this.Session.currentRun.SessionsToRun)
-                                % -- session finished
-                                this.Session.currentRun.CurrentSession = this.Session.currentRun.CurrentSession + 1;
-                                disp('ARUME:: Session finished! closing down and saving data ...');
-                                %this.Graph.DlgHitKey( 'Session finished, hit a key to exit' );
-                            else
-                                % -- experiment finished
-                                % % %                     this.Graph.DlgHitKey( 'Experiment finished, hit a key to exit' );
-                                %this.Graph.DlgHitKey( 'Finished, hit a key to exit' );
-                                disp('ARUME:: Session finished! closing down and saving data ...');
-                            end
+                            cprintf('blue', '---------------------------------------------------------\n')
+                            cprintf('blue', '---------------------------------------------------------\n')
+                            cprintf('blue', 'Session part finished! closing down and saving data ...\n');
+                            cprintf('blue', '---------------------------------------------------------\n')
+                            cprintf('blue', '---------------------------------------------------------\n')
                             status = FINILIZING_EXPERIMENT;
                             
                             % ---------------------------------------------
                             % ++ FINILIZING_EXPERIMENT --------------------
                             % ---------------------------------------------
                         case FINILIZING_EXPERIMENT
+                            cprintf('blue', '---------------------------------------------------------\n')
+                            cprintf('blue', '---------------------------------------------------------\n')
+                            cprintf('blue', 'Session finished! closing down and saving data ...\n');
+                            cprintf('blue', '---------------------------------------------------------\n')
+                            cprintf('blue', '---------------------------------------------------------\n')
+                            
                             this.cleanAfterRunning();
                             
                             status = FINALIZING_HARDWARE;
@@ -558,7 +560,6 @@ classdef ExperimentDesign < handle
                             ShowCursor;
                             ListenChar(0);
                             Priority(0);
-                            commandwindow;
                             
                             this.Graph = [];
                             Screen('CloseAll');
@@ -762,8 +763,10 @@ classdef ExperimentDesign < handle
             expPackage = meta.package.fromName('ArumeExperimentDesigns');
             disp('Setting up experiments...')
             for i=1:length(expPackage.ClassList)
-                experimentList{i} = strrep( expPackage.ClassList(i).Name, 'ArumeExperimentDesigns.','');
-                disp(experimentList{i});
+                if (~expPackage.ClassList(i).Abstract)
+                    experimentList{end+1} = strrep( expPackage.ClassList(i).Name, 'ArumeExperimentDesigns.','');
+                    disp(experimentList{end});
+                end
             end
         end
         

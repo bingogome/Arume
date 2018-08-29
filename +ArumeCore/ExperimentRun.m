@@ -27,6 +27,9 @@ classdef ExperimentRun < matlab.mixin.Copyable
             else
                 error('trialOutput should be either a table or a struct');
             end
+            
+            %TODO: at the moment trialOutput cannot have cells or arrays.
+            %Need to fix at some point
                                 
             % remove empty fields. This will avoid problems when adding an
             % empty or missing element to the first row.

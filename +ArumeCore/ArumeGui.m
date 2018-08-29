@@ -443,7 +443,9 @@ classdef ArumeGui < handle
         
         function saveProjectBackup(this, source, eventdata )
             
-            [filename, pathname] = uiputfile([this.arumeController.defaultDataFolder '/*.zip'], 'Pick a project backup');
+            file = fullfile(this.arumeController.defaultDataFolder, [this.arumeController.currentProject.name '-backup-'  datestr(now,'yyyy-mm-dd') '.zip']);
+            
+            [filename, pathname] = uiputfile(file, 'Pick a project backup');
             if ( isempty(filename) )
                 return
             end
@@ -1140,6 +1142,14 @@ classdef ArumeGui < handle
             
             switch choice
                 case 'Yes'
+                    choice2 = questdlg('Do you want backup the project?', ...
+                        'Closing', ...
+                        'Yes','No','No');
+                    switch choice2
+                        case 'Yes'
+                            this.saveProjectBackup();
+                        case 'No'
+                    end
                     result = 1;
                 case 'No'
                     result = 0;

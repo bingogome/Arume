@@ -1,7 +1,7 @@
 function dataTable = VertCatTablesMissing(t1,t2)
 % Concatenates two tables that may have different variables
 % adding missing elements where it corresponds.
-
+%
 if ( ~istable(t1) )
     t1 = table();
 end
