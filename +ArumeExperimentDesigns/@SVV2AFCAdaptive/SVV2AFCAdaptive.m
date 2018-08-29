@@ -32,8 +32,8 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
-            this.trialsPerSession   = 20;
-            this.trialsBeforeBreak     = 5;
+            this.trialsPerSession   = 10000;
+            this.trialsBeforeBreak  = 10000;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
