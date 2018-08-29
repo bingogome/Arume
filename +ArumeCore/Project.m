@@ -46,11 +46,6 @@ classdef Project < handle
             end
             
             [~, projectName] = fileparts(path);
-            projectMatFile = fullfile(path, [projectName '_ArumeProject.mat']);
-            
-            % load project data
-            data = load( projectMatFile, 'data' );
-            data = data.data;
             
             % initialize the project
             this.name               = projectName;
@@ -83,15 +78,10 @@ classdef Project < handle
             % for safer storage do not save the actual matlab Project
             % object. Instead create a struct and save that. It will be
             % more robust to version changes.
-            data = [];
             
             for session = this.sessions
                 session.save();
             end
-            
-            % Save the data structure
-            filename = fullfile( this.path, [this.name '_ArumeProject.mat']);
-            save( filename, 'data' );
             
             disp('======= ARUME PROJECT SAVED TO DISK REMEMBER TO BACKUP ==============================')
             try
@@ -415,6 +405,7 @@ classdef Project < handle
                 Enum.Events.POST_TRIAL_STOP             = i;i=i+1;
                 Enum.Events.TRIAL_EVENT                 = i;i=i+1;
                 ev = runData.Events;
+                ev(ev(:,4)>height(f2),:) = []; % remove events for trials that are not in pastConditions
                 
                 f2.TimePreTrialStart = nan(size(f2.TrialNumber));
                 f2.TimePreTrialStop = nan(size(f2.TrialNumber));
@@ -423,7 +414,7 @@ classdef Project < handle
                 f2.TimePostTrialStart = nan(size(f2.TrialNumber));
                 f2.TimePostTrialStop = nan(size(f2.TrialNumber));
                 
-                f2.TimePreTrialStart = ev(ev(:,3)==Enum.Events.PRE_TRIAL_START ,1);
+                f2.TimePreTrialStart(ev(ev(:,3)==Enum.Events.PRE_TRIAL_START ,4)) = ev(ev(:,3)==Enum.Events.PRE_TRIAL_START ,1);
                 f2.TimePreTrialStop(ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,4)) = ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,1);
                 f2.TimeTrialStart(ev(ev(:,3)==Enum.Events.TRIAL_START ,4)) = ev(ev(:,3)==Enum.Events.TRIAL_START ,1);
                 f2.DateTimeTrialStart(ev(ev(:,3)==Enum.Events.TRIAL_START ,4),:) = datestr(ev(ev(:,3)==Enum.Events.TRIAL_START ,2));

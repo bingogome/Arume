@@ -463,6 +463,7 @@ classdef Session < ArumeCore.DataDB
             
             session = ArumeCore.Session();
             session.initExisting( sessionPath );
+            disp(['Loaded session ' session.name]);
         end
         
         

@@ -403,6 +403,7 @@ classdef ExperimentDesign < handle
                                 %-- find which condition to run and the variable values for that condition
                                 trialData = table();
                                 trialData.TrialNumber  = height(this.Session.currentRun.pastTrialTable)+1;
+                                trialData.DateTimeTrialStart = datestr(now);
                                 trialData = [trialData this.Session.currentRun.futureTrialTable(1,:)];
                                 
                                 fprintf('\nARUME :: TRIAL %d START: ...\n', trialData.TrialNumber);
@@ -423,7 +424,6 @@ classdef ExperimentDesign < handle
                                 for i=1:length(this.TrialStartCallbacks)
                                     trialData = feval(this.TrialStartCallbacks{i}, trialData);
                                 end
-                                trialData.DateTimeTrialStart = datestr(now);
                                 
                                 trialData.TrialResult = this.runTrial( trialData );
                                 
