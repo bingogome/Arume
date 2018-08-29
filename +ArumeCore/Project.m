@@ -351,7 +351,7 @@ classdef Project < handle
         
         function newRun = UpdateRun(runData,experimentName)
             
-            experimentDesign = ArumeCore.ExperimentDesign.Create( [], experimentName );
+            experimentDesign = ArumeCore.ExperimentDesign.Create( experimentName );
             experimentDesign.init();
             
             if ( isempty( runData) )
@@ -366,7 +366,6 @@ classdef Project < handle
                 
                 futureConditions = runData.futureConditions;
                 f2 = table();
-                f2.TrialNumber = (1:length(futureConditions(:,1)))';
                 f2.Condition = futureConditions(:,1);
                 f2.BlockNumber = futureConditions(:,2);
                 f2.BlockSequenceNumber = futureConditions(:,3);
@@ -382,7 +381,6 @@ classdef Project < handle
                 
                 futureConditions = runData.originalFutureConditions;
                 f2 = table();
-                f2.TrialNumber = (1:length(futureConditions(:,1)))';
                 f2.Condition = futureConditions(:,1);
                 f2.BlockNumber = futureConditions(:,2);
                 f2.BlockSequenceNumber = futureConditions(:,3);
@@ -400,9 +398,8 @@ classdef Project < handle
                 pastConditions = runData.pastConditions;
                 
                 f2 = table();
-                f2.TrialAttempt = (1:length(pastConditions(:,1)))';
+                f2.TrialNumber = (1:length(pastConditions(:,1)))';
                 f2.Session = pastConditions(:,5);
-                f2.TrialNumber = nan(size(f2.TrialAttempt));
                 f2.Condition = pastConditions(:,1);
                 f2.BlockNumber = pastConditions(:,3);
                 f2.BlockSequenceNumber = pastConditions(:,4);
@@ -415,6 +412,7 @@ classdef Project < handle
                 f2 = [f2 t2];
                 
                 i=1;
+                Enum = ArumeCore.ExperimentDesign.getEnum();
                 Enum.Events.EYELINK_START_RECORDING     = i;i=i+1;
                 Enum.Events.EYELINK_STOP_RECORDING      = i;i=i+1;
                 Enum.Events.PRE_TRIAL_START             = i;i=i+1;
@@ -426,27 +424,34 @@ classdef Project < handle
                 Enum.Events.TRIAL_EVENT                 = i;i=i+1;
                 ev = runData.Events;
                 
+                f2.TimePreTrialStart = nan(size(f2.TrialNumber));
+                f2.TimePreTrialStop = nan(size(f2.TrialNumber));
+                f2.TimeTrialStart = nan(size(f2.TrialNumber));
+                f2.TimeTrialStop = nan(size(f2.TrialNumber));
+                f2.TimePostTrialStart = nan(size(f2.TrialNumber));
+                f2.TimePostTrialStop = nan(size(f2.TrialNumber));
+                
                 f2.TimePreTrialStart = ev(ev(:,3)==Enum.Events.PRE_TRIAL_START ,1);
                 f2.TimePreTrialStop(ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,4)) = ev(ev(:,3)==Enum.Events.PRE_TRIAL_STOP ,1);
                 f2.TimeTrialStart(ev(ev(:,3)==Enum.Events.TRIAL_START ,4)) = ev(ev(:,3)==Enum.Events.TRIAL_START ,1);
                 f2.DateTimeTrialStart(ev(ev(:,3)==Enum.Events.TRIAL_START ,4),:) = datestr(ev(ev(:,3)==Enum.Events.TRIAL_START ,2));
-                f2.TrialResult = pastConditions(:,2);
+                f2.TrialResult = Enum.trialResult.PossibleResults(pastConditions(:,2)+1);
                 % from here on only if trialresult is correct or abort
                 
                 f2.TimeTrialStop(ev(ev(:,3)==Enum.Events.TRIAL_STOP ,4)) = ev(ev(:,3)==Enum.Events.TRIAL_STOP ,1);
                 f2.TimePostTrialStart( ev(ev(:,3)==Enum.Events.POST_TRIAL_START ,4)) = ev(ev(:,3)==Enum.Events.POST_TRIAL_START ,1);
                 f2.TimePostTrialStop(ev(ev(:,3)==Enum.Events.POST_TRIAL_STOP ,4)) = ev(ev(:,3)==Enum.Events.POST_TRIAL_STOP ,1);
                 
-                f2.TrialNumber(f2.TrialResult<2) = 1:sum(f2.TrialResult<2);
-                
                 tout = table();
                 for i=1:height(f2)
                     if ( isfield(runData.Data{i}, 'trialOutput' ) && ~isempty(runData.Data{i}.trialOutput) )
                         trialOutput = runData.Data{i}.trialOutput;
-                        if ( isfield(trialOutput,'Response') && trialOutput.Response == -1 )
+                        if ( isfield(trialOutput,'Response') && (trialOutput.Response == 'L' || trialOutput.Response == 'R') )
+                            trialOutput.Response = categorical(cellstr(trialOutput.Response));
+                        elseif ( isfield(trialOutput,'Response') )
                             trialOutput = rmfield(trialOutput,'Response');
                         end
-                        if ( isfield(trialOutput,'ReactionTime') && trialOutput.ReactionTime == -1 )
+                        if ( isfield(trialOutput,'ReactionTime') && (trialOutput.ReactionTime == -1 || isempty(trialOutput.ReactionTime)) )
                             trialOutput = rmfield(trialOutput,'ReactionTime');
                         end
                     else
@@ -456,23 +461,6 @@ classdef Project < handle
                     if ( ~isempty( tout ) )
                         trialOutputTable = struct2table(trialOutput,'AsArray',true);
                         tout = VertCatTablesMissing(tout,trialOutputTable);
-%                         t1 = tout;
-%                         t2 = struct2table(trialOutput,'AsArray',true);
-%                         t1colmissing = setdiff(t2.Properties.VariableNames, t1.Properties.VariableNames);
-%                         t2colmissing = setdiff(t1.Properties.VariableNames, t2.Properties.VariableNames);
-%                         t1 = [t1 array2table(nan(height(t1), numel(t1colmissing)), 'VariableNames', t1colmissing)];
-%                         t2 = [t2 array2table(nan(height(t2), numel(t2colmissing)), 'VariableNames', t2colmissing)];
-%                         for colname = t1colmissing
-%                             if iscell(t2.(colname{1}))
-%                                 t1.(colname{1}) = cell(height(t1), 1);
-%                             end
-%                         end
-%                         for colname = t2colmissing
-%                             if iscell(t1.(colname{1}))
-%                                 t2.(colname{1}) = cell(height(t2), 1);
-%                             end
-%                         end
-%                         tout = [t1; t2];
                     else
                         tout = struct2table(trialOutput,'AsArray',true);
                     end

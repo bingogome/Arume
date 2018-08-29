@@ -10,8 +10,8 @@ classdef ExperimentRun < matlab.mixin.Copyable
         
         Info
         
-        pastTrialTable
-        futureTrialTable
+        pastTrialTable = table();
+        futureTrialTable = table();
         originalFutureTrialTable
         
         Events
@@ -94,6 +94,7 @@ classdef ExperimentRun < matlab.mixin.Copyable
             trialData = struct2table(trialData,'AsArray',true);
             
             this.pastTrialTable  = VertCatTablesMissing(this.pastTrialTable,trialData);
+            this.pastTrialTable
         end
     end
     
@@ -110,8 +111,8 @@ classdef ExperimentRun < matlab.mixin.Copyable
             newRun.Info.globalStream   = RandStream.getGlobalStream;
             newRun.Info.stateRandStream     = newRun.Info.globalStream.State;
             
-            newRun.pastTrialTable   = []; % conditions already run, including aborts
-            newRun.futureTrialTable = []; % conditions left for running (the whole list is created a priori)
+            newRun.pastTrialTable   = table(); % conditions already run, including aborts
+            newRun.futureTrialTable = table(); % conditions left for running (the whole list is created a priori)
             newRun.Events           = [];
             newRun.LinkedFiles      = [];
             
@@ -120,7 +121,6 @@ classdef ExperimentRun < matlab.mixin.Copyable
             % TODO: check if the table has the needed columns for dealing
             % drops blockid and blockseq
 
-            newRun.pastTrialTable = [];
             newRun.SessionsToRun  = ceil(height(newRun.futureTrialTable) / experimentDesign.trialsPerSession);
             
             newRun.CurrentSession = 1;

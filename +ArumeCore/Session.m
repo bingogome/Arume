@@ -124,7 +124,7 @@ classdef Session < ArumeCore.DataDB
             this.subjectCode    = subjectCode;
             this.sessionCode    = sessionCode;
             
-            this.experiment = ArumeCore.ExperimentDesign.Create( this, experimentName );
+            this.experiment = ArumeCore.ExperimentDesign.Create( experimentName );
             this.experiment.init(this, experimentOptions);
             this.dataPath  = fullfile(projectPath, this.name);
             
@@ -227,7 +227,7 @@ classdef Session < ArumeCore.DataDB
             
             if ( ~this.isStarted )
                % re initialize the experiment with the new options 
-                this.experiment = ArumeCore.ExperimentDesign.Create( this, this.experiment.Name );
+                this.experiment = ArumeCore.ExperimentDesign.Create( this.experiment.Name );
                 this.experiment.init(this, newExperimentOptions);
             else
                 error('This is session is already started, cannot change settings.');
@@ -347,6 +347,8 @@ classdef Session < ArumeCore.DataDB
     %% ANALYSIS METHODS
     methods
         function prepareForAnalysis( this )
+            Enum = ArumeCore.ExperimentDesign.getEnum();
+            
             if ( isempty(  this.currentRun ) )
                 return;
             end
@@ -360,7 +362,7 @@ classdef Session < ArumeCore.DataDB
             newTrialDataTable = this.currentRun.pastTrialTable;
             % remove errors and aborts for analysis
             if (~isempty(newTrialDataTable))
-                newTrialDataTable(newTrialDataTable.TrialResult > 0 ,:) = [];
+                newTrialDataTable(newTrialDataTable.TrialResult ~= Enum.trialResult.CORRECT ,:) = [];
             end
             this.WriteVariable(newTrialDataTable,'trialDataTable');
             
@@ -404,6 +406,7 @@ classdef Session < ArumeCore.DataDB
         end
                 
         function newSessionDataTable = GetBasicSessionDataTable(this)
+            Enum = ArumeCore.ExperimentDesign.getEnum();
             
             try 
                 newSessionDataTable = table();
@@ -434,8 +437,8 @@ classdef Session < ArumeCore.DataDB
                     newSessionDataTable.NumberOfTrialsPending = 0;
                     
                     if ( ~isempty(this.currentRun.pastTrialTable) )
-                        newSessionDataTable.NumberOfTrialsCompleted = sum(this.currentRun.pastTrialTable.TrialResult == 0);
-                        newSessionDataTable.NumberOfTrialsAborted   = sum(this.currentRun.pastTrialTable.TrialResult ~= 0);
+                        newSessionDataTable.NumberOfTrialsCompleted = sum(this.currentRun.pastTrialTable.TrialResult == Enum.trialResult.CORRECT);
+                        newSessionDataTable.NumberOfTrialsAborted   = sum(this.currentRun.pastTrialTable.TrialResult ~= Enum.trialResult.CORRECT);
                     end
                     
                     if ( ~isempty(this.currentRun.futureTrialTable) )
@@ -465,6 +468,15 @@ classdef Session < ArumeCore.DataDB
         
         function session = NewSession( projectPath, experimentName, subjectCode, sessionCode, experimentOptions )
             session = ArumeCore.Session();
+            
+            if ( ~exist( 'experimentOptions', 'var') || isempty(experimentOptions) )
+                exp = ArumeCore.ExperimentDesign.Create( experimentName );
+                experimentOptions = exp.GetExperimentOptionsDialog( );
+                if ( ~isempty( experimentOptions) )
+                    experimentOptions = StructDlg(experimentOptions,'',[],[],'off');
+                end
+            end
+                    
             session.init(projectPath, experimentName, subjectCode, sessionCode, experimentOptions);
         end
         

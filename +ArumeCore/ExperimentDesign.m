@@ -18,7 +18,7 @@ classdef ExperimentDesign < handle
         ExperimentOptions = [];  % Options of this specific experiment design
         
         % Experimental variables
-        ConditionVars = table();
+        ConditionVars = [];
         RandomVars = [];
         
         ConditionMatrix
@@ -84,15 +84,11 @@ classdef ExperimentDesign < handle
         end
         
         function conditionVars = getConditionVariables( this )
-            conditionVars = [];
+            conditionVars = this.ConditionVars;
         end
         
         function randomVars = getRandomVariables( this )
-            randomVars = [];
-        end
-        
-        function staircaseVars = getStaircaseVariables( this )
-            staircaseVars = [];
+            randomVars = this.RandomVars;
         end
         
         %% run initialization when the session is created.
@@ -154,22 +150,22 @@ classdef ExperimentDesign < handle
             % generate the sequence of blocks, a total of
             % parameters.blocksToRun blocks will be run
             nBlocks = length(this.blocks);
-            blockSequence = [];
+            blockSeq = [];
             switch(this.blockSequence)
                 case 'Sequential'
-                    blockSequence = mod( (1:this.blocksToRun)-1,  nBlocks ) + 1;
+                    blockSeq = mod( (1:this.blocksToRun)-1,  nBlocks ) + 1;
                 case 'Random'
-                    [~, blocks] = sort( rand(1,this.blocksToRun) ); % get a random shuffle of 1 ... blocks to run
-                    blockSequence = mod( blocks-1,  nBlocks ) + 1; % limit the random sequence to 1 ... nBlocks
+                    [~, theBlocks] = sort( rand(1,this.blocksToRun) ); % get a random shuffle of 1 ... blocks to run
+                    blockSeq = mod( theBlocks-1,  nBlocks ) + 1; % limit the random sequence to 1 ... nBlocks
                 case 'Random with repetition'
-                    blockSequence = ceil( rand(1,this.blocksToRun) * nBlocks ); % just get random block numbers
+                    blockSeq = ceil( rand(1,this.blocksToRun) * nBlocks ); % just get random block numbers
                 case 'Manual'
-                    blockSequence = [];
+                    blockSeq = [];
                     
-                    while length(blockSequence) ~= this.blocksToRun
+                    while length(blockSeq) ~= this.blocksToRun
                         S.Block_Sequence = [1:this.blocksToRun];
                         S = StructDlg( S, ['Block Sequence'], [],  CorrGui.get_default_dlg_pos() );
-                        blockSequence =  S.Block_Sequence;
+                        blockSeq =  S.Block_Sequence;
                     end
                     %                     if length(parameters.manualBlockSequence) == parameters.blocksToRun;
                     %                         %                         blockSequence = parameters.manualBlockSequence;
@@ -178,31 +174,29 @@ classdef ExperimentDesign < handle
                     %                         disp(['Error with the manual block sequence. Please fix.']);
                     %                     end
             end
-            blockSequence = repmat( blockSequence,1,this.numberOfTimesRepeatBlockSequence);
+            blockSeq = repmat( blockSeq,1,this.numberOfTimesRepeatBlockSequence);
             
             futureConditions = [];
-            for iblock=1:length(blockSequence)
-                i = blockSequence(iblock);
+            for iblock=1:length(blockSeq)
+                i = blockSeq(iblock);
                 possibleConditions = this.blocks(i).fromCondition : this.blocks(i).toCondition; % the possible conditions to select from in this block
                 nConditions = length(possibleConditions);
                 nTrials = this.blocks(i).trialsToRun;
                 
                 switch( this.trialSequence )
                     case 'Sequential'
-                        trialSequence = possibleConditions( mod( (1:nTrials)-1,  nConditions ) + 1 );
+                        trialSeq = possibleConditions( mod( (1:nTrials)-1,  nConditions ) + 1 );
                     case 'Random'
-                        [junk conditions] = sort( rand(1,nTrials) ); % get a random shuffle of 1 ... nTrials
+                        [~, conditions] = sort( rand(1,nTrials) ); % get a random shuffle of 1 ... nTrials
                         conditionIndexes = mod( conditions-1,  nConditions ) + 1; % limit the random sequence to 1 ... nConditions
-                        trialSequence = possibleConditions( conditionIndexes ); % limit the random sequence to fromCondition ... toCondition for this block
+                        trialSeq = possibleConditions( conditionIndexes ); % limit the random sequence to fromCondition ... toCondition for this block
                     case 'Random with repetition'
-                        trialSequence = possibleConditions( ceil( rand(1,nTrials) * nConditions ) ); % nTrialss numbers between 1 and nConditions
+                        trialSeq = possibleConditions( ceil( rand(1,nTrials) * nConditions ) ); % nTrialss numbers between 1 and nConditions
                 end
-                futureConditions = cat(1,futureConditions, [trialSequence' ones(size(trialSequence'))*iblock  ones(size(trialSequence'))*i] );
+                futureConditions = cat(1,futureConditions, [trialSeq' ones(size(trialSeq'))*iblock  ones(size(trialSeq'))*i] );
             end
             
-            
             newTrialTable = table();
-            newTrialTable.TrialNumber = (1:length(futureConditions(:,1)))';
             newTrialTable.Condition = futureConditions(:,1);
             newTrialTable.BlockNumber = futureConditions(:,2);
             newTrialTable.BlockSequenceNumber = futureConditions(:,3);
@@ -400,14 +394,9 @@ classdef ExperimentDesign < handle
                             
                             try
                                 %-- find which condition to run and the variable values for that condition
-                                if ( ~isempty(this.Session.currentRun.pastTrialTable) )
-                                    trialAttempt = height(this.Session.currentRun.pastTrialTable)+1;
-                                else
-                                    trialAttempt = 1;
-                                end
                                 vars1 = table();
-                                vars1.TrialAttempt = trialAttempt;
-                                vars1.Session = this.Session.currentRun.CurrentSession;
+                                vars1.TrialNumber  = height(this.Session.currentRun.pastTrialTable)+1;
+                                vars1.Session       = this.Session.currentRun.CurrentSession;
                                 
                                 variables = table2struct([vars1 this.Session.currentRun.futureTrialTable(1,:)]);
                                 fprintf('\nTRIAL START: ...\n');
@@ -495,7 +484,6 @@ classdef ExperimentDesign < handle
                                         futureConditionsInCurrentBlock(1,:) = futureConditionsInCurrentBlock(newPosition,:);
                                         futureConditionsInCurrentBlock(newPosition,:) = c;
                                         this.Session.currentRun.futureTrialTable(this.Session.currentRun.futureTrialTable.BlockNumber==currentblock & this.Session.currentRun.futureTrialTable.BlockSequenceNumber==currentblockSeqNumber,:) = futureConditionsInCurrentBlock;
-                                        this.Session.currentRun.futureTrialTable.TrialNumber = (min(this.Session.currentRun.futureTrialTable.TrialNumber):max(this.Session.currentRun.futureTrialTable.TrialNumber))';
                                     case 'Drop'
                                         %-- remove the condition that has just run from the future conditions list
                                         this.Session.currentRun.futureTrialTable(1,:) = [];
@@ -563,12 +551,6 @@ classdef ExperimentDesign < handle
                             disp('ARUME:: Done closing display and connections!');
                             break; % finish loop
                             
-                            % ---------------------------------------------
-                            % ++ ERRROR -----------------------------------
-                            % ---------------------------------------------
-                        case ERRROR
-                            
-                            status = FINALIZING_HARDWARE;
                     end
                 catch lastError
                     beep
@@ -584,7 +566,7 @@ classdef ExperimentDesign < handle
                         break; % finish loop
                     end
                     
-                    status = ERRROR;
+                    status = FINILIZING_EXPERIMENT;
                 end
             end
             % --------------------------------------------------------------------
@@ -806,7 +788,7 @@ classdef ExperimentDesign < handle
                 varName = conditionVars(iVar).name;
                 varValues = conditionVars(iVar).values;
                 if iscell( varValues )
-                    variables.(varName) = varValues{conditionMatrix(currentCondition,iVar)};
+                    variables.(varName) = categorical(varValues(conditionMatrix(currentCondition,iVar)));
                 else
                     variables.(varName) = varValues(conditionMatrix(currentCondition,iVar));
                 end
@@ -982,7 +964,7 @@ classdef ExperimentDesign < handle
             end
         end
         
-        function experiment = Create(session, experimentName)
+        function experiment = Create(experimentName)
             
             if ( exist( ['ArumeExperimentDesigns.' experimentName],  'class') )
                 % Create the experiment design object
@@ -995,12 +977,18 @@ classdef ExperimentDesign < handle
         
         function Enum = getEnum()
             % -- possible trial results
-            Enum.trialResult.CORRECT = 0; % Trial finished correctly
-            Enum.trialResult.ABORT = 1;   % Trial not finished, wrong key pressed, subject did not fixate, etc
-            Enum.trialResult.ERROR = 2;   % Error during the trial
-            Enum.trialResult.QUIT = 3;    % Escape was pressed during the trial
-            Enum.trialResult.SOFTABORT = 4; % Like an abort but does not go to hitkey to continue
-            
+            Enum.trialResult.CORRECT = categorical(cellstr('CORRECT')); % Trial finished correctly
+            Enum.trialResult.ABORT = categorical(cellstr('ABORT'));   % Trial not finished, wrong key pressed, subject did not fixate, etc
+            Enum.trialResult.ERROR = categorical(cellstr('ERROR'));   % Error during the trial
+            Enum.trialResult.QUIT = categorical(cellstr('QUIT'));    % Escape was pressed during the trial
+            Enum.trialResult.SOFTABORT = categorical(cellstr('SOFTABORT')); % Like an abort but does not go to hitkey to continue
+            Enum.trialResult.PossibleResults = [...
+                Enum.trialResult.CORRECT ...
+                Enum.trialResult.ABORT ...
+                Enum.trialResult.ERROR ...
+                Enum.trialResult.QUIT ...
+                Enum.trialResult.SOFTABORT]';
+                
             
             % -- useful key codes
             try

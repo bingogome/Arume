@@ -508,7 +508,7 @@ classdef ArumeGui < handle
             
             
             % Show the dialog for experiment options if necessary
-            experiment = ArumeCore.ExperimentDesign.Create([], session.Experiment);
+            experiment = ArumeCore.ExperimentDesign.Create(session.Experiment);
             optionsDlg = experiment.GetExperimentOptionsDialog( );
             if ( ~isempty( optionsDlg) )
                 options = StructDlg(optionsDlg, 'Edit experiment options');
@@ -564,7 +564,7 @@ classdef ArumeGui < handle
             
             
             % Show the dialog for experiment options if necessary
-            experiment = ArumeCore.ExperimentDesign.Create([], session.Experiment);
+            experiment = ArumeCore.ExperimentDesign.Create(session.Experiment);
             optionsDlg = experiment.GetExperimentOptionsDialog( 1 );
             if ( ~isempty( optionsDlg) )
                 options = StructDlg(optionsDlg, 'Edit experiment options');
@@ -795,7 +795,7 @@ classdef ArumeGui < handle
             end
             
             % Show the dialog for experiment options if necessary
-            experiment = ArumeCore.ExperimentDesign.Create([], session.experiment.Name);
+            experiment = ArumeCore.ExperimentDesign.Create(session.experiment.Name);
             optionsDlg = experiment.GetExperimentOptionsDialog( );
             if ( ~isempty( optionsDlg) )
                 options = StructDlg(optionsDlg,'Edit experiment options',session.experiment.ExperimentOptions);
