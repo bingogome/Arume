@@ -48,18 +48,22 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         
                 disp('Downloading eye tracking files...');
                 files = this.eyeTracker.DownloadFile();
-                
-                disp(files{1});
-                disp(files{2});
-                if (length(files) > 2 )
-                    disp(files{3});
-                end
-                disp('Finished downloading');
-                
-                this.Session.addFile('vogDataFile', files{1});
-                this.Session.addFile('vogCalibrationFile', files{2});
-                if (length(files) > 2 )
-                    this.Session.addFile('vogEventsFile', files{3});
+
+                if (~isempty( files) )
+                    disp(files{1});
+                    disp(files{2});
+                    if (length(files) > 2 )
+                        disp(files{3});
+                    end
+                    disp('Finished downloading');
+
+                    this.Session.addFile('vogDataFile', files{1});
+                    this.Session.addFile('vogCalibrationFile', files{2});
+                    if (length(files) > 2 )
+                        this.Session.addFile('vogEventsFile', files{3});
+                    end
+                else
+                disp('No eye tracking files downloaded!');
                 end
             end
         end

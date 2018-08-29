@@ -95,23 +95,12 @@ classdef ForTabletSVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             conditionVars(i).values = {'Up' 'Down'};
         end
         
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
-        end
-        
-        function staircaseVars = getStaircaseVariables( this )
-            i= 0;
-            
-            i = i+1;
-            staircaseVars = [];
-        end
-        
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
             % Add stuff here
             
             correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  Enum.trialResult.CORRECT ,:);            
-            this.updateRange(variables, correctTrialsTable.Angle, correctTrialsTable.Response);
+            this.updateRange(variables, correctTrialsTable);
             
             trialResult =  Enum.trialResult.CORRECT;
         end

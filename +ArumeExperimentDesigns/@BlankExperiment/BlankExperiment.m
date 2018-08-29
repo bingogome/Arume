@@ -52,11 +52,7 @@ classdef BlankExperiment < ArumeCore.ExperimentDesign
             conditionVars(i).name   = 'Variable2';
             conditionVars(i).values = [0 10];
         end
-        
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = [];
-        end
-        
+                
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
             

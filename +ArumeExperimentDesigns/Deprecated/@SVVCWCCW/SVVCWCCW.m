@@ -70,10 +70,6 @@ classdef SVVCWCCW < ArumeExperimentDesigns.SVV2AFC
             conditionVars(i).values = {'CW' 'CCW'};
         end
         
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
-        end
-        
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
             

@@ -41,10 +41,6 @@ classdef SVVdotsAdapt < ArumeExperimentDesigns.SVVdots
             conditionVars(i).values = {'Up' 'Down'};
         end
         
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
-        end
-        
         function staircaseVars = getStaircaseVariables( this )
             i= 0;
             

@@ -1,4 +1,4 @@
-classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
+classdef (Abstract) SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
     %SVV2AFC Parent experiment design for designs of SVV experiments
     % using 2AFC two alternative forced choice task
     % all the experiments will have a variable called angle which is the
@@ -165,6 +165,10 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
                     end
                 case 'Diameter'
             end
+            
+            if ( ~isempty( response) )
+                response = categorical(cellstr(response));
+            end
         end
         
         function DrawLine(this,variables)
@@ -276,10 +280,10 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
         function plotResults = Plot_SVV_Sigmoid(this)
             
             angles = this.GetAngles();
-            angles(this.Session.trialDataTable.TrialResult>0) = [];
+            angles(this.Session.trialDataTable.TrialResult~='CORRECT') = [];
             
             respones = this.GetLeftRightResponses();
-            respones(this.Session.trialDataTable.TrialResult>0) = [];
+            respones(this.Session.trialDataTable.TrialResult~='CORRECT') = [];
             
 %             angles = angles(101:201);
 %             respones = respones(101:201);
@@ -371,7 +375,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             end
             
             ds = dataset;
-            if ( max(responses)>10)
+            if ( iscategorical(responses) || max(responses)>10)
                 n = length(angles);
                 angles(end+1,1) = -40;
                 angles(end+1,1) = 40;

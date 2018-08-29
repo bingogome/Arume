@@ -12,7 +12,6 @@ classdef ArumeGui < handle
         
         % control handles
         projectTextLabel
-        defaultExperimentTextLabel
         pathTextLabel
         sessionListBox
         
@@ -350,7 +349,6 @@ classdef ArumeGui < handle
                     
                     sDlg.Path = { {['uigetdir(''' P.Path ''')']} };
                     sDlg.Name = P.Name;
-                    sDlg.Default_Experiment = {this.arumeController.possibleExperiments};
                     
                     P = StructDlg(sDlg, 'New project');
                     if ( isempty( P ) )
@@ -379,7 +377,7 @@ classdef ArumeGui < handle
                     this.arumeController.currentProject.save();
                 end
                 
-                this.arumeController.newProject( P.Path, P.Name, P.Default_Experiment);
+                this.arumeController.newProject( P.Path, P.Name);
                 this.updateGui();
             end
         end
@@ -445,7 +443,9 @@ classdef ArumeGui < handle
         
         function saveProjectBackup(this, source, eventdata )
             
-            [filename, pathname] = uiputfile([this.arumeController.defaultDataFolder '/*.zip'], 'Pick a project backup');
+            file = fullfile(this.arumeController.defaultDataFolder, [this.arumeController.currentProject.name '-backup-'  datestr(now,'yyyy-mm-dd') '.zip']);
+            
+            [filename, pathname] = uiputfile(file, 'Pick a project backup');
             if ( isempty(filename) )
                 return
             end
@@ -471,15 +471,19 @@ classdef ArumeGui < handle
         function newSession( this, source, eventdata ) 
             
             experiments = this.arumeController.possibleExperiments;
-            defaultExperimentIndex = find(strcmp(experiments,this.arumeController.currentProject.defaultExperiment));
+            if (~isempty(this.arumeController.currentProject.sessions) )
+                lastExperiment = this.arumeController.currentProject.sessions(end).experimentDesign.Name;
+            else
+                lastExperiment = experiments{1};
+            end
             
-            session.Experiment = experiments{defaultExperimentIndex};
+            session.Experiment = lastExperiment;
             session.Subject_Code = '000';
             session.Session_Code = 'Z';
             
             while(1) 
                 sessionDlg.Experiment = {experiments};
-                sessionDlg.Experiment{1}{defaultExperimentIndex} = ['{'  experiments{find(strcmp(experiments,session.Experiment))} '}'];
+                sessionDlg.Experiment{1}{strcmp(experiments,lastExperiment)} = ['{'  lastExperiment '}'];
                 
                 sessionDlg.Subject_Code = session.Subject_Code;
                 sessionDlg.Session_Code = session.Session_Code;
@@ -508,7 +512,7 @@ classdef ArumeGui < handle
             
             
             % Show the dialog for experiment options if necessary
-            experiment = ArumeCore.ExperimentDesign.Create([], session.Experiment);
+            experiment = ArumeCore.ExperimentDesign.Create(session.Experiment);
             optionsDlg = experiment.GetExperimentOptionsDialog( );
             if ( ~isempty( optionsDlg) )
                 options = StructDlg(optionsDlg, 'Edit experiment options');
@@ -527,15 +531,19 @@ classdef ArumeGui < handle
         function importSession( this, source, eventdata )     
             
             experiments = this.arumeController.possibleExperiments;
-            defaultExperimentIndex = find(strcmp(experiments,this.arumeController.currentProject.defaultExperiment));
+            if (~isempty(this.arumeController.currentProject.sessions) )
+                lastExperiment = this.arumeController.currentProject.sessions(end).experimentDesign.Name;
+            else
+                lastExperiment = experiments{1};
+            end
             
-            session.Experiment = experiments{defaultExperimentIndex};
+            session.Experiment = lastExperiment;
             session.Subject_Code = '000';
             session.Session_Code = 'Z';
             
             while(1) 
                 sessionDlg.Experiment = {experiments};
-                sessionDlg.Experiment{1}{defaultExperimentIndex} = ['{'  experiments{find(strcmp(experiments,session.Experiment))} '}'];
+                sessionDlg.Experiment{1}{strcmp(experiments,lastExperiment)} = ['{'  lastExperiment '}'];
                 
                 sessionDlg.Subject_Code = session.Subject_Code;
                 sessionDlg.Session_Code = session.Session_Code;
@@ -564,7 +572,7 @@ classdef ArumeGui < handle
             
             
             % Show the dialog for experiment options if necessary
-            experiment = ArumeCore.ExperimentDesign.Create([], session.Experiment);
+            experiment = ArumeCore.ExperimentDesign.Create(session.Experiment);
             optionsDlg = experiment.GetExperimentOptionsDialog( 1 );
             if ( ~isempty( optionsDlg) )
                 options = StructDlg(optionsDlg, 'Edit experiment options');
@@ -795,10 +803,10 @@ classdef ArumeGui < handle
             end
             
             % Show the dialog for experiment options if necessary
-            experiment = ArumeCore.ExperimentDesign.Create([], session.experiment.Name);
+            experiment = ArumeCore.ExperimentDesign.Create(session.experimentDesign.Name);
             optionsDlg = experiment.GetExperimentOptionsDialog( );
             if ( ~isempty( optionsDlg) )
-                options = StructDlg(optionsDlg,'Edit experiment options',session.experiment.ExperimentOptions);
+                options = StructDlg(optionsDlg,'Edit experiment options',session.experimentDesign.ExperimentOptions);
                 if ( isempty( options ) )
                     return;
                 end
@@ -859,8 +867,6 @@ classdef ArumeGui < handle
             delete(get(this.menuPlotGeneratePlotsCombined,'children'));
             delete(get(this.menuPlotGeneratePlotsAggregated,'children'));
             
-            
-%             if ( ~isempty( this.arumeController.currentSession ) && this.arumeController.currentSession.isReadyForAnalysis)
             if ( ~isempty( this.arumeController.currentSession ) )
             
                 plotsList = {};
@@ -941,11 +947,9 @@ classdef ArumeGui < handle
             if ( ~isempty( this.arumeController.currentProject ) )
                 set(this.projectTextLabel,              'String', ['Project: ' this.arumeController.currentProject.name] );
                 set(this.pathTextLabel,                 'String', ['Path: ' this.arumeController.currentProject.path] );
-                set(this.defaultExperimentTextLabel,    'String', ['Default experiment: ' this.arumeController.currentProject.defaultExperiment] );
             else
                 set(this.projectTextLabel,              'String', 'Project: -' );
                 set(this.pathTextLabel,                 'String', 'Path: -' );
-                set(this.defaultExperimentTextLabel,    'String', 'Default experiment: -' );
             end
             
             % update session listbox
@@ -954,7 +958,7 @@ classdef ArumeGui < handle
                 sessionNames = cell(length(this.arumeController.currentProject.sessions),1);
                 for i=1:length( this.arumeController.currentProject.sessions )
                     sessionNames{i} = sprintf('%-20.20s %-10.10s %-20.20s', ...
-                        this.arumeController.currentProject.sessions(i).experiment.Name, ...
+                        this.arumeController.currentProject.sessions(i).experimentDesign.Name, ...
                         char(this.arumeController.currentProject.sessions(i).subjectCode-0), ...
                         this.arumeController.currentProject.sessions(i).sessionCode);
                 end
@@ -1138,6 +1142,14 @@ classdef ArumeGui < handle
             
             switch choice
                 case 'Yes'
+                    choice2 = questdlg('Do you want backup the project?', ...
+                        'Closing', ...
+                        'Yes','No','No');
+                    switch choice2
+                        case 'Yes'
+                            this.saveProjectBackup();
+                        case 'No'
+                    end
                     result = 1;
                 case 'No'
                     result = 0;

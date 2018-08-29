@@ -65,17 +65,6 @@ classdef SVVdotsAdaptFixedSimulation < ArumeCore.ExperimentDesign
             conditionVars(i).values = {'Up' 'Down'};
         end
         
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
-        end
-        
-        function staircaseVars = getStaircaseVariables( this )
-            i= 0;
-            
-            i = i+1;
-            staircaseVars = [];
-        end
-        
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
             % Add stuff here

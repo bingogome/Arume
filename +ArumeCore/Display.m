@@ -47,20 +47,19 @@ classdef Display < handle
         
         function Init( graph, exper)
             
+%             Screen('Preference', 'VisualDebugLevel', 3);
             Screen('Preference', 'SkipSyncTests', 1);
             Screen('Preference', 'VisualDebugLevel', 0);
             
             %-- screens
             
             graph.screens = Screen('Screens');
-            screens=Screen('Screens');
-%          	graph.selectedScreen=max(screens);
-          	graph.selectedScreen=2;
+          	graph.selectedScreen=max(graph.screens);
     
             %-- window
             Screen('Preference', 'ConserveVRAM', 64);
-%             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [10 10 600 400], [], [], 0, 10);
-            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
+            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [10 10 600 400], [], [], 0, 10);
+%             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
 %             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0);
          
             %-- color
@@ -239,8 +238,13 @@ classdef Display < handle
             
             DrawFormattedText( this.window, message, varargin{:} );
             Screen('Flip', this.window);
-            disp( sprintf(['\n' message]));
+            cprintf('blue','\n---------------------------------------------------------\n');
+            cprintf('blue','---------------------------------------------------------\n');
+            cprintf('blue',[ message '\n']);
+            cprintf('blue','---------------------------------------------------------\n');
+            cprintf('blue','---------------------------------------------------------\n');
             
+            KeyNotDown = 0;
             while(1)
                 
                 try
@@ -265,9 +269,15 @@ classdef Display < handle
                 
                 [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
                 if ( keyIsDown )
-                    keys = find(keyCode);
-                    result = keyCode(keys(1));
-                    break;
+                    if ( KeyNotDown )
+                        keys = find(keyCode);
+                        result = keyCode(keys(1));
+                        break;
+                    end
+                else
+                    % at some point it has to be not clicked before it is
+                    % clicked
+                    KeyNotDown = 1;
                 end
                 
                 
@@ -360,7 +370,13 @@ classdef Display < handle
             
             DrawFormattedText(this.window, [message ' ' yesText ' (enter), ' noText ' (escape)'], varargin{:});
             Screen('Flip', this.window);
-            disp( sprintf( ['\n' message ' ' yesText ' (enter), ' noText ' (escape)']));
+            
+            cprintf('blue','\n---------------------------------------------------------\n');
+            cprintf('blue','---------------------------------------------------------\n');
+            cprintf('blue', [ message ' ' yesText ' (enter), ' noText ' (escape)\n']);
+            cprintf('blue','---------------------------------------------------------\n');
+            cprintf('blue','---------------------------------------------------------\n');
+            
             
             while(1)
                 char = GetChar;
@@ -474,7 +490,12 @@ classdef Display < handle
             selection = 0;
             DrawFormattedText( this.window, text, varargin{:} );
             Screen('Flip', this.window);
-            disp( sprintf(['\n'  text]));
+            
+            cprintf('blue','\n---------------------------------------------------------\n');
+            cprintf('blue','---------------------------------------------------------\n');
+            cprintf('blue', [  text '\n']);
+            cprintf('blue','---------------------------------------------------------\n');
+            cprintf('blue','---------------------------------------------------------\n');
             
             while(1) % while no valid key is pressed
                 

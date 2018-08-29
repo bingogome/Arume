@@ -14,7 +14,10 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
     methods ( Access = protected )
          
         function dlg = GetOptionsDialog( this, importing)
-            dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFC(this);
+            if ( ~exist('importing','var') )
+                importing = 0;
+            end
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFC(this, importing);
             
             dlg.PreviousTrialsForRange = { {'{All}','Previous30'} };
             dlg.RangeChanges = { {'{Slow}','Fast'} };
@@ -29,7 +32,8 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
-            this.trialsPerSession   = this.ExperimentOptions.TotalNumberOfTrials;
+            this.trialsPerSession   = 20;
+            this.trialsBeforeBreak     = 5;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
@@ -49,6 +53,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             i = i+1;
             conditionVars(i).name   = 'Position';
             conditionVars(i).values = {'Up' 'Down'};
+            
         end
                 
         function trialResult = runPreTrial(this, variables )
@@ -57,9 +62,9 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             
             if ( ~isempty(this.Session.currentRun.pastTrialTable) )
                 correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  Enum.trialResult.CORRECT ,:);
-                this.updateRange(variables, correctTrialsTable.Angle, correctTrialsTable.Response);
+                this.updateRange(variables, correctTrialsTable);
             else
-                this.updateRange(variables, [], []);
+                this.updateRange(variables, []);
             end
             
             trialResult =  Enum.trialResult.CORRECT;
@@ -153,41 +158,37 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                 % END DEBUG
                 % -----------------------------------------------------------------
                 
-                    
-                    % -----------------------------------------------------------------
-                    % -- Flip buffers to refresh screen -------------------------------
-                    % -----------------------------------------------------------------
-                    this.Graph.Flip();
-                    % -----------------------------------------------------------------
-                    
-                    
-                    % -----------------------------------------------------------------
-                    % --- Collecting responses  ---------------------------------------
-                    % -----------------------------------------------------------------
-                    
-                    if ( secondsElapsed > max(t1,0.200)  )
-                        reverse = isequal(variables.Position,'Down');
-                        response = this.CollectLeftRightResponse(reverse);
-                        if ( ~isempty( response) )
-                            this.lastResponse = response;
-                        end
-                    end
-                    
-                    if ( this.lastResponse >= 0 )
+                
+                % -----------------------------------------------------------------
+                % -- Flip buffers to refresh screen -------------------------------
+                % -----------------------------------------------------------------
+                this.Graph.Flip();
+                % -----------------------------------------------------------------
+                
+                
+                % -----------------------------------------------------------------
+                % --- Collecting responses  ---------------------------------------
+                % -----------------------------------------------------------------
+                
+                if ( secondsElapsed > max(t1,0.200)  )
+                    reverse = variables.Position == 'Down';
+                    response = this.CollectLeftRightResponse(reverse);
+                    if ( ~isempty( response) )
+                        this.lastResponse = response;
+                        this.reactionTime = secondsElapsed-this.ExperimentOptions.fixationDuration/1000;
                         
                         % SEND TO PARALEL PORT TRIAL NUMBER
                         %write a value to the default LPT1 printer output port (at 0x378)
                         %outp(hex2dec('378'),9);
                         
-                        this.reactionTime = secondsElapsed-1;
-                        disp(num2str(this.lastResponse));
                         break;
                     end
-                    
-                    % -----------------------------------------------------------------
-                    % --- END Collecting responses  -----------------------------------
-                    % -----------------------------------------------------------------
-                    
+                end
+                
+                % -----------------------------------------------------------------
+                % --- END Collecting responses  -----------------------------------
+                % -----------------------------------------------------------------
+                
                 end
             catch ex
                 if ( ~isempty( this.eyeTracker ) )
@@ -213,7 +214,17 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             trialOutput.RangeCenter = this.currentCenterRange;
         end
         
-        function updateRange(this, variables, previousValues, previousResponses)
+        function updateRange(this, variables, previousTrialTableSelection)
+            
+            if ( isempty(previousTrialTableSelection) || ...
+                    ~any(strcmp(previousTrialTableSelection.Properties.VariableNames,'Response')))
+                previousValues = [];
+                previousResponses = [];
+            else
+                previousValues = previousTrialTableSelection.Angle;
+                previousResponses = previousTrialTableSelection.Response;
+            end
+            
             NtrialPerBlock = 10;
             
             % recalculate every 10 trials
@@ -393,17 +404,19 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
          
         function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)            
                         
+            Enum = ArumeCore.ExperimentDesign.getEnum();
+            
             angles = this.GetAngles();
             if ( ~isempty(angles) )
-                angles(this.Session.trialDataTable.TrialResult>0) = [];
+                angles(this.Session.trialDataTable.TrialResult ~= Enum.trialResult.CORRECT) = [];
                 
                 respones = this.GetLeftRightResponses();
-                respones(this.Session.trialDataTable.TrialResult>0) = [];
+                respones(this.Session.trialDataTable.TrialResult~= Enum.trialResult.CORRECT) = [];
                 
                 [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
                 
                 ds = this.Session.trialDataTable;
-                ds(ds.TrialResult>0,:) = [];
+                ds(ds.TrialResult ~= Enum.trialResult.CORRECT,:) = [];
                 
                 times = ds.ReactionTime;
                 
@@ -437,9 +450,8 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             MEDIUM_GOLD = [0.9000 0.7000 0.1000];
             
             ds = this.Session.trialDataTable;
-            ds(ds.TrialResult>0,:) = [];
-            ds.Response = categorical(ds.Response) == 'L';
-            ds(ds.Response<0,:) = [];
+            ds(ds.TrialResult~='CORRECT',:) = [];
+            ds.Response = ds.Response == 'L';
             NtrialPerBlock = 10;
             
             Nblocks = ceil(height(ds)/NtrialPerBlock/2)*2;
@@ -451,10 +463,10 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             p = patch([ds.TrialNumber;ds.TrialNumber(end:-1:1);ds.TrialNumber(1)], [ds.RangeCenter-ds.Range;ds.RangeCenter(end:-1:1)+ds.Range(end:-1:1);ds.RangeCenter(1)-ds.Range(1)],[1 1 0.5]);
             set(p,'edgecolor','w');
             
-            plot(ds{ds.Response==0 & strcmp(ds.Position,'Up'),'TrialNumber'}, ds{ds.Response==0 & strcmp(ds.Position,'Up'),'Angle'},'^','MarkerEdgeColor',MEDIUM_RED,'linewidth',1);
-            plot(ds{ds.Response==1 & strcmp(ds.Position,'Up'),'TrialNumber'}, ds{ds.Response==1 & strcmp(ds.Position,'Up'),'Angle'},'^','MarkerEdgeColor',MEDIUM_BLUE,'linewidth',1);
-            plot(ds{ds.Response==0 & strcmp(ds.Position,'Down'),'TrialNumber'}, ds{ds.Response==0 & strcmp(ds.Position,'Down'),'Angle'},'v','MarkerEdgeColor',MEDIUM_RED,'linewidth',1);
-            plot(ds{ds.Response==1 & strcmp(ds.Position,'Down'),'TrialNumber'}, ds{ds.Response==1 & strcmp(ds.Position,'Down'),'Angle'},'v','MarkerEdgeColor',MEDIUM_BLUE,'linewidth',1);
+            plot(ds{ds.Response==0 & ds.Position=='Up','TrialNumber'}, ds{ds.Response==0 & ds.Position=='Up','Angle'},'^','MarkerEdgeColor',MEDIUM_RED,'linewidth',1);
+            plot(ds{ds.Response==1 & ds.Position=='Up','TrialNumber'}, ds{ds.Response==1 & ds.Position=='Up','Angle'},'^','MarkerEdgeColor',MEDIUM_BLUE,'linewidth',1);
+            plot(ds{ds.Response==0 & ds.Position=='Down','TrialNumber'}, ds{ds.Response==0 & ds.Position=='Down','Angle'},'v','MarkerEdgeColor',MEDIUM_RED,'linewidth',1);
+            plot(ds{ds.Response==1 & ds.Position=='Down','TrialNumber'}, ds{ds.Response==1 & ds.Position=='Down','Angle'},'v','MarkerEdgeColor',MEDIUM_BLUE,'linewidth',1);
             
             % Plot center of the range
             plot(ds.TrialNumber, ds.RangeCenter,'linewidth',3,'color',MEDIUM_GREEN);
@@ -490,7 +502,7 @@ T = [];
             analysisResults = 0;
             
             ds = this.Session.trialDataTable;
-            ds(ds.TrialResult>0,:) = [];
+            ds(ds.TrialResult~='CORRECT',:) = [];
             
             angles = ds.Angle;
             times = ds.ReactionTime;

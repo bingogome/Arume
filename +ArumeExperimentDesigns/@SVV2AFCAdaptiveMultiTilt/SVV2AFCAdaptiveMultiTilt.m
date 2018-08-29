@@ -28,7 +28,7 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
                 dlg.FirstSide = { {'{Left}','Right'} };
             else
                 dlg.FirstSide = { {'Left','{Right}'} };
-            end
+            end 
             
             dlg.Prisms = { {'{No}','2020Converge'} };
         end
@@ -152,11 +152,11 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
                 if (isempty( idxLastDifferentTilt ) )
                     idxLastDifferentTilt = 0;
                 end
-                previousTrialsInSameTilt = correctTrialsTable((idxLastDifferentTilt+1):end);
+                previousTrialsInSameTilt = correctTrialsTable((idxLastDifferentTilt+1):end,:);
                 
-                this.updateRange(variables, previousTrialsInSameTilt.Angle, previousTrialsInSameTilt.Response);
+                this.updateRange(variables, previousTrialsInSameTilt);
             else
-                this.updateRange(variables, [], []);
+                this.updateRange(variables, []);
             end
             
             trialResult =  Enum.trialResult.CORRECT;
@@ -165,8 +165,8 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
         function trialResult = runTrial( this, variables )
                         
             try
-                this.lastResponse = -1;
-                this.reactionTime = -1;
+                this.lastResponse = [];
+                this.reactionTime = [];
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
                 
@@ -279,7 +279,7 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
             end
             
             
-            if ( this.lastResponse < 0)
+            if ( isempty(this.lastResponse))
                 trialResult =  Enum.trialResult.ABORT;
             end
         end

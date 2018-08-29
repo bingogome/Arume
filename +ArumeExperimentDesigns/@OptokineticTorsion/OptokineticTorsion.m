@@ -86,10 +86,6 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
             conditionVars(i).values = {'ClockWise'  'CounterClockWise'};
         end
         
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
-        end
-        
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
