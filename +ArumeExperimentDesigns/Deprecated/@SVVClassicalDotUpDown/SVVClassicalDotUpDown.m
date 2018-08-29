@@ -67,11 +67,6 @@ classdef SVVClassicalDotUpDown < ArumeCore.ExperimentDesign
             conditionVars(i).values = {'Up' 'Down'};
             
         end
-        
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
-        end
-        
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
             

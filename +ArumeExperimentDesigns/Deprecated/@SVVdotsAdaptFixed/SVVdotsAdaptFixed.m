@@ -92,11 +92,7 @@ classdef SVVdotsAdaptFixed < ArumeExperimentDesigns.SVV2AFC
             conditionVars(i).name   = 'Position';
             conditionVars(i).values = {'Up' 'Down'};
         end
-        
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
-        end
-        
+                
         function staircaseVars = getStaircaseVariables( this )
             i= 0;
             

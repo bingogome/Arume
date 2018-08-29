@@ -66,10 +66,6 @@ classdef SVVClassical < ArumeCore.ExperimentDesign
             
         end
         
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
-        end
-        
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
             

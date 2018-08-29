@@ -101,10 +101,6 @@ classdef TiltOvemps < ArumeCore.ExperimentDesign
             conditionVars(i).values = 30;
         end
         
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = [];
-        end
-        
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
             

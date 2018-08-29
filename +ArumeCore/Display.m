@@ -47,6 +47,7 @@ classdef Display < handle
         
         function Init( graph, exper)
             
+%             Screen('Preference', 'VisualDebugLevel', 3);
             Screen('Preference', 'SkipSyncTests', 1);
             Screen('Preference', 'VisualDebugLevel', 0);
             
@@ -57,8 +58,8 @@ classdef Display < handle
     
             %-- window
             Screen('Preference', 'ConserveVRAM', 64);
-%            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [10 10 600 400], [], [], 0, 10);
-             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
+            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [10 10 600 400], [], [], 0, 10);
+%             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
 %             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0);
          
             %-- color

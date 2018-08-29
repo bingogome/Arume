@@ -11,15 +11,12 @@ classdef ExperimentDesign < handle
         Session = [];       % The session that is current running this experiment design
         
         Graph       = [];   % Display handle (psychtoolbox).
-        SysInfo     = [];   % Information regarding the system
-        
         Config      = [];   % Configuration of the system.
         
         ExperimentOptions = [];  % Options of this specific experiment design
         
         % Experimental variables
         ConditionVars = [];
-        RandomVars = [];
         
         ConditionMatrix
         
@@ -85,10 +82,6 @@ classdef ExperimentDesign < handle
         
         function conditionVars = getConditionVariables( this )
             conditionVars = this.ConditionVars;
-        end
-        
-        function randomVars = getRandomVariables( this )
-            randomVars = this.RandomVars;
         end
         
         %% run initialization when the session is created.
@@ -241,10 +234,9 @@ classdef ExperimentDesign < handle
         % case are different
         function dlg = GetExperimentOptionsDialog( this, importing )
             if ( ~exist( 'importing', 'var') )
-                dlg = this.GetOptionsDialog();
-            else
-                dlg = this.GetOptionsDialog(importing);
+                importing = 0;
             end
+            dlg = this.GetOptionsDialog(importing);
         end
         
         function init(this, session, options)
@@ -253,14 +245,31 @@ classdef ExperimentDesign < handle
                 this.ExperimentOptions  = options;
             end
             
-            % set up options
-            this.initOptions();
+            %-- init variables
+            this.ConditionVars      = this.getConditionVariables();
+            this.ConditionMatrix    = this.getConditionMatrix( this.ConditionVars );
             
-            % load variables
-            this.initVariables();
+            %-- init options
+            %-- Check if all the options are there, if not add the default
+            % values. This is important to mantain past compatibility if
+            % options are added in the future.
+            optionsDlg = this.GetOptionsDialog( );
+            if ( ~isempty( optionsDlg ) )
+                options = StructDlg(optionsDlg,'',[],[],'off');
+                fields = fieldnames(options);
+                for i=1:length(fields)
+                    if ( ~isfield(this.ExperimentOptions, fields{i}))
+                        this.ExperimentOptions.(fields{i}) = options.(fields{i});
+                    end
+                end
+            end
             
-            % load parameters
-            this.initParameters();
+            % default parameters of any experiment
+            this.trialsPerSession = this.NumberOfConditions;
+            
+            %-- Blocking
+            this.blocks(1).toCondition    = this.NumberOfConditions;
+            this.blocks(1).trialsToRun    = this.NumberOfConditions;
             
             %-- init the parameters of this specific experiment
             this.initExperimentDesign( );
@@ -282,8 +291,7 @@ classdef ExperimentDesign < handle
             FINILIZING_EXPERIMENT = 4;
             SESSIONFINISHED = 5;
             BREAK = 6;
-            ERRROR = 7;
-            FINALIZING_HARDWARE = 8;
+            FINALIZING_HARDWARE = 7;
             
             status = INITIALIZNG_HARDWARE;
             
@@ -296,9 +304,6 @@ classdef ExperimentDesign < handle
                         % ++ INITIALIZNG_HARDWARE -------------------------
                         % -------------------------------------------------
                         case INITIALIZNG_HARDWARE
-                            
-                            this.SysInfo.PsychtoolboxVersion   = Screen('Version');
-                            this.SysInfo.hostSO                = Screen('Computer');
                             
                             % -- GRAPHICS KEYBOARD and MOUSE
                             if ( this.Config.UsingVideoGraphics )
@@ -314,7 +319,6 @@ classdef ExperimentDesign < handle
                                 
                                 switch(this.DisplayToUse)
                                     case 'ptbScreen'
-                                        Screen('Preference', 'VisualDebugLevel', 3);
                                         this.Graph = ArumeCore.Display( );
                                     case 'cmdline'
                                         this.Graph = ArumeCore.DisplayCmdLine( );
@@ -393,20 +397,22 @@ classdef ExperimentDesign < handle
                             end
                             
                             try
-                                %-- find which condition to run and the variable values for that condition
-                                vars1 = table();
-                                vars1.TrialNumber  = height(this.Session.currentRun.pastTrialTable)+1;
-                                vars1.Session       = this.Session.currentRun.CurrentSession;
+                                DISPLAY_VARS = 0;
                                 
-                                variables = table2struct([vars1 this.Session.currentRun.futureTrialTable(1,:)]);
-                                fprintf('\nTRIAL START: ...\n');
-                                disp(variables)
+                                %-- find which condition to run and the variable values for that condition
+                                variables = table();
+                                variables.TrialNumber  = height(this.Session.currentRun.pastTrialTable)+1;
+                                variables = [variables this.Session.currentRun.futureTrialTable(1,:)];
+                                
+                                fprintf('\nARUME :: TRIAL %d START: ...\n', variables.TrialNumber);
                                 
                                 %------------------------------------------------------------
                                 %% -- PRE TRIAL ----------------------------------------------
                                 %------------------------------------------------------------
                                 variables.TimePreTrialStart = GetSecs;
+                                
                                 this.runPreTrial( variables );
+                                
                                 variables.TimePreTrialStop = GetSecs;
                                 
                                 %------------------------------------------------------------
@@ -432,21 +438,17 @@ classdef ExperimentDesign < handle
                                 this.PlaySound(variables.TrialResult);
                                 
                                 variables.TimePostTrialStart = GetSecs;
+                                
                                 trialOutput = this.runPostTrial(  );
+                                
                                 variables.TimePostTrialStop = GetSecs;
-                                
-                                % collect output data
-                                variablesTable = [struct2table(variables,'AsArray',true) struct2table(trialOutput,'AsArray',true)];
-                                variables = table2struct(variablesTable);
-                                disp(variables);
-                                
-                                fprintf(' TRIAL END \n');
                                 
                             catch err
                                 if ( streq(err.identifier, 'PSYCORTEX:USERQUIT' ) )
                                     variables.TrialResult = Enum.trialResult.QUIT;
                                 else
                                     variables.TrialResult = Enum.trialResult.ERROR;
+                                    variables.ErrorMessage = err.message;
                                     % display error
                                     disp('!!!!!!!!!!!!! ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
                                     disp(err.getReport);
@@ -456,7 +458,19 @@ classdef ExperimentDesign < handle
                             end
                             
                             % -- Update past trial table
-                            this.Session.currentRun.AddPastTrialData(variables);
+                            this.Session.currentRun.AddPastTrialData(variables, trialOutput);
+                            
+                            % -- Display trial Table for last 20 trials
+                            condvars = struct2table(this.Session.experimentDesign.ConditionVars);
+                            outputVars = {};
+                            if ( ~isempty( trialOutput) )
+                                outputVars = fieldnames(trialOutput);
+                            end
+                            varSelection = {'TrialNumber'  outputVars{:} 'TrialResult' condvars.name{:} };
+                            trials = this.Session.currentRun.pastTrialTable;
+                            varSelection = intersect(varSelection,trials.Properties.VariableNames,'stable');
+                            disp(trials(max(1,height(trials)-20):end,varSelection));
+                            
                             
                             if ( variables.TrialResult == Enum.trialResult.CORRECT )
                                 %-- remove the condition that has just run from the future conditions list
@@ -651,37 +665,6 @@ classdef ExperimentDesign < handle
                     variables.(varName) = varValues(conditionMatrix(currentCondition,iVar));
                 end
             end
-            
-            %
-            % Random variables
-            %
-            for iVar=1:length(this.RandomVars)
-                varName = this.RandomVars(iVar).name;
-                varType = this.RandomVars(iVar).type;
-                if ( isfield( this.RandomVars(iVar), 'values' ) )
-                    varValues = this.RandomVars(iVar).values;
-                end
-                if ( isfield( this.RandomVars(iVar), 'params' ) )
-                    varParams = this.RandomVars(iVar).params;
-                end
-                
-                switch(varType)
-                    case 'List'
-                        if iscell(varValues)
-                            variables.(varName) = varValues{ceil(rand(1)*length(varValues))};
-                        else
-                            variables.(varName) = varValues(ceil(rand(1)*length(varValues)));
-                        end
-                    case 'UniformReal'
-                        variables.(varName) = varParams(1) + (varParams(2)-varParams(1))*rand(1);
-                    case 'UniformInteger'
-                        variables.(varName) = floor(varParams(1) + (varParams(2)+1-varParams(1))*rand(1));
-                    case 'Gaussian'
-                        variables.(varName) = varParams(1) + varParams(2)*rand(1);
-                    case 'Exponential'
-                        variables.(varName) = -varParams(1) .* log(rand(1));
-                end
-            end
         end
         
         function shuffleConditionMatrix(this, variableNumber)
@@ -691,8 +674,6 @@ classdef ExperimentDesign < handle
         %% ShowDebugInfo
         function ShowDebugInfo( this, variables )
             if ( this.Config.Debug )
-                % TODO: it would be nice to have some call back system here
-                %                  Screen('DrawText', this.Graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.black);
                 currentline = 50 + 25;
                 vNames = fieldnames(variables);
                 for iVar = 1:length(vNames)
@@ -721,43 +702,7 @@ classdef ExperimentDesign < handle
     % to be called only by this class
     % --------------------------------------------------------------------
     methods (Access=private)
-        
-        %% setUpVariables
-        function initVariables(this)
-            this.ConditionVars = this.getConditionVariables();
-            this.RandomVars = this.getRandomVariables();
-            
-            this.ConditionMatrix = this.getConditionMatrix( this.ConditionVars );
-        end
-        
-        function initOptions(this)
-            %%-- Check if all the options are there, if not add the default
-            %%values. This is important to mantain past compatibility if
-            %%options are added in the future.
-            optionsDlg = this.GetOptionsDialog( );
-            if ( ~isempty( optionsDlg ) )
-                options = StructDlg(optionsDlg,'',[],[],'off');
-                fields = fieldnames(options);
-                for i=1:length(fields)
-                    if ( ~isfield(this.ExperimentOptions, fields{i}))
-                        this.ExperimentOptions.(fields{i}) = options.(fields{i});
-                    end
-                end
-            end
-        end
-        
-        %% setUpParameters
-        function initParameters(this)
-            
-            % default parameters of any experiment
-            this.trialsPerSession = this.NumberOfConditions;
-            
-            %%-- Blocking
-            this.blocks(1).toCondition    = this.NumberOfConditions;
-            this.blocks(1).trialsToRun    = this.NumberOfConditions;
-            
-        end
-        
+                
         %% setUpConditionMatrix
         function conditionMatrix = getConditionMatrix( this, conditionVars )
             

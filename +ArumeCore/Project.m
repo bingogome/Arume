@@ -4,9 +4,7 @@ classdef Project < handle
     
     properties( SetAccess = private)
         name        % Name of the project
-        path        % Working path of the uncompressed project (typically the temp folder)
-        
-        defaultExperiment % default experiment for this project
+        path        % Working path of the project
         
         sessions    % Sessions that belong to this project
     end
@@ -17,7 +15,7 @@ classdef Project < handle
         %
         % Always use the static methods Load and Create to create new
         % project objects.
-        function initNew( this, parentPath, projectName, defaultExperiment )
+        function initNew( this, parentPath, projectName )
             % Initializes a new project
             
             if ( ~exist( parentPath, 'dir' ) )
@@ -31,7 +29,6 @@ classdef Project < handle
             % initialize the project
             this.name               = projectName;
             this.path               = fullfile(parentPath, projectName);
-            this.defaultExperiment  = defaultExperiment;
             this.sessions           = [];
             
             % prepare folder structure
@@ -58,7 +55,6 @@ classdef Project < handle
             % initialize the project
             this.name               = projectName;
             this.path               = path;
-            this.defaultExperiment  = data.defaultExperiment;
             this.sessions           = [];
             
             % find the session folders
@@ -88,7 +84,6 @@ classdef Project < handle
             % object. Instead create a struct and save that. It will be
             % more robust to version changes.
             data = [];
-            data.defaultExperiment = this.defaultExperiment;
             
             for session = this.sessions
                 session.save();
@@ -145,14 +140,14 @@ classdef Project < handle
             
             for i=1:length(this.sessions)
                 if ( exist('sessionCode','var') )
-                    if ( strcmpi(this.sessions(i).experiment.Name, upper(experimentName)) &&  ...
+                    if ( strcmpi(this.sessions(i).experimentDesign.Name, upper(experimentName)) &&  ...
                             strcmpi(this.sessions(i).subjectCode, upper(subjectCode)) &&  ...
                             strcmpi(this.sessions(i).sessionCode, upper(sessionCode)))
                         session = this.sessions(i);
                         return;
                     end
                 else
-                    if ( strcmpi(this.sessions(i).experiment.Name, upper(experimentName)) &&  ...
+                    if ( strcmpi(this.sessions(i).experimentDesign.Name, upper(experimentName)) &&  ...
                             strcmpi([upper(this.sessions(i).subjectCode) upper(this.sessions(i).sessionCode),], subjectCode))
                         session = this.sessions(i);
                         return;
@@ -218,7 +213,7 @@ classdef Project < handle
         %
         % Factory methods
         %
-        function project = NewProject( parentPath, projectName, defaultExperiment)
+        function project = NewProject( parentPath, projectName)
             
             % check if parentFolder exists
             if ( ~exist( parentPath, 'dir' ) )
@@ -232,7 +227,7 @@ classdef Project < handle
             
             % create project object
             project = ArumeCore.Project();
-            project.initNew( parentPath, projectName, defaultExperiment );
+            project.initNew( parentPath, projectName );
         end
         
         function project = LoadProject( projectPath )

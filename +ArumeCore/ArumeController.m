@@ -128,10 +128,10 @@ classdef ArumeController < handle
         % Managing projects
         %
         
-        function newProject( this, parentPath, projectName, defaultExperiment )
+        function newProject( this, parentPath, projectName )
             % Creates a new project
             
-            this.currentProject = ArumeCore.Project.NewProject( parentPath, projectName, defaultExperiment);
+            this.currentProject = ArumeCore.Project.NewProject( parentPath, projectName);
             this.selectedSessions = [];
             
             this.updateRecentProjects(this.currentProject.path);
@@ -279,7 +279,7 @@ classdef ArumeController < handle
             end
             disp(['Renaming session' session.subjectCode ' - ' session.sessionCode ' to '  subjectCode ' - ' sessionCode]);
             
-            [~, i] = this.currentProject.findSession(session.experiment.Name, session.subjectCode, session.sessionCode);
+            [~, i] = this.currentProject.findSession(session.experimentDesign.Name, session.subjectCode, session.sessionCode);
             this.currentProject.sessions(i).rename(subjectCode, sessionCode);
             this.currentProject.save();
         end
@@ -382,7 +382,7 @@ classdef ArumeController < handle
                         
         function plotList = GetPlotList( this )
             plotList = {};
-            methodList = meta.class.fromName(class(this.currentSession.experiment)).MethodList;
+            methodList = meta.class.fromName(class(this.currentSession.experimentDesign)).MethodList;
             for i=1:length(methodList)
                 if ( strfind( methodList(i).Name, this.PlotsMethodPrefix) )
                     plotList{end+1} = strrep(methodList(i).Name, this.PlotsMethodPrefix ,'');
@@ -392,7 +392,7 @@ classdef ArumeController < handle
         
         function plotList = GetAggregatePlotList( this )
             plotList = {};
-            methodList = meta.class.fromName(class(this.currentSession.experiment)).MethodList;
+            methodList = meta.class.fromName(class(this.currentSession.experimentDesign)).MethodList;
             for i=1:length(methodList)
                 if ( strfind( methodList(i).Name, this.PlotsAggregateMethodPrefix) )
                     plotList{end+1} = strrep(methodList(i).Name, this.PlotsAggregateMethodPrefix ,'');
@@ -407,12 +407,12 @@ classdef ArumeController < handle
              
             if ( ~isempty( selection ) )
                 for i=1:length(selection)
-                    if ( ismethod( this.currentSession.experiment, [this.PlotsMethodPrefix plots{selection(i)}] ) )
+                    if ( ismethod( this.currentSession.experimentDesign, [this.PlotsMethodPrefix plots{selection(i)}] ) )
                         try
                             if ( ~COMBINE_SESSIONS)
                                 % Single sessions plot
                                 for session = this.selectedSessions
-                                    session.experiment.([this.PlotsMethodPrefix plots{selection(i)}])();
+                                    session.experimentDesign.([this.PlotsMethodPrefix plots{selection(i)}])();
                                 end
                             else
                                 
@@ -428,7 +428,7 @@ classdef ArumeController < handle
                                 for session = this.selectedSessions
                                     iSession = iSession+1;
                                     handles = get(0,'children');
-                                    session.experiment.([this.PlotsMethodPrefix plots{selection(i)}])();
+                                    session.experimentDesign.([this.PlotsMethodPrefix plots{selection(i)}])();
                                     
                                     newhandles = get(0,'children');
                                     for iplot =1:(length(newhandles)-length(handles))
@@ -467,9 +467,9 @@ classdef ArumeController < handle
                             cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
                         end
                         
-                    elseif ( ismethod( this.currentSession.experiment, [this.PlotsAggregateMethodPrefix plots{selection(i)}] ) )
+                    elseif ( ismethod( this.currentSession.experimentDesign, [this.PlotsAggregateMethodPrefix plots{selection(i)}] ) )
                         % Aggregate session plots
-                        this.currentSession.experiment.([this.PlotsAggregateMethodPrefix plots{selection(i)}])( this.selectedSessions );
+                        this.currentSession.experimentDesign.([this.PlotsAggregateMethodPrefix plots{selection(i)}])( this.selectedSessions );
                     end
                 end
             end
