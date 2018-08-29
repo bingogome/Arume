@@ -501,14 +501,14 @@ classdef ExperimentDesign < handle
                             end
                             
                             % -- Experiment or session finished ?
-                            stats = this.Session.currentRun.GetStats();
-                            if ( stats.trialsToFinishExperiment == 0 )
-                                status = SESSIONFINISHED;
-                            elseif ( stats.trialsToFinishSession == 0 )
-                                status = SESSIONFINISHED;
-                            elseif ( trialsSinceBreak >= this.trialsBeforeBreak )
-                                status = BREAK;
-                            end
+%                             stats = this.Session.currentRun.GetStats();
+%                             if ( stats.trialsToFinishExperiment == 0 )
+%                                 status = SESSIONFINISHED;
+%                             elseif ( stats.trialsToFinishSession == 0 )
+%                                 status = SESSIONFINISHED;
+%                             elseif ( trialsSinceBreak >= this.trialsBeforeBreak )
+%                                 status = BREAK;
+%                             end
                             
                             % ---------------------------------------------
                             % ++ FINISHED ---------------------------------
@@ -574,139 +574,6 @@ classdef ExperimentDesign < handle
             % --------------------------------------------------------------------
         end
         
-        % run without display
-        function runSimulation(this)
-            Enum = ArumeCore.ExperimentDesign.getEnum();
-            
-            this.initBeforeRunning();
-            
-            % --------------------------------------------------------------------
-            %% -- EXPERIMENT LOOP -------------------------------------------------
-            % --------------------------------------------------------------------
-            try
-                
-                RUNNING = 1;
-                SESSIONFINISHED = 5;
-                FINISHED = 6;
-                
-                status = RUNNING;
-                
-                while(1)
-                    
-                    switch( status )
-                        
-                        %% ++ RUNNING -------------------------------------------------------
-                        case RUNNING
-                            %-- find which condition to run and the variable values for that condition
-                            if ( ~isempty(this.Session.currentRun.pastConditions) )
-                                trialnumber = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult)==Enum.trialResult.CORRECT)+1;
-                            else
-                                trialnumber = 1;
-                            end
-                            currentCondition    = this.Session.currentRun.futureConditions(1,1);
-                            variables           = this.getVariablesCurrentCondition( currentCondition );
-                            
-                            %------------------------------------------------------------
-                            %% -- PRE TRIAL ----------------------------------------------
-                            %------------------------------------------------------------
-                            this.SaveEvent( Enum.Events.PRE_TRIAL_START);
-                            this.runPreTrial( variables );
-                            this.SaveEvent( Enum.Events.PRE_TRIAL_STOP);
-                            
-                            %------------------------------------------------------------
-                            %% -- TRIAL ---------------------------------------------------
-                            %------------------------------------------------------------
-                            %%-- Run the trial
-                            this.SaveEvent( Enum.Events.TRIAL_START);
-                            clear data;
-                            data.variables = variables;
-                            
-                            trialResult = this.runTrial( variables );
-                            this.SaveEvent( Enum.Events.TRIAL_STOP);
-                            
-                            %------------------------------------------------------------
-                            %% -- POST TRIAL ----------------------------------------------
-                            %------------------------------------------------------------
-                            
-                            this.SaveEvent( Enum.Events.POST_TRIAL_START);
-                            [trialOutput] = this.runPostTrial(  );
-                            this.SaveEvent( Enum.Events.POST_TRIAL_STOP);
-                            
-                            
-                            %-- save data from trial
-                            if ( exist( 'trialOutput', 'var') )
-                                data.trialOutput  = trialOutput;
-                            end
-                            if ( exist( 'data', 'var') )
-                                this.Session.currentRun.Data{end+1} = data;
-                            end
-                            
-                            % -- Update pastcondition list
-                            n = size(this.Session.currentRun.pastConditions,1)+1;
-                            this.Session.currentRun.pastConditions(n, Enum.pastConditions.condition)    = this.Session.currentRun.futureConditions(1,Enum.futureConditions.condition );
-                            this.Session.currentRun.pastConditions(n, Enum.pastConditions.trialResult)  = trialResult;
-                            this.Session.currentRun.pastConditions(n, Enum.pastConditions.blocknumber)  = this.Session.currentRun.futureConditions(1,Enum.futureConditions.blocknumber);
-                            this.Session.currentRun.pastConditions(n, Enum.pastConditions.blockid)      = this.Session.currentRun.futureConditions(1, Enum.futureConditions.blockid);
-                            this.Session.currentRun.pastConditions(n, Enum.pastConditions.session)      = this.Session.currentRun.CurrentSession;
-                            
-                            if ( trialResult == Enum.trialResult.CORRECT )
-                                %-- remove the condition that has just run from the future conditions list
-                                this.Session.currentRun.futureConditions(1,:) = [];
-                                
-                                %-- save to disk temporary data
-                                %//TODO this.SaveTempData();
-                                
-                            else
-                                %-- what to do in case of abort
-                                switch(this.trialAbortAction)
-                                    case 'Repeat'
-                                        % do nothing
-                                    case 'Delay'
-                                        % randomly get one of the future conditions in the current block
-                                        % and switch it with the next
-                                        currentblock = this.Session.currentRun.futureConditions(1,Enum.futureConditions.blocknumber);
-                                        futureConditionsInCurrentBlock = this.Session.currentRun.futureConditions(this.Session.currentRun.futureConditions(:,Enum.futureConditions.blocknumber)==currentblock,:);
-                                        
-                                        newPosition = ceil(rand(1)*(size(futureConditionsInCurrentBlock,1)-1))+1;
-                                        c = futureConditionsInCurrentBlock(1,:);
-                                        futureConditionsInCurrentBlock(1,:) = futureConditionsInCurrentBlock(newPosition,:);
-                                        futureConditionsInCurrentBlock(newPosition,:) = c;
-                                        this.Session.currentRun.futureConditions(this.Session.currentRun.futureConditions(:,Enum.futureConditions.blocknumber)==currentblock,:) = futureConditionsInCurrentBlock;
-                                        % TODO: improve
-                                    case 'Drop'
-                                        %-- remove the condition that has just run from the future conditions list
-                                        this.Session.currentRun.futureConditions(1,:) = [];
-                                end
-                            end
-                            
-                            % -- Experiment or session finished ?
-                            stats = this.Session.currentRun.GetStats();
-                            if ( stats.trialsToFinishExperiment == 0 )
-                                status = FINISHED;
-                            elseif ( stats.trialsToFinishSession == 0 )
-                                status = SESSIONFINISHED;
-                            end
-                            
-                            %% ++ FINISHED -------------------------------------------------------
-                        case {FINISHED,SESSIONFINISHED}
-                            if ( this.Session.currentRun.CurrentSession < this.Session.currentRun.SessionsToRun)
-                                % -- session finished
-                                this.Session.currentRun.CurrentSession = this.Session.currentRun.CurrentSession + 1;
-                            end
-                            break
-                    end
-                end
-                % --------------------------------------------------------------------
-                %% -------------------- END EXPERIMENT LOOP ---------------------------
-                % --------------------------------------------------------------------
-                
-                
-            catch err
-                disp(['Error: ' err.message ]);
-                disp(err.getReport);
-            end %try..catch.
-        end
-        
         function abortExperiment(this, trial)
             throw(MException('PSYCORTEX:USERQUIT', ''));
         end
@@ -761,15 +628,6 @@ classdef ExperimentDesign < handle
     % to be called from any experiment
     % --------------------------------------------------------------------
     methods(Access=public)
-        
-        %% SaveEvent
-        %--------------------------------------------------------------------------
-        function SaveEvent( this, event )
-            % TODO: think much better
-            currentTrial            = size( this.Session.currentRun.pastConditions, 1) +1;
-            currentCondition        = this.Session.currentRun.futureConditions(1);
-            this.Session.currentRun.Events  = cat(1, this.Session.currentRun.Events, [GetSecs now event currentTrial currentCondition] );
-        end
         
         %% getVariablesCurrentCondition
         %--------------------------------------------------------------------------
@@ -1012,17 +870,6 @@ classdef ExperimentDesign < handle
                 Enum.keys.DOWN      = KbName('DownArrow');
             catch
             end
-            
-            i=1;
-            Enum.Events.EYELINK_START_RECORDING     = i;i=i+1;
-            Enum.Events.EYELINK_STOP_RECORDING      = i;i=i+1;
-            Enum.Events.PRE_TRIAL_START             = i;i=i+1;
-            Enum.Events.PRE_TRIAL_STOP              = i;i=i+1;
-            Enum.Events.TRIAL_START                 = i;i=i+1;
-            Enum.Events.TRIAL_STOP                  = i;i=i+1;
-            Enum.Events.POST_TRIAL_START            = i;i=i+1;
-            Enum.Events.POST_TRIAL_STOP             = i;i=i+1;
-            Enum.Events.TRIAL_EVENT                 = i;i=i+1;
             
         end
         
