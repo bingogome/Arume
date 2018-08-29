@@ -1,4 +1,4 @@
-classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
+classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptive
     %SVVLineAdaptiveLong Summary of this class goes here
     %   Detailed explanation goes here
     
