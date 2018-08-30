@@ -52,10 +52,10 @@ classdef ExperimentDesign < handle
         BackgroundColor = 0;
         
         % Trial sequence and blocking
-        trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-        trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
-        trialsPerSession = 1;
-        trialsBeforeBreak = 1;
+        trialSequence       = 'Sequential';	% Sequential, Random, Random with repetition, ...
+        trialAbortAction    = 'Repeat';     % Repeat, Delay, Drop
+        trialsPerSession    = 1;
+        trialsBeforeBreak   = 1;
         
         blockSequence       = 'Sequential';	% Sequential, Random, Random with repetition, ...numberOfTimesRepeatBlockSequence = 1;
         blocksToRun         = 1;
@@ -66,10 +66,10 @@ classdef ExperimentDesign < handle
         trialDuration       = 5; %seconds
     end
     
-    % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % THESE ARE THE METHODS THAT CAN BE IMPLEMENTED BY NEW EXPERIMENT
+    % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % THESE ARE THE METHODS THAT SHOULD BE IMPLEMENTED BY NEW EXPERIMENT
     % DESIGNS
-    % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     methods (Access=protected)
         
         % Gets the options that be set in the UI when creating a new
@@ -83,14 +83,14 @@ classdef ExperimentDesign < handle
             conditionVars = this.ConditionVars;
         end
         
-        %% run initialization when the session is created.
+        % run initialization when the session is created.
         % Use this to set parameters of the trial sequence, etc.
         % This is executed at the time of creating a session
         function initExperimentDesign( this )
             
         end
         
-        %% run initialization before the first trial is run
+        % run initialization before the first trial is run
         % Use this function to initialize things that need to be
         % initialized before running but don't need to be initialized for
         % every single trial
@@ -98,25 +98,47 @@ classdef ExperimentDesign < handle
             shouldContinue = 1;
         end
         
-        %% runPreTrial
+        % runPreTrial
         % use this to prepare things before the trial starts
         function runPreTrial(this, variables )
         end
         
-        %% runTrial
+        % runTrial
         function [trialResult] = runTrial( this, variables)
             Enum = ArumeCore.ExperimentDesign.getEnum();
             trialResult = Enum.trialResult.CORRECT;
         end
         
-        %% runPostTrial
+        % runPostTrial
         function [trialOutput] = runPostTrial(this)
             trialOutput = [];
         end
         
-        %% run cleaning up after the session is completed or interrupted
+        % run cleaning up after the session is completed or interrupted
         function cleanAfterRunning(this)
         end
+        
+        % --------------------------------------------------------------------
+        % Analysis methods --------------------------------------------------
+        % --------------------------------------------------------------------
+        
+        function [samplesDataTable, rawDataTable] = PrepareSamplesDataTable(this)
+            samplesDataTable= [];
+            rawDataTable = [];
+        end
+        
+        function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
+        end
+        
+        function eventDataTable = PrepareEventDataTable(this, eventDataTable)
+        end
+        
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+        end
+        
+    end
+    
+    methods(Access=protected,Sealed=true)
         
         function AddTrialStartCallback(this, fun)
             if ( isempty(this.TrialStartCallbacks) )
@@ -202,10 +224,6 @@ classdef ExperimentDesign < handle
             
             trialTable = [newTrialTable variableTable];
         end
-    end
-    
-    
-    methods( Access = public)
         
         %% ImportSession
         function ImportSession( this )
@@ -821,27 +839,6 @@ classdef ExperimentDesign < handle
             
         end
         
-    end
-    
-    
-    % --------------------------------------------------------------------
-    %% Analysis methods --------------------------------------------------
-    % --------------------------------------------------------------------
-    methods
-        
-        function [samplesDataTable, rawDataTable] = PrepareSamplesDataTable(this)
-            samplesDataTable= [];
-            rawDataTable = [];
-        end
-        
-        function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
-        end
-        
-        function eventDataTable = PrepareEventDataTable(this, eventDataTable)
-        end
-        
-        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
-        end
     end
 end
 

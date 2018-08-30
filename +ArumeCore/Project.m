@@ -122,7 +122,7 @@ classdef Project < handle
         end
         
         function deleteSession( this, session )
-            session.deleteFolders();
+            session.delete();
             this.sessions( this.sessions == session ) = [];
         end
         
@@ -366,6 +366,7 @@ classdef Project < handle
                 f2.Condition = futureConditions(:,1);
                 f2.BlockNumber = futureConditions(:,2);
                 f2.BlockSequenceNumber = futureConditions(:,3);
+                f2.Session = ones(size(f2.Condition));
                 
                 
                 t2 = table();

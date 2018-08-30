@@ -2,18 +2,19 @@ classdef Session < ArumeCore.DataDB
     %SESSION Encapsulates an experimental session
     %  links to the corresponding experiment design and contains all the
     %  data obtained when running the experiment or analyzing it.
+    
     properties( SetAccess = private)
         
-        experimentDesign
+        experimentDesign        % Experiment design object associated with this session
         
-        subjectCode = '000';
-        sessionCode = 'Z';
-        comment  	= '';
+        subjectCode = '000';    % Subject code for this session, for xample S01_BC
+        sessionCode = 'Z';      % Session code
+        comment  	= '';       % Comment about the session
         
-        currentRun  = []; % current data for this session
-        pastRuns    = []; % data from every time experiment was started, resumed, or restarted
+        currentRun  = [];       % current data for this session
+        pastRuns    = [];       % data from every time experiment was started, resumed, or restarted
         
-        dataPath    = [];
+        dataPath    = [];       % path of the folder containing the session files
     end
     
     %% dependent properties... see the related get.property method
@@ -35,7 +36,6 @@ classdef Session < ArumeCore.DataDB
         % Each experiment can add extra information in the method prepareTrialDataTable.
         %
         %
-        
         trialDataTable
             
         % DataTable with all the sample data (one row per sample) :
@@ -154,7 +154,7 @@ classdef Session < ArumeCore.DataDB
             end
         end
         
-        function deleteFolders( this )
+        function delete( this )
             if ( exist(this.dataPath, 'dir') )
                 rmdir(this.dataPath,'s');
             end

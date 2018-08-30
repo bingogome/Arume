@@ -111,8 +111,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     t1 = this.ExperimentOptions.fixationDuration/1000;
                     t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
                     
-                    %                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
-                    if ( secondsElapsed > t1)
+                    if ( secondsElapsed > t1 && (~this.ExperimentOptions.Target_On_Until_Response || secondsElapsed < t2) )
                         %-- Draw target
                         
                         this.DrawLine(this.currentAngle, variables.Position, this.ExperimentOptions.Type_of_line);
@@ -121,13 +120,11 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                         %write a value to the default LPT1 printer output port (at 0x378)
                         %outp(hex2dec('378'),7);
                     end
-                    
-                    %                     if (secondsElapsed < t2)
-                    
+                                        
                     fixRect = [0 0 10 10];
                     fixRect = CenterRectOnPointd( fixRect, mx, my );
                     Screen('FillOval', graph.window,  this.targetColor, fixRect);
-                    %                     end
+                    
                     % -----------------------------------------------------------------
                     % --- END Drawing of stimulus -------------------------------------
                     % -----------------------------------------------------------------
@@ -149,7 +146,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                         response = this.CollectLeftRightResponse(reverse);
                         if ( ~isempty( response) )
                             this.lastResponse = response;
-                            this.reactionTime = secondsElapsed-this.ExperimentOptions.fixationDuration/1000;
+                            this.reactionTime = secondsElapsed-t1;
                             
                             % SEND TO PARALEL PORT TRIAL NUMBER
                             %write a value to the default LPT1 printer output port (at 0x378)

@@ -23,8 +23,11 @@ classdef (Abstract) SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesign
     methods ( Access = protected )
         
         function dlg = GetOptionsDialog( this, importing)
+            if( ~exist( 'importing', 'var' ) )
+                importing = 0;
+            end
             
-            dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this, importing);
             
             dlg.UseGamePad = { {'0','{1}'} };
             dlg.UseMouse = { {'{0}','1'} };
@@ -39,6 +42,7 @@ classdef (Abstract) SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesign
             
             dlg.fixationDuration = { 1000 '* (ms)' [1 3000] };
             dlg.targetDuration = { 300 '* (ms)' [100 30000] };
+            dlg.Target_On_Until_Response = { {'0','{1}'} }; 
             dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
             
             dlg.UseBiteBarMotor = { {'0','{1}'} };
