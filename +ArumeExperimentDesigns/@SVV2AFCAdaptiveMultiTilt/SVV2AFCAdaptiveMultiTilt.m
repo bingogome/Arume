@@ -189,6 +189,47 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
+        function plotResults = Plot_SVV_SigmoidMultitilt(this)
+            
+            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
+            ax1 = gca;
+            set(ax1,'nextplot','add', 'fontsize',12);
+            tilts = unique(this.Session.trialDataTable.Tilt);
+            for i=1:length(tilts)
+                trialIdx = find(this.Session.trialDataTable.TrialResult=='CORRECT' & this.Session.trialDataTable.Tilt == tilts(i));
+                angles = this.GetAngles();
+                angles = angles(trialIdx);
+                
+                responses = this.GetLeftRightResponses();
+                responses = responses(trialIdx);
+                
+                %             angles = angles(101:201);
+                %             respones = respones(101:201);
+                [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
+                
+                
+                %             ax1=subplot(3,1,[1:2],'nextplot','add', 'fontsize',12);
+                
+%                 bar(allAngles, trialCounts/sum(trialCounts)*100, 'edgecolor','none','facecolor',[0.8 0.8 0.8])
+                
+                plot( allAngles, allResponses,'o', 'color', [0.4 0.4 0.4], 'markersize',15,'linewidth',2, 'markerfacecolor', [0.7 0.7 0.7])
+                plot(a,p,'linewidth',3);
+%                 line([SVV, SVV], [-10 110], 'color','k','linewidth',3,'linestyle','-.');
+%                 line([0, 0], [-10 50], 'color','k','linewidth',2,'linestyle','-.');
+%                 line([0, SVV], [50 50], 'color','k','linewidth',2,'linestyle','-.');
+                
+                %xlabel('Angle (deg)', 'fontsize',16);
+%                 text(30, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
+%                 text(30, 60, sprintf('SVV slope: %0.2f°',SVVth), 'fontsize',16,'HorizontalAlignment','right');
+                
+                set(gca,'xlim',[-30 30],'ylim',[-10 110])
+                set(gca,'xgrid','on')
+                set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
+                set(gca,'ytick',[0:25:100])
+                ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
+                xlabel('Angle (deg)', 'fontsize',16);
+            end
+        end
     end
     
     % ---------------------------------------------------------------------
