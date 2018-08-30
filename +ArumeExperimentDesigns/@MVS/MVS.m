@@ -1,4 +1,4 @@
-classdef MVSTorsion < ArumeCore.ExperimentDesign
+classdef MVS < ArumeCore.ExperimentDesign
     
     properties
         

@@ -1,4 +1,4 @@
-classdef MVSNystagmusSuppression < ArumeCore.ExperimentDesign
+classdef MVSNystagmusSuppression < ArumeExperimentDesigns.EyeTracking
     
     properties
         
@@ -9,24 +9,11 @@ classdef MVSNystagmusSuppression < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         
-        function dlg = GetOptionsDialog( this )
-            dlg.EyeDataFile = { {['uigetfile(''' fullfile(pwd,'*.txt') ''')']} };
-            dlg.EyeCalibrationFile = { {['uigetfile(''' fullfile(pwd,'*.cal') ''')']} };
-            dlg.AssociatedControl = '';
-            dlg.Events = '';
-        end
-        
-        function initBeforeRunning( this )
-            
-            % Important variables to use:
-            %
-            % this.ExperimentOptions.NAMEOFOPTION will contain the values
-            %       from GetOptionsDialog
-            %
-            %
-        end
-        
-        function cleanAfterRunning(this)
+        function dlg = GetOptionsDialog( this, importing )
+            if ( ~exist('importing','var') )
+                importing = 0;
+            end
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this, importing);
         end
     end
     
@@ -34,9 +21,6 @@ classdef MVSNystagmusSuppression < ArumeCore.ExperimentDesign
     % Data Analysis methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
-        
-        function ImportSession( this )
-        end
         
         function trialDataSet = PrepareTrialDataSet( this, ds)
             % Every class inheriting from SVV2AFC should override this

@@ -44,6 +44,8 @@ classdef ExperimentDesign < handle
     % Options for every experimental paradigm
     %
     properties
+        DisplayVariableSelection = {'TrialNumber' 'TrialResult'}; % which variables to display every trial in the command line
+        
         DisplayToUse = 'ptbScreen'; % 'ptbScreen' 'cmdline'
         
         HitKeyBeforeTrial = 0;
@@ -100,18 +102,21 @@ classdef ExperimentDesign < handle
         
         % runPreTrial
         % use this to prepare things before the trial starts
-        function runPreTrial(this, variables )
+        function [trialResult, thisTrialData] = runPreTrial(this, thisTrialData )
+            Enum = ArumeCore.ExperimentDesign.getEnum();
+            trialResult = Enum.trialResult.CORRECT;
         end
         
         % runTrial
-        function [trialResult] = runTrial( this, variables)
+        function [trialResult, thisTrialData] = runTrial( this, thisTrialData)
             Enum = ArumeCore.ExperimentDesign.getEnum();
             trialResult = Enum.trialResult.CORRECT;
         end
         
         % runPostTrial
-        function [trialOutput] = runPostTrial(this)
-            trialOutput = [];
+        function [trialResult, thisTrialData] = runPostTrial(this, thisTrialData)
+            Enum = ArumeCore.ExperimentDesign.getEnum();
+            trialResult = Enum.trialResult.CORRECT;
         end
         
         % run cleaning up after the session is completed or interrupted
@@ -255,6 +260,11 @@ classdef ExperimentDesign < handle
                 importing = 0;
             end
             dlg = this.GetOptionsDialog(importing);
+            dlg.Debug = { {'{0}','1'} };
+            
+            dlg.ScreenWidth = { 40 '* (cm)' [1 3000] };
+            dlg.ScreenHeight = { 30 '* (cm)' [1 3000] };
+            dlg.ScreenDistance = { 135 '* (cm)' [1 3000] };
         end
         
         function init(this, session, options)
@@ -419,55 +429,61 @@ classdef ExperimentDesign < handle
                                 commandwindow;
                                 
                                 %-- find which condition to run and the variable values for that condition
-                                trialData = table();
-                                trialData.TrialNumber  = height(this.Session.currentRun.pastTrialTable)+1;
-                                trialData.DateTimeTrialStart = datestr(now);
-                                trialData = [trialData this.Session.currentRun.futureTrialTable(1,:)];
+                                thisTrialData = table();
+                                thisTrialData.TrialNumber  = height(this.Session.currentRun.pastTrialTable)+1;
+                                thisTrialData.DateTimeTrialStart = datestr(now);
+                                thisTrialData = [thisTrialData this.Session.currentRun.futureTrialTable(1,:)];
                                 
-                                fprintf('\nARUME :: TRIAL %d START: ...\n', trialData.TrialNumber);
-                                
-                                %------------------------------------------------------------
-                                %% -- PRE TRIAL ----------------------------------------------
-                                %------------------------------------------------------------
-                                trialData.TimePreTrialStart = GetSecs;
-                                
-                                this.runPreTrial( trialData );
-                                
-                                trialData.TimePreTrialStop = GetSecs;
+                                fprintf('\nARUME :: TRIAL %d START: ...\n', thisTrialData.TrialNumber);
                                 
                                 %------------------------------------------------------------
-                                %% -- TRIAL ---------------------------------------------------
+                                % -- PRE TRIAL ----------------------------------------------
                                 %------------------------------------------------------------
-                                trialData.TimeTrialStart = GetSecs;
-                                for i=1:length(this.TrialStartCallbacks)
-                                    trialData = feval(this.TrialStartCallbacks{i}, trialData);
+                                thisTrialData.TimePreTrialStart = GetSecs;
+                                
+                                [thisTrialData.TrialResult, thisTrialData] = this.runPreTrial( thisTrialData );
+                                
+                                thisTrialData.TimePreTrialStop = GetSecs;
+                                
+                                if ( thisTrialData.TrialResult == Enum.trialResult.CORRECT )
+                                    
+                                    %------------------------------------------------------------
+                                    % -- TRIAL --------------------------------------------------
+                                    %------------------------------------------------------------
+                                    thisTrialData.TimeTrialStart = GetSecs;
+                                    for i=1:length(this.TrialStartCallbacks)
+                                        thisTrialData = feval(this.TrialStartCallbacks{i}, thisTrialData);
+                                    end
+                                    
+                                    [thisTrialData.TrialResult, thisTrialData] = this.runTrial( thisTrialData );
+                                    
+                                    thisTrialData.TimeTrialStop = GetSecs;
+                                    for i=1:length(this.TrialStopCallbacks)
+                                        thisTrialData = feval(this.TrialStopCallbacks{i}, thisTrialData);
+                                    end
+                                    
+                                    if ( thisTrialData.TrialResult == Enum.trialResult.CORRECT )
+                                        
+                                        %------------------------------------------------------------
+                                        % -- POST TRIAL ---------------------------------------------
+                                        %------------------------------------------------------------
+                                        
+                                        this.PlaySound(thisTrialData.TrialResult);
+                                        
+                                        thisTrialData.TimePostTrialStart = GetSecs;
+                                        
+                                        [thisTrialData.TrialResult, thisTrialData] = this.runPostTrial( thisTrialData );
+                                        
+                                        thisTrialData.TimePostTrialStop = GetSecs;
+                                    end
                                 end
-                                
-                                trialData.TrialResult = this.runTrial( trialData );
-                                
-                                trialData.TimeTrialStop = GetSecs;
-                                for i=1:length(this.TrialStopCallbacks)
-                                    trialData = feval(this.TrialStopCallbacks{i}, trialData);
-                                end
-                                
-                                %------------------------------------------------------------
-                                %% -- POST TRIAL ----------------------------------------------
-                                %------------------------------------------------------------
-                                
-                                this.PlaySound(trialData.TrialResult);
-                                
-                                trialData.TimePostTrialStart = GetSecs;
-                                
-                                trialOutput = this.runPostTrial(  );
-                                
-                                trialData.TimePostTrialStop = GetSecs;
                                 
                             catch err
                                 if ( streq(err.identifier, 'PSYCORTEX:USERQUIT' ) )
-                                    trialData.TrialResult = Enum.trialResult.QUIT;
+                                    thisTrialData.TrialResult = Enum.trialResult.QUIT;
                                 else
-                                    trialData.TrialResult = Enum.trialResult.ERROR;
-                                    trialData.ErrorMessage = err.message;
+                                    thisTrialData.TrialResult = Enum.trialResult.ERROR;
+                                    thisTrialData.ErrorMessage = err.message;
                                     % display error
                                     disp('!!!!!!!!!!!!! ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
                                     disp(err.getReport);
@@ -477,21 +493,15 @@ classdef ExperimentDesign < handle
                             end
                             
                             % -- Update past trial table
-                            this.Session.currentRun.AddPastTrialData(trialData, trialOutput);
+                            this.Session.currentRun.AddPastTrialData(thisTrialData);
                             
                             % -- Display trial Table for last 20 trials
-                            condvars = struct2table(this.Session.experimentDesign.ConditionVars);
-                            outputVars = {};
-                            if ( ~isempty( trialOutput) )
-                                outputVars = fieldnames(trialOutput);
-                            end
-                            varSelection = {'TrialNumber'  outputVars{:} 'TrialResult' condvars.name{:} };
-                            trials = this.Session.currentRun.pastTrialTable;
-                            varSelection = intersect(varSelection,trials.Properties.VariableNames,'stable');
-                            disp(trials(max(1,height(trials)-20):end,varSelection));
+                            data = this.Session.currentRun.pastTrialTable;
+                            varSelection = intersect(this.DisplayVariableSelection,data.Properties.VariableNames,'stable');
+                            disp(data(max(1,end-20):end,varSelection));
                             
                             
-                            if ( trialData.TrialResult == Enum.trialResult.CORRECT )
+                            if ( thisTrialData.TrialResult == Enum.trialResult.CORRECT )
                                 %-- remove the condition that has just run from the future conditions list
                                 this.Session.currentRun.futureTrialTable(1,:) = [];
                                 
@@ -523,7 +533,7 @@ classdef ExperimentDesign < handle
                             end
                             
                             %-- handle errors
-                            switch ( trialData.TrialResult )
+                            switch ( thisTrialData.TrialResult )
                                 case Enum.trialResult.ERROR
                                     status = IDLE;
                                     continue;
@@ -607,7 +617,7 @@ classdef ExperimentDesign < handle
             % --------------------------------------------------------------------
         end
         
-        function abortExperiment(this, trial)
+        function abortExperiment(this)
             throw(MException('PSYCORTEX:USERQUIT', ''));
         end
         
@@ -636,22 +646,6 @@ classdef ExperimentDesign < handle
             
             this.GetConditionTable()
         end
-        
-        %% function psyCortex_defaultConfig
-        %--------------------------------------------------------------------------
-        function config = psyCortex_DefaultConfig(this)
-            
-            config.UsingEyeTracking = 1;
-            config.UsingVideoGraphics = 1;
-            
-            config.Debug = 0;
-            config.Graphical.mmMonitorWidth    = 400;
-            config.Graphical.mmMonitorHeight   = 300;
-            config.Graphical.mmDistanceToMonitor = 600;
-            config.Graphical.backGroundColor = 'black';
-            config.Graphical.textColor = 'white';
-        end
-        
     end
     
     
@@ -688,30 +682,7 @@ classdef ExperimentDesign < handle
         
         function shuffleConditionMatrix(this, variableNumber)
             this.ConditionMatrix(:,variableNumber) = Shuffle(this.ConditionMatrix(:,variableNumber));
-        end
-        
-        %% ShowDebugInfo
-        function ShowDebugInfo( this, variables )
-            if ( this.Config.Debug )
-                currentline = 50 + 25;
-                vNames = fieldnames(variables);
-                for iVar = 1:length(vNames)
-                    if ( ischar(variables.(vNames(iVar))) )
-                        s = sprintf( '%s = %s',vNames{iVar},variables.(vNames{iVar}) );
-                    else
-                        s = sprintf( '%s = %s',vNames{iVar},num2str(variables.(vNames{iVar})) );
-                    end
-                    Screen('DrawText', graph.window, s, 20, currentline, graph.black);
-                    
-                    currentline = currentline + 25;
-                end
-                %
-                %                             if ( ~isempty( this.EyeTracker ) )
-                %                                 draweye( this.EyeTracker.eyelink, graph)
-                %                             end
-            end
-        end
-        
+        end        
     end % methods(Access=protected)
     
     

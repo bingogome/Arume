@@ -14,7 +14,7 @@ classdef Fixation < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         
-        function dlg = GetOptionsDialog( this )
+        function dlg = GetOptionsDialog( this, importing )
             dlg.UseEyeTracker = { {'{0}' '1'} };
             
             dlg.Mode = {{'{Horizontal}' 'Vertical' 'HVcross' 'DiagonalCross' 'Grid'}};

@@ -27,11 +27,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             
             dlg.CenterLocationRange = {{'{Minus20to30}' 'Minus40to40'}};
             dlg.InterleaveCalibration = {{'{No}' 'Yes'}};
-            
-            dlg.ScreenWidth = 100;
-            dlg.ScreenHeight = 100;
-            dlg.ScreenDistance =100;
-            
+                        
             dlg.BackgroundBrightness = 0;
         end
         

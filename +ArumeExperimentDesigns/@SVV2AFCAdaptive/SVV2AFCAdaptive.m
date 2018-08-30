@@ -2,11 +2,6 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
     %SVVdotsAdaptFixed Summary of this class goes here
     %   Detailed explanation goes here
     
-    properties
-        currentCenterRange = 0;
-        currentRange = 180;
-    end
-    
     % ---------------------------------------------------------------------
     % Experiment design methods
     % ---------------------------------------------------------------------
@@ -24,6 +19,8 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
         end
         
         function initExperimentDesign( this  )
+            this.DisplayVariableSelection = {'TrialNumber' 'TrialResult' 'Range' 'RangeCenter' 'Angle' 'Response' 'ReactionTime'};
+        
             this.trialDuration = this.ExperimentOptions.fixationDuration/1000 ...
                 + this.ExperimentOptions.targetDuration/1000 ...
                 + this.ExperimentOptions.responseDuration/1000 ; %seconds
@@ -52,140 +49,22 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             i = i+1;
             conditionVars(i).name   = 'Position';
             conditionVars(i).values = {'Up' 'Down'};
-            
         end
         
-        function trialResult = runPreTrial(this, variables )
+        function [trialResult, thisTrialData] = runPreTrial(this, thisTrialData )
             Enum = ArumeCore.ExperimentDesign.getEnum();
-            % Add stuff herea
             
             if ( ~isempty(this.Session.currentRun.pastTrialTable) )
                 correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  Enum.trialResult.CORRECT ,:);
-                this.updateRange(variables, correctTrialsTable);
+                thisTrialData = this.updateRange(thisTrialData, correctTrialsTable);
             else
-                this.updateRange(variables, []);
+                thisTrialData = this.updateRange(thisTrialData, []);
             end
             
-            trialResult =  Enum.trialResult.CORRECT;
+            trialResult = Enum.trialResult.CORRECT;
         end
         
-        function trialResult = runTrial( this, variables )
-            
-            try
-                this.lastResponse = [];
-                this.reactionTime = nan;
-                
-                Enum = ArumeCore.ExperimentDesign.getEnum();
-                
-                graph = this.Graph;
-                
-                trialResult = Enum.trialResult.CORRECT;
-                
-                
-                %-- add here the trial code
-                Screen('FillRect', graph.window, 0);
-                lastFlipTime        = Screen('Flip', graph.window);
-                secondsRemaining    = this.trialDuration;
-                
-                startLoopTime = lastFlipTime;
-                
-                
-                % SEND TO PARALEL PORT TRIAL NUMBER
-                %write a value to the default LPT1 printer output port (at 0x378)
-                %nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
-                %outp(hex2dec('378'),rem(nCorrect,100)*2);
-                
-                
-                while secondsRemaining > 0
-                    
-                    secondsElapsed      = GetSecs - startLoopTime;
-                    secondsRemaining    = this.trialDuration - secondsElapsed;
-                    
-                    % -----------------------------------------------------------------
-                    % --- Drawing of stimulus -----------------------------------------
-                    % -----------------------------------------------------------------
-                    
-                    %-- Find the center of the screen
-                    [mx, my] = RectCenter(graph.wRect);
-                    
-                    t1 = this.ExperimentOptions.fixationDuration/1000;
-                    t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
-                    
-                    if ( secondsElapsed > t1 && (~this.ExperimentOptions.Target_On_Until_Response || secondsElapsed < t2) )
-                        %-- Draw target
-                        
-                        this.DrawLine(this.currentAngle, variables.Position, this.ExperimentOptions.Type_of_line);
-                        
-                        % SEND TO PARALEL PORT TRIAL NUMBER
-                        %write a value to the default LPT1 printer output port (at 0x378)
-                        %outp(hex2dec('378'),7);
-                    end
-                                        
-                    fixRect = [0 0 10 10];
-                    fixRect = CenterRectOnPointd( fixRect, mx, my );
-                    Screen('FillOval', graph.window,  this.targetColor, fixRect);
-                    
-                    % -----------------------------------------------------------------
-                    % --- END Drawing of stimulus -------------------------------------
-                    % -----------------------------------------------------------------
-                    
-                    
-                    % -----------------------------------------------------------------
-                    % -- Flip buffers to refresh screen -------------------------------
-                    % -----------------------------------------------------------------
-                    this.Graph.Flip();
-                    % -----------------------------------------------------------------
-                    
-                    
-                    % -----------------------------------------------------------------
-                    % --- Collecting responses  ---------------------------------------
-                    % -----------------------------------------------------------------
-                    
-                    if ( secondsElapsed > max(t1,0.200)  )
-                        reverse = variables.Position == 'Down';
-                        response = this.CollectLeftRightResponse(reverse);
-                        if ( ~isempty( response) )
-                            this.lastResponse = response;
-                            this.reactionTime = secondsElapsed-t1;
-                            
-                            % SEND TO PARALEL PORT TRIAL NUMBER
-                            %write a value to the default LPT1 printer output port (at 0x378)
-                            %outp(hex2dec('378'),9);
-                            
-                            break;
-                        end
-                    end
-                    
-                    % -----------------------------------------------------------------
-                    % --- END Collecting responses  -----------------------------------
-                    % -----------------------------------------------------------------
-                    
-                end
-            catch ex
-                if ( ~isempty( this.eyeTracker ) )
-                    this.eyeTracker.StopRecording();
-                end
-                
-                rethrow(ex)
-            end
-            
-            
-            if ( isempty(this.lastResponse) )
-                trialResult =  Enum.trialResult.ABORT;
-            end
-        end
-        
-        function trialOutput = runPostTrial(this)
-            
-            trialOutput = [];
-            trialOutput.Response = this.lastResponse;
-            trialOutput.ReactionTime = this.reactionTime;
-            trialOutput.Angle = this.currentAngle;
-            trialOutput.Range = this.currentRange;
-            trialOutput.RangeCenter = this.currentCenterRange;
-        end
-        
-        function updateRange(this, variables, previousTrialTableSelection)
+        function thisTrialData = updateRange(this, thisTrialData, previousTrialTableSelection)
             
             if ( isempty(previousTrialTableSelection) || ...
                     ~any(strcmp(previousTrialTableSelection.Properties.VariableNames,'Response')))
@@ -225,35 +104,35 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                         SVV = min(ds.Angle);
                     end
                     
-                    this.currentCenterRange = SVV;
+                    thisTrialData.RangeCenter = SVV;
                     if ( isfield( this.ExperimentOptions, 'offset' ) )
-                        this.currentCenterRange = this.currentCenterRange + this.ExperimentOptions.offset;
+                        thisTrialData.RangeCenter = thisTrialData.RangeCenter + this.ExperimentOptions.offset;
                     end
                     
                     switch(this.ExperimentOptions.RangeChanges)
                         case 'Slow'
-                            this.currentRange = (90)./min(18,round(2.^(Nblocks/15)));
+                            thisTrialData.Range = (90)./min(18,round(2.^(Nblocks/15)));
                         case 'Fast'
-                            this.currentRange = (45)./min(9,round(2.^(Nblocks/15)));
+                            thisTrialData.Range = (45)./min(9,round(2.^(Nblocks/15)));
                     end
                 end
             else
                 switch(this.ExperimentOptions.RangeChanges)
                     case 'Slow'
-                        this.currentCenterRange = rand(1)*30-15;
-                        this.currentRange = 90;
+                        thisTrialData.RangeCenter = rand(1)*30-15;
+                        thisTrialData.Range = 90;
                     case 'Fast'
-                        this.currentCenterRange = rand(1)*15-15;
-                        this.currentRange = 45;
+                        thisTrialData.RangeCenter = rand(1)*15-15;
+                        thisTrialData.Range = 45;
                 end
             end
             
-            this.currentAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
-            this.currentAngle = mod(this.currentAngle+90,180)-90;
-            this.currentAngle = round(this.currentAngle);
+            thisTrialData.Angle = (thisTrialData.AnglePercentRange/100*thisTrialData.Range) + thisTrialData.RangeCenter;
+            thisTrialData.Angle = mod(thisTrialData.Angle+90,180)-90;
+            thisTrialData.Angle = round(thisTrialData.Angle);
             
             %TODO disp(sprintf(['\nLAST RESP.: ' char(previousResponses(max(end-100,1):end)')]));
-            %disp(['CURRENT TRIAL: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(Nblocks) ' RANGE: ' sprintf('%2.1f',this.currentRange) ' SVV : ' num2str(this.currentCenterRange)]);
+            %disp(['CURRENT TRIAL: ' num2str(thisTrialData.Angle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(Nblocks) ' RANGE: ' sprintf('%2.1f',thisTrialData.Range) ' SVV : ' num2str(thisTrialData.RangeCenter)]);
             
         end
     end

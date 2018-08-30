@@ -47,7 +47,7 @@ classdef Display < handle
         
         function Init( graph, exper)
             
-%             Screen('Preference', 'VisualDebugLevel', 3);
+%           Screen('Preference', 'VisualDebugLevel', 3);
             Screen('Preference', 'SkipSyncTests', 1);
             Screen('Preference', 'VisualDebugLevel', 0);
             
@@ -58,9 +58,11 @@ classdef Display < handle
     
             %-- window
             Screen('Preference', 'ConserveVRAM', 64);
-%             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [10 10 600 400], [], [], 0, 10);
-            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
-%             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0);
+            if (~exper.ExperimentOptions.Debug && max(graph.screens)<2)
+                [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
+            else
+                [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [10 10 900 600], [], [], 0, 10);
+            end
          
             %-- color
             
@@ -88,13 +90,13 @@ classdef Display < handle
             [graph.pxWidth, graph.pxHeight]                 = Screen('WindowSize', graph.window);
             graph.windiwInfo                                = Screen('GetWindowInfo',graph.window);
             %TODO: force resolution and refresh rate
-            
+
             
             if ( exist('exper','var') && ~isempty(exper) )
                 %-- physical dimensions
-                graph.mmWidth           = exper.Config.Graphical.mmMonitorWidth;
-                graph.mmHeight          = exper.Config.Graphical.mmMonitorHeight;
-                graph.distanceToMonitor = exper.Config.Graphical.mmDistanceToMonitor; % mm
+                graph.mmWidth           = exper.ExperimentOptions.ScreenWidth;
+                graph.mmHeight          = exper.ExperimentOptions.ScreenHeight;
+                graph.distanceToMonitor = exper.ExperimentOptions.ScreenDistance;
                 
                 
                 %-- scale
@@ -118,19 +120,39 @@ classdef Display < handle
         
         %% Flip
         %--------------------------------------------------------------------------
-        function fliptime = Flip( this, exper, trial )
+        function fliptime = Flip( this, exper, trialData )
             
             Enum = ArumeCore.ExperimentDesign.getEnum();
+            
+            if ( exper.ExperimentOptions.Debug )
+                Screen('DrawText', graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.white);
+                currentline = 50 + 25;
+                vNames = fieldnames(thisTrialData);
+                for iVar = 1:length(vNames)
+                    if ( ischar(thisTrialData.(vNames{iVar})) )
+                        s = sprintf( '%s = %s',vNames{iVar},thisTrialData.(vNames{iVar}) );
+                    elseif ( isnumeric(thisTrialData.(vNames{iVar})) )
+                        s = sprintf( '%s = %s',vNames{iVar},num2str(thisTrialData.(vNames{iVar})) );
+                    else
+                        s = sprintf( '%s = -',vNames{iVar});
+                    end
+                    Screen('DrawText', graph.window, s, 20, currentline, graph.white);
+                    
+                    currentline = currentline + 25;
+                end
+                %
+                %                             if ( ~isempty( this.EyeTracker ) )
+                %                                 draweye( this.EyeTracker.eyelink, graph)
+                %                             end
+            end
             
             fliptime = Screen('Flip', this.window);
             
             %-- Check for keyboard press
             [keyIsDown,secs,keyCode] = KbCheck;
             if keyCode(Enum.keys.ESCAPE)
-                if nargin == 2
+                if nargin >1 2
                     exper.abortExperiment();
-                elseif nargin == 3
-                    exper.abortExperiment(trial);
                 else
                     throw(MException('PSYCORTEX:USERQUIT', ''));
                 end

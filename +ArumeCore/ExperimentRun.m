@@ -15,16 +15,7 @@ classdef ExperimentRun < matlab.mixin.Copyable
             run = copy(this); 
         end
         
-        function trialData = AddPastTrialData(this, variables, trialOutput)
-            
-            if ( istable(trialOutput) )
-                trialData = [variables trialOutput];
-            elseif ( isstruct(trialOutput) )
-                trialData = [variables struct2table(trialOutput,'AsArray',true)];
-            else
-                error('trialOutput should be either a table or a struct');
-            end
-            
+        function trialData = AddPastTrialData(this, trialData)
             %TODO: at the moment trialOutput cannot have cells or arrays.
             %Need to fix at some point
                                 

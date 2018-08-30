@@ -1,4 +1,4 @@
-classdef (Abstract) SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
+classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
     %SVV2AFC Parent experiment design for designs of SVV experiments
     % using 2AFC two alternative forced choice task
     % all the experiments will have a variable called angle which is the
@@ -8,9 +8,6 @@ classdef (Abstract) SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesign
     properties
         gamePad = [];
         biteBarMotor = [];
-        
-        lastResponse = [];
-        reactionTime = [];
         
         fixColor = [255 0 0];
         
@@ -96,6 +93,137 @@ classdef (Abstract) SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesign
             
         end
         
+        function initExperimentDesign( this  )
+            this.DisplayVariableSelection = {'TrialNumber' 'TrialResult' 'Angle' 'Response' 'ReactionTime'};
+        
+            this.trialDuration = this.ExperimentOptions.fixationDuration/1000 ...
+                + this.ExperimentOptions.targetDuration/1000 ...
+                + this.ExperimentOptions.responseDuration/1000 ; %seconds
+            
+            % default parameters of any experiment
+            this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
+            this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
+            this.trialsPerSession   = 10000;
+            this.trialsBeforeBreak  = 10000;
+            
+            %%-- Blocking
+            this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
+            this.numberOfTimesRepeatBlockSequence = ceil(this.ExperimentOptions.TotalNumberOfTrials/22);
+            this.blocksToRun = 1;
+            this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 22, 'trialsToRun', 22) ];
+        end
+        
+        function [conditionVars] = getConditionVariables( this )
+            %-- condition variables ---------------------------------------
+            i= 0;
+            
+            i = i+1;
+            conditionVars(i).name   = 'Angle';
+            conditionVars(i).values = -10:2:10;
+            
+            i = i+1;
+            conditionVars(i).name   = 'Position';
+            conditionVars(i).values = {'Up' 'Down'};
+        end
+        
+        function [trialResult, thisTrialData] = runTrial( this, thisTrialData )
+            
+            Enum = ArumeCore.ExperimentDesign.getEnum();
+            trialResult = Enum.trialResult.CORRECT;
+            graph = this.Graph;
+            
+            response = [];
+            reactionTime = nan;
+            
+            %-- add here the trial code
+            Screen('FillRect', graph.window, 0);
+            
+            % SEND TO PARALEL PORT TRIAL NUMBER
+            %write a value to the default LPT1 printer output port (at 0x378)
+            %nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
+            %outp(hex2dec('378'),rem(nCorrect,100)*2);
+            
+            lastFlipTime                        = Screen('Flip', graph.window);
+            secondsRemaining                    = this.trialDuration;
+            thisTrialData.StartLoopTime         = lastFlipTime;
+            if ( ~isempty(this.eyeTracker) )
+                thisTrialData.EyeTrackerFrameStartLoop = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_LOOP %d %d', thisTrialData.TrialNumber, thisTrialData.Condition) );
+            end
+            while secondsRemaining > 0
+                
+                secondsElapsed      = GetSecs - thisTrialData.StartLoopTime;
+                secondsRemaining    = this.trialDuration - secondsElapsed;
+                
+                % -----------------------------------------------------------------
+                % --- Drawing of stimulus -----------------------------------------
+                % -----------------------------------------------------------------
+                
+                %-- Find the center of the screen
+                [mx, my] = RectCenter(graph.wRect);
+                
+                t1 = this.ExperimentOptions.fixationDuration/1000;
+                t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
+                
+                if ( secondsElapsed > t1 && (~this.ExperimentOptions.Target_On_Until_Response || secondsElapsed < t2) )
+                    %-- Draw target
+                    
+                    this.DrawLine(thisTrialData.Angle, thisTrialData.Position, this.ExperimentOptions.Type_of_line);
+                    
+                    % SEND TO PARALEL PORT TRIAL NUMBER
+                    %write a value to the default LPT1 printer output port (at 0x378)
+                    %outp(hex2dec('378'),7);
+                end
+                
+                fixRect = [0 0 10 10];
+                fixRect = CenterRectOnPointd( fixRect, mx, my );
+                Screen('FillOval', graph.window,  this.targetColor, fixRect);
+                
+                this.Graph.Flip();
+                % -----------------------------------------------------------------
+                % --- END Drawing of stimulus -------------------------------------
+                % -----------------------------------------------------------------
+                
+                
+                % -----------------------------------------------------------------
+                % --- Collecting responses  ---------------------------------------
+                % -----------------------------------------------------------------
+                
+                if ( secondsElapsed > max(t1,0.200)  )
+                    reverse = thisTrialData.Position == 'Down';
+                    response = this.CollectLeftRightResponse(reverse);
+                    if ( ~isempty( response) )
+                        reactionTime = secondsElapsed-t1;
+                        
+                        % SEND TO PARALEL PORT TRIAL NUMBER
+                        %write a value to the default LPT1 printer output port (at 0x378)
+                        %outp(hex2dec('378'),9);
+                        
+                        break;
+                    end
+                end
+                
+                % -----------------------------------------------------------------
+                % --- END Collecting responses  -----------------------------------
+                % -----------------------------------------------------------------
+                
+            end
+            
+            % -----------------------------------------------------------------
+            % --- Save data and trial result ----------------------------------
+            % -----------------------------------------------------------------
+            
+            if ( isempty(response) )
+                trialResult =  Enum.trialResult.ABORT;
+            else
+                thisTrialData.Response = response;
+                thisTrialData.ReactionTime = reactionTime;
+            end
+            
+            % -----------------------------------------------------------------
+            % --- END Save data and trial result ------------------------------
+            % -----------------------------------------------------------------
+        end
+        
         function cleanAfterRunning(this)
             
             % Close eyetracker
@@ -115,18 +243,22 @@ classdef (Abstract) SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesign
         end
         
         function response = CollectLeftRightResponse(this, reverse)
+            if ( ~exist( 'reverse','var') )
+                reverse = 0;
+            end
+            
             response = [];
             
-            if ( this.ExperimentOptions.UseMouse )
+            if ( isfield(this.ExperimentOptions,'UseMouse') && this.ExperimentOptions.UseMouse )
                 [~,~,buttons] = GetMouse();
-                    if any(buttons) % wait for release
-                        if buttons(1) == 1
-                            response = 'L';
-                        elseif  buttons(3) == 1
-                            response = 'R';
-                        end
+                if any(buttons) % wait for release
+                    if buttons(1) == 1
+                        response = 'L';
+                    elseif  buttons(3) == 1
+                        response = 'R';
                     end
-                elseif ( this.ExperimentOptions.UseGamePad )
+                end
+            elseif ( isfield(this.ExperimentOptions,'UseGamePad') && this.ExperimentOptions.UseGamePad )
                 [~, l, r] = this.gamePad.Query();
                 if ( l == 1)
                     response = 'L';
