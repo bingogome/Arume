@@ -416,13 +416,18 @@ classdef ExperimentDesign < handle
                             try
                                 commandwindow;
                                 
+                                nCorrectTrials = 0;
+                                if ( any(strcmp(this.Session.currentRun.pastTrialTable.Properties.VariableNames,'TrialResult')))
+                                    nCorrectTrials = sum(this.Session.currentRun.pastTrialTable.TrialResult == 'CORRECT');
+                                end
+                                
                                 %-- find which condition to run and the variable values for that condition
                                 thisTrialData = table();
-                                thisTrialData.TrialNumber  = height(this.Session.currentRun.pastTrialTable)+1;
+                                thisTrialData.TrialNumber  = nCorrectTrials+1;
                                 thisTrialData.DateTimeTrialStart = string(datestr(now));
                                 thisTrialData = [thisTrialData this.Session.currentRun.futureTrialTable(1,:)];
                                 
-                                fprintf('\nARUME :: TRIAL %d START: ...\n', thisTrialData.TrialNumber);
+                                fprintf('\nARUME :: TRIAL %d START (%d TOTAL) ...\n', nCorrectTrials+1, height(this.Session.currentRun.originalFutureTrialTable));
                                 
                                 %------------------------------------------------------------
                                 % -- PRE TRIAL ----------------------------------------------
@@ -476,6 +481,7 @@ classdef ExperimentDesign < handle
                                     end
                                 end
                                 
+                            
                             catch err
                                 if ( streq(err.identifier, 'PSYCORTEX:USERQUIT' ) )
                                     thisTrialData.TrialResult = Enum.trialResult.QUIT;

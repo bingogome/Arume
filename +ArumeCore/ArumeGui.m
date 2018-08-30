@@ -50,6 +50,9 @@ classdef ArumeGui < handle
         menuPlotGeneratePlotsCombined
         menuPlotGeneratePlotsAggregated
         
+        menuTools
+        menuBiteBarGui
+        
         % Session Contextual menu
         sessionContextMenu
         sessionContextMenuEditSettings
@@ -256,6 +259,14 @@ classdef ArumeGui < handle
             this.menuPlotGeneratePlotsAggregated = uimenu(this.menuPlot, ...
                 'Label'     , 'Generate plots aggregated');
             
+            this.menuTools = uimenu(this.figureHandle, ...
+                'Label'     , 'Tools');
+            
+            this.menuBiteBarGui = uimenu(this.menuTools, ...
+                'Label'     , 'Bite bar GUI', ...
+                 'Callback'  , @BitebarGUI);
+        
+        
             
             % session contextual menu
             % Define a context menu; it is not attached to anything

@@ -48,23 +48,23 @@ classdef Display < handle
         
         function Init( graph, exper)
             
-%           Screen('Preference', 'VisualDebugLevel', 3);
+            %           Screen('Preference', 'VisualDebugLevel', 3);
             Screen('Preference', 'SkipSyncTests', 1);
             Screen('Preference', 'VisualDebugLevel', 0);
             
             %-- screens
             
             graph.screens = Screen('Screens');
-          	graph.selectedScreen=max(graph.screens);
-    
+            graph.selectedScreen=max(graph.screens);
+            
             %-- window
             Screen('Preference', 'ConserveVRAM', 64);
-            if (~exper.ExperimentOptions.Debug && max(graph.screens)<2)
+            if (~exper.ExperimentOptions.Debug || max(graph.screens)<2)
                 [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
             else
                 [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [10 10 900 600], [], [], 0, 10);
             end
-         
+            
             %-- color
             
             graph.black = BlackIndex( graph.window );
@@ -91,7 +91,7 @@ classdef Display < handle
             [graph.pxWidth, graph.pxHeight]                 = Screen('WindowSize', graph.window);
             graph.windiwInfo                                = Screen('GetWindowInfo',graph.window);
             %TODO: force resolution and refresh rate
-
+            
             
             if ( exist('exper','var') && ~isempty(exper) )
                 %-- physical dimensions
@@ -174,15 +174,6 @@ classdef Display < handle
                     throw(MException('PSYCORTEX:USERQUIT', ''));
                 end
             end
-        end
-        
-        %% Make hist of flips
-        function hist_of_flips = flips_hist(this)
-            
-            hist_of_flips =  histc(diff(this.fliptimes{end}(1:this.NumFlips)),0:.005:.100);
-            %             this.fliptime_hist = hist_of_flips;
-            
-            
         end
         
         %% dva2pix
@@ -282,7 +273,7 @@ classdef Display < handle
                 try
                     g = ArumeHardware.GamePad();
                     [ direction, left, right, a, b, x, y] = g.Query;
-
+                    
                     if ( a | b | x | y)
                         result = char('a');
                         break;
@@ -315,16 +306,16 @@ classdef Display < handle
                 
             end
             
-%             char = GetChar;
-%             switch(char)
-%                 
-%                 case ESCAPE
-%                     result = 0;
-%                     
-%                 otherwise
-%                     result = char;
-%             end
-%             
+            %             char = GetChar;
+            %             switch(char)
+            %
+            %                 case ESCAPE
+            %                     result = 0;
+            %
+            %                 otherwise
+            %                     result = char;
+            %             end
+            %
             
             Screen( 'TextColor', this.window, oldDefaultColor); % recover previous default color
         end

@@ -55,7 +55,7 @@ classdef BiteBarMotor < handle
         function this = BiteBarMotor()
             ss = this.Singleton('check');
             
-            if ( isempty(ss) )
+            if ( isempty(ss) || ~isvalid(ss) )
                 % close all serial ports
                 
                 disp('Querying available serial ports');
@@ -132,24 +132,24 @@ classdef BiteBarMotor < handle
         end
         
         function TiltLeft(this, angle)
-            angle = this.GetAngleMotorRef(-abs(angle));
-            microsteps = this.GetMicrosteps(angle);
+            angle2 = this.GetAngleMotorRef(-abs(angle));
+            microsteps = this.GetMicrosteps(angle2);
             out = this.SendCommand( this.COMMMAND_MoveAbsolute, microsteps);
             
             this.CurrentAngle = -angle;
         end
         
         function TiltRight(this, angle)
-            angle = this.GetAngleMotorRef(abs(angle));
-            microsteps = this.GetMicrosteps(angle);
+            angle2 = this.GetAngleMotorRef(abs(angle));
+            microsteps = this.GetMicrosteps(angle2);
             out = this.SendCommand( this.COMMMAND_MoveAbsolute, microsteps);
             
             this.CurrentAngle = angle;
         end
         
         function SetTiltAngle(this, angle)
-            angle = this.GetAngleMotorRef(angle);
-            microsteps = this.GetMicrosteps(angle);
+            angle2 = this.GetAngleMotorRef(angle);
+            microsteps = this.GetMicrosteps(angle2);
             out = this.SendCommand( this.COMMMAND_MoveAbsolute, microsteps);
             
             this.CurrentAngle = angle;

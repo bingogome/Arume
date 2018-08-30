@@ -64,7 +64,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             
             % Initialize bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor)
-                clear this.biteBarMotor;
+%                 clear this.biteBarMotor;
+%                 this.biteBarMotor = [];
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
                 
                 if (isfield(this.ExperimentOptions, 'TiltHeadAtBegining') && this.ExperimentOptions.TiltHeadAtBegining )

@@ -36,6 +36,8 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
         end
         
         function initExperimentDesign( this  )
+            this.DisplayVariableSelection = {'TrialNumber' 'TrialResult' 'Range' 'RangeCenter' 'Angle' 'Response' 'ReactionTime' 'NumSlowFlips'};
+            
             this.trialDuration = this.ExperimentOptions.fixationDuration/1000 ...
                 + this.ExperimentOptions.targetDuration/1000 ...
                 + this.ExperimentOptions.responseDuration/1000 ; %seconds
@@ -101,19 +103,29 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
             conditionVars(i).values = [0 -this.ExperimentOptions.Tilts this.ExperimentOptions.Tilts];
         end
         
-        function trialResult = runPreTrial(this, variables )
+        function [trialResult,thisTrialData] = runPreTrial(this, thisTrialData )
             
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
             % Change the angle of the bitebar if necessary
             if ( this.ExperimentOptions.UseBiteBarMotor )
-                if ( variables.Tilt ~= this.biteBarMotor.CurrentAngle )       
+                 if (thisTrialData.Tilt ~= this.biteBarMotor.CurrentAngle )       
                     result = 'n';
                     while( result ~= 'y' )
                         result = this.Graph.DlgSelect( ...
-                            'Continue?', ...
+                            sprintf('Bite bar is going to tilt to %d degrees. Continue?',thisTrialData.Tilt), ...
                             { 'y' 'n'}, ...
                             { 'Yes'  'No'} , [],[]);
+                        if ( result ~= 'y' )
+                            result = this.Graph.DlgSelect( ...
+                                'Do you want to interrupt the experiment?', ...
+                                { 'y' 'n'}, ...
+                                { 'Yes'  'No'} , [],[]);
+                            if ( result ~= 'n' )
+                                trialResult = Enum.trialResult.QUIT;
+                                return;
+                            end
+                        end
                     end
                                         
                     [mx, my] = RectCenter(this.Graph.wRect);
@@ -123,25 +135,18 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
                     Screen('Flip', this.Graph.window);
                     
                     if ( this.ExperimentOptions.UseBiteBarMotor)
+                        thisTrialData.TimeStartMotorMove = GetSecs;
                         pause(2);
-                        if ( this.ExperimentOptions.UseEyeTracker )
-                            this.eyeTracker.RecordEvent('Tilt begin');
-                        end
-                        this.biteBarMotor.SetTiltAngle(variables.Tilt);
-                        if ( this.ExperimentOptions.UseEyeTracker )
-                            this.eyeTracker.RecordEvent('Tilt end');
-                        end
+                        this.biteBarMotor.SetTiltAngle(thisTrialData.Tilt);
+                        thisTrialData.TimeEndMotorMove = GetSecs;
                         disp('30 s pause');
                         result = this.Graph.DlgTimer('Waiting 30s...',30);
                         if ( result < 0 )
                             trialResult =  Enum.trialResult.ABORT;
                             return;
                         end
-                
-                        if ( this.ExperimentOptions.UseEyeTracker )
-                            this.eyeTracker.RecordEvent('Tilt 30 second pause end');
-                        end
-                        disp('done');
+                        thisTrialData.TimeEndMotorMovePause = GetSecs;
+                        disp('done with pause');
                     end
                 end
             end
@@ -151,16 +156,16 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
             if ( ~isempty(this.Session.currentRun.pastTrialTable) )
                 correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  Enum.trialResult.CORRECT ,:);
                 
-                idxLastDifferentTilt = find(correctTrialsTable.Tilt ~=variables.Tilt,1,'last');
+                idxLastDifferentTilt = find(correctTrialsTable.Tilt ~=thisTrialData.Tilt,1,'last');
                 if (isempty( idxLastDifferentTilt ) )
                     idxLastDifferentTilt = 0;
                 end
                 previousTrialsInSameTilt = correctTrialsTable((idxLastDifferentTilt+1):end,:);
-                
-                this.updateRange(variables, previousTrialsInSameTilt);
             else
-                this.updateRange(variables, []);
+                previousTrialsInSameTilt = [];
             end
+            
+            thisTrialData = this.updateRange(thisTrialData, previousTrialsInSameTilt);
             
             trialResult =  Enum.trialResult.CORRECT;
         end

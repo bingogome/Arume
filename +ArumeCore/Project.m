@@ -122,7 +122,7 @@ classdef Project < handle
         end
         
         function deleteSession( this, session )
-            session.delete();
+            session.deleteFolders();
             this.sessions( this.sessions == session ) = [];
         end
         

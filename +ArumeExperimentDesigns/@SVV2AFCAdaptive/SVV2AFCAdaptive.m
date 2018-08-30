@@ -56,11 +56,11 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             
             if ( ~isempty(this.Session.currentRun.pastTrialTable) )
                 correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  Enum.trialResult.CORRECT ,:);
-                thisTrialData = this.updateRange(thisTrialData, correctTrialsTable);
             else
-                thisTrialData = this.updateRange(thisTrialData, []);
+                correctTrialsTable = [];
             end
             
+            thisTrialData = this.updateRange(thisTrialData, correctTrialsTable);
             trialResult = Enum.trialResult.CORRECT;
         end
         

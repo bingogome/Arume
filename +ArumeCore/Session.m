@@ -154,7 +154,7 @@ classdef Session < ArumeCore.DataDB
             end
         end
         
-        function delete( this )
+        function deleteFolders( this )
             if ( exist(this.dataPath, 'dir') )
                 rmdir(this.dataPath,'s');
             end
