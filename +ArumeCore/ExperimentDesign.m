@@ -46,8 +46,6 @@ classdef ExperimentDesign < handle
     properties
         DisplayVariableSelection = {'TrialNumber' 'TrialResult'}; % which variables to display every trial in the command line
         
-        DisplayToUse = 'ptbScreen'; % 'ptbScreen' 'cmdline'
-        
         HitKeyBeforeTrial = 0;
         
         ForegroundColor = 0;
@@ -123,10 +121,13 @@ classdef ExperimentDesign < handle
         function cleanAfterRunning(this)
         end
         
-        % --------------------------------------------------------------------
-        % Analysis methods --------------------------------------------------
-        % --------------------------------------------------------------------
+    end
         
+    % --------------------------------------------------------------------
+    % Analysis methods --------------------------------------------------
+    % --------------------------------------------------------------------
+    
+    methods ( Access = public )
         function [samplesDataTable, rawDataTable] = PrepareSamplesDataTable(this)
             samplesDataTable= [];
             rawDataTable = [];
@@ -141,6 +142,9 @@ classdef ExperimentDesign < handle
         function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
         end
         
+        %% ImportSession
+        function ImportSession( this )
+        end
     end
     
     methods(Access=protected,Sealed=true)
@@ -230,9 +234,6 @@ classdef ExperimentDesign < handle
             trialTable = [newTrialTable variableTable];
         end
         
-        %% ImportSession
-        function ImportSession( this )
-        end
         
         function UpdateExperimentOptions(this, newOptions)
             this.ExperimentOptions = newOptions;
@@ -302,9 +303,6 @@ classdef ExperimentDesign < handle
             
             %-- init the parameters of this specific experiment
             this.initExperimentDesign( );
-            
-            this.Config = this.psyCortex_DefaultConfig();
-            this.Config.Debug = 1;
         end
         
         function run(this)
@@ -335,27 +333,17 @@ classdef ExperimentDesign < handle
                         case INITIALIZNG_HARDWARE
                             
                             % -- GRAPHICS KEYBOARD and MOUSE
-                            if ( this.Config.UsingVideoGraphics )
-                                
-                                %-- hide the mouse cursor during the experiment
-                                if ( ~this.Config.Debug )
-                                    HideCursor;
-                                    ListenChar(1);
-                                else
-                                    ListenChar(1);
-                                end
-                                
-                                
-                                switch(this.DisplayToUse)
-                                    case 'ptbScreen'
-                                        this.Graph = ArumeCore.Display( );
-                                    case 'cmdline'
-                                        this.Graph = ArumeCore.DisplayCmdLine( );
-                                end
-                                this.Graph.Init( this );
+                            %-- hide the mouse cursor during the experiment
+                            if ( ~this.ExperimentOptions.Debug)
+                                HideCursor;
+                                ListenChar(2);
                             else
-                                this.Graph = [];
+                                ListenChar(1);
                             end
+                            
+                            this.Graph = ArumeCore.Display( );
+                            this.Graph.Init( this );
+                            
                             status = INITIALIZNG_EXPERIMENT;
                             
                             % ---------------------------------------------
@@ -431,7 +419,7 @@ classdef ExperimentDesign < handle
                                 %-- find which condition to run and the variable values for that condition
                                 thisTrialData = table();
                                 thisTrialData.TrialNumber  = height(this.Session.currentRun.pastTrialTable)+1;
-                                thisTrialData.DateTimeTrialStart = datestr(now);
+                                thisTrialData.DateTimeTrialStart = string(datestr(now));
                                 thisTrialData = [thisTrialData this.Session.currentRun.futureTrialTable(1,:)];
                                 
                                 fprintf('\nARUME :: TRIAL %d START: ...\n', thisTrialData.TrialNumber);
@@ -441,11 +429,11 @@ classdef ExperimentDesign < handle
                                 %------------------------------------------------------------
                                 thisTrialData.TimePreTrialStart = GetSecs;
                                 
-                                [thisTrialData.TrialResult, thisTrialData] = this.runPreTrial( thisTrialData );
-                                
+                                [trialResult, thisTrialData] = this.runPreTrial( thisTrialData );
+                                thisTrialData.TrialResult = trialResult;
                                 thisTrialData.TimePreTrialStop = GetSecs;
                                 
-                                if ( thisTrialData.TrialResult == Enum.trialResult.CORRECT )
+                                if ( trialResult == Enum.trialResult.CORRECT )
                                     
                                     %------------------------------------------------------------
                                     % -- TRIAL --------------------------------------------------
@@ -455,14 +443,23 @@ classdef ExperimentDesign < handle
                                         thisTrialData = feval(this.TrialStartCallbacks{i}, thisTrialData);
                                     end
                                     
-                                    [thisTrialData.TrialResult, thisTrialData] = this.runTrial( thisTrialData );
+                                    if ( ~isempty(this.Graph) )
+                                        this.Graph.ResetFlipTimes();
+                                    end
+                                    [trialResult, thisTrialData] = this.runTrial( thisTrialData );
+                                    thisTrialData.TrialResult = trialResult;
+                                    if ( ~isempty(this.Graph) )
+                                        thisTrialData.NumFlips = this.Graph.NumFlips;
+                                        thisTrialData.NumSlowFlips = this.Graph.NumSlowFlips;
+                                        thisTrialData.NumSuperSlowFlips = this.Graph.NumSuperSlowFlips;
+                                    end
                                     
                                     thisTrialData.TimeTrialStop = GetSecs;
                                     for i=1:length(this.TrialStopCallbacks)
                                         thisTrialData = feval(this.TrialStopCallbacks{i}, thisTrialData);
                                     end
                                     
-                                    if ( thisTrialData.TrialResult == Enum.trialResult.CORRECT )
+                                    if ( trialResult == Enum.trialResult.CORRECT )
                                         
                                         %------------------------------------------------------------
                                         % -- POST TRIAL ---------------------------------------------
@@ -472,7 +469,8 @@ classdef ExperimentDesign < handle
                                         
                                         thisTrialData.TimePostTrialStart = GetSecs;
                                         
-                                        [thisTrialData.TrialResult, thisTrialData] = this.runPostTrial( thisTrialData );
+                                        [trialResult, thisTrialData] = this.runPostTrial( thisTrialData );
+                                        thisTrialData.TrialResult = trialResult;
                                         
                                         thisTrialData.TimePostTrialStop = GetSecs;
                                     end
@@ -483,12 +481,17 @@ classdef ExperimentDesign < handle
                                     thisTrialData.TrialResult = Enum.trialResult.QUIT;
                                 else
                                     thisTrialData.TrialResult = Enum.trialResult.ERROR;
-                                    thisTrialData.ErrorMessage = err.message;
+                                    thisTrialData.ErrorMessage = string(err.message);
                                     % display error
-                                    disp('!!!!!!!!!!!!! ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+                                    
+                                    beep
+                                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                                    cprintf('red', '!!!!!!!!!!!!! ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
                                     disp(err.getReport);
-                                    disp('!!!!!!!!!!!!! END ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-                                    this.Graph.DlgHitKey( ['Error, trial could not be run: \n' err.message],[],[] );
+                                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                                    cprintf('red', '!!!!!!!!!!!!! END ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
                                 end
                             end
                             
@@ -498,7 +501,11 @@ classdef ExperimentDesign < handle
                             % -- Display trial Table for last 20 trials
                             data = this.Session.currentRun.pastTrialTable;
                             varSelection = intersect(this.DisplayVariableSelection,data.Properties.VariableNames,'stable');
-                            disp(data(max(1,end-20):end,varSelection));
+                            if ( ~this.ExperimentOptions.Debug )
+                                disp(data(max(1,end-20):end,varSelection));
+                            else
+                                disp(data);
+                            end
                             
                             
                             if ( thisTrialData.TrialResult == Enum.trialResult.CORRECT )
@@ -606,6 +613,8 @@ classdef ExperimentDesign < handle
                     cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
                     
                     if ( status == FINILIZING_EXPERIMENT )
+                        ShowCursor;
+                        ListenChar(0);
                         break; % finish loop
                     end
                     

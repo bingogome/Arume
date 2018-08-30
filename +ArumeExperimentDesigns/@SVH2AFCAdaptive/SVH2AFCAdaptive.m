@@ -85,6 +85,7 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVV2AFCAdaptive
             if ( ~isempty(this.eyeTracker) )
                 thisTrialData.EyeTrackerFrameStartLoop = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_LOOP %d %d', thisTrialData.TrialNumber, thisTrialData.Condition) );
             end
+            this.Graph.ResetFlipTimes();
             
             while secondsRemaining > 0
                 

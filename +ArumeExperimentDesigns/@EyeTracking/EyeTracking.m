@@ -74,11 +74,14 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         function variables = TrialStopCallBack(this, variables)
             variables.EyeTrackerFrameNumberTrialStop = this.eyeTracker.RecordEvent(sprintf('TRIAL_STOP %d %d', variables.TrialNumber, variables.Condition) );
         end
-        
+            
     end
-    
-    methods( Access = public)
         
+    % --------------------------------------------------------------------
+    % Analysis methods --------------------------------------------------
+    % --------------------------------------------------------------------
+    
+    methods ( Access = public )    
         %% ImportSession
         function ImportSession( this )
             newRun = ArumeCore.ExperimentRun.SetUpNewRun( this );

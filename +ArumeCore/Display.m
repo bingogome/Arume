@@ -31,8 +31,9 @@ classdef Display < handle
         
         distanceToMonitor = [];
         
-        fliptimes = {};
         NumFlips = 0;
+        NumSlowFlips = 0;
+        NumSuperSlowFlips = 0;
     end
     
     properties(Access=private)
@@ -118,52 +119,61 @@ classdef Display < handle
             Screen('Flip', graph.window);
         end
         
+        function ResetFlipTimes(this)
+            this.NumFlips = 0;
+            this.NumSlowFlips = 0;
+            this.NumSuperSlowFlips = 0;
+        end
+        
         %% Flip
         %--------------------------------------------------------------------------
-        function fliptime = Flip( this, exper, trialData )
+        function fliptime = Flip( this, exper, thisTrialData, secondsRemaining )
             
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
-            if ( exper.ExperimentOptions.Debug )
-                Screen('DrawText', graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.white);
-                currentline = 50 + 25;
-                vNames = fieldnames(thisTrialData);
-                for iVar = 1:length(vNames)
-                    if ( ischar(thisTrialData.(vNames{iVar})) )
-                        s = sprintf( '%s = %s',vNames{iVar},thisTrialData.(vNames{iVar}) );
-                    elseif ( isnumeric(thisTrialData.(vNames{iVar})) )
-                        s = sprintf( '%s = %s',vNames{iVar},num2str(thisTrialData.(vNames{iVar})) );
-                    else
-                        s = sprintf( '%s = -',vNames{iVar});
+            if ( nargin == 4)
+                if ( exper.ExperimentOptions.Debug )
+                    Screen('DrawText', this.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, this.white);
+                    currentline = 50 + 25;
+                    vNames = thisTrialData.Properties.VariableNames;
+                    for iVar = 1:length(vNames)
+                        if ( ischar(thisTrialData.(vNames{iVar})) )
+                            s = sprintf( '%s = %s',vNames{iVar},thisTrialData.(vNames{iVar}) );
+                        elseif ( isnumeric(thisTrialData.(vNames{iVar})) )
+                            s = sprintf( '%s = %s',vNames{iVar},num2str(thisTrialData.(vNames{iVar})) );
+                        else
+                            s = sprintf( '%s = -',vNames{iVar});
+                        end
+                        Screen('DrawText', this.window, s, 20, currentline, this.white);
+                        
+                        currentline = currentline + 25;
                     end
-                    Screen('DrawText', graph.window, s, 20, currentline, graph.white);
-                    
-                    currentline = currentline + 25;
+                    %
+                    %                             if ( ~isempty( this.EyeTracker ) )
+                    %                                 draweye( this.EyeTracker.eyelink, graph)
+                    %                             end
                 end
-                %
-                %                             if ( ~isempty( this.EyeTracker ) )
-                %                                 draweye( this.EyeTracker.eyelink, graph)
-                %                             end
             end
             
             fliptime = Screen('Flip', this.window);
+            this.NumFlips = this.NumFlips +1;
+            if ( this.lastfliptime>0 && fliptime-this.lastfliptime > 1.5/this.frameRate)
+                this.NumSlowFlips = this.NumSlowFlips + 1;
+            end
+            if ( this.lastfliptime>0 && fliptime-this.lastfliptime > 10/this.frameRate)
+                this.NumSuperSlowFlips = this.NumSuperSlowFlips + 1;
+            end
+            this.lastfliptime = fliptime;
             
             %-- Check for keyboard press
             [keyIsDown,secs,keyCode] = KbCheck;
             if keyCode(Enum.keys.ESCAPE)
-                if nargin >1 2
+                if nargin >1
                     exper.abortExperiment();
                 else
                     throw(MException('PSYCORTEX:USERQUIT', ''));
                 end
             end
-            
-            this.NumFlips = this.NumFlips + 1;
-           % this.fliptimes{end}(this.NumFlips) = fliptime;
-            %             this.fliptimes{end} = this.fliptimes{end} + histc(fliptime-this.lastfliptime,0:.005:.100);
-            %             fliptime-this.lastfliptime
-            %             this.lastfliptime = fliptime;
-            
         end
         
         %% Make hist of flips

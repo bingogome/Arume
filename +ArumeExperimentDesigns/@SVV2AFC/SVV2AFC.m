@@ -81,15 +81,15 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
                 end
             end
             
-            if ( 0) % this was for the EEG experiment to output something with the parallel port
-                %initialize the inpoutx64 low-level I/O driver
-                config_io;
-                %optional step: verify that the inpoutx64 driver was successfully installed
-                global cogent;
-                if( cogent.io.status ~= 0 )
-                    error('inp/outp installation failed');
-                end
-            end
+%             if ( 0) % this was for the EEG experiment to output something with the parallel port
+%                 %initialize the inpoutx64 low-level I/O driver
+%                 config_io;
+%                 %optional step: verify that the inpoutx64 driver was successfully installed
+%                 global cogent;
+%                 if( cogent.io.status ~= 0 )
+%                     error('inp/outp installation failed');
+%                 end
+%             end
             
         end
         
@@ -164,7 +164,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
                 t1 = this.ExperimentOptions.fixationDuration/1000;
                 t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
                 
-                if ( secondsElapsed > t1 && (~this.ExperimentOptions.Target_On_Until_Response || secondsElapsed < t2) )
+                if ( secondsElapsed > t1 && (this.ExperimentOptions.Target_On_Until_Response || secondsElapsed < t2) )
                     %-- Draw target
                     
                     this.DrawLine(thisTrialData.Angle, thisTrialData.Position, this.ExperimentOptions.Type_of_line);
@@ -178,7 +178,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
                 fixRect = CenterRectOnPointd( fixRect, mx, my );
                 Screen('FillOval', graph.window,  this.targetColor, fixRect);
                 
-                this.Graph.Flip();
+                this.Graph.Flip(this, thisTrialData, secondsRemaining);
                 % -----------------------------------------------------------------
                 % --- END Drawing of stimulus -------------------------------------
                 % -----------------------------------------------------------------

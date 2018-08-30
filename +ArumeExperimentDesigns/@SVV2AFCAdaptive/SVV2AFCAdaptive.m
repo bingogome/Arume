@@ -115,6 +115,9 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                         case 'Fast'
                             thisTrialData.Range = (45)./min(9,round(2.^(Nblocks/15)));
                     end
+                else
+                   thisTrialData.Range = previousTrialTableSelection.Range(end);
+                   thisTrialData.RangeCenter = previousTrialTableSelection.RangeCenter(end);
                 end
             else
                 switch(this.ExperimentOptions.RangeChanges)
