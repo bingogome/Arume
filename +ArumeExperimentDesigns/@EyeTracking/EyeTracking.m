@@ -69,10 +69,10 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         end
         
         function variables = TrialStartCallback(this, variables)
-            variables.EyeTrackerFrameNumberTrialStart = this.eyeTracker.RecordEvent(sprintf('TRIAL_START %d %d %d', variables.TrialAttempt, variables.TrialNumber, variables.Condition) );
+            variables.EyeTrackerFrameNumberTrialStart = this.eyeTracker.RecordEvent(sprintf('TRIAL_START %d %d', variables.TrialNumber, variables.Condition) );
         end
         function variables = TrialStopCallBack(this, variables)
-            variables.EyeTrackerFrameNumberTrialStop = this.eyeTracker.RecordEvent(sprintf('TRIAL_STOP %d %d %d', variables.TrialAttempt, variables.TrialNumber, variables.Condition) );
+            variables.EyeTrackerFrameNumberTrialStop = this.eyeTracker.RecordEvent(sprintf('TRIAL_STOP %d %d', variables.TrialNumber, variables.Condition) );
         end
         
     end

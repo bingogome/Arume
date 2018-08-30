@@ -446,7 +446,7 @@ classdef ArumeGui < handle
             file = fullfile(this.arumeController.defaultDataFolder, [this.arumeController.currentProject.name '-backup-'  datestr(now,'yyyy-mm-dd') '.zip']);
             
             [filename, pathname] = uiputfile(file, 'Pick a project backup');
-            if ( isempty(filename) )
+            if ( isempty(filename) || ( isscalar(filename) && filename == 0) )
                 return
             end
             
