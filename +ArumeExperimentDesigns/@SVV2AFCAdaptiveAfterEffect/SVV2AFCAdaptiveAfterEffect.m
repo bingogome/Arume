@@ -234,7 +234,7 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptive
                     if ( secondsElapsed > t1)
                         %-- Draw target
                         
-                        this.DrawLine(variables);
+                        this.DrawLine(this.currentAngle, variables.Position, this.ExperimentOptions.Type_of_line);
                     end
                     
 %                     if (secondsElapsed < t2)

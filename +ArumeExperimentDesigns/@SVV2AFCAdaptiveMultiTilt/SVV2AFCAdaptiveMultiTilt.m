@@ -11,8 +11,10 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
     methods ( Access = protected )
         
         function dlg = GetOptionsDialog( this, importing )
-             
-            dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptive(this);
+            if ( ~exist( 'importing', 'var') )
+                importing = 0;
+            end
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptive(this,importing);
             
             dlg.PreviousTrialsForRange = { {'{All}','Previous30'} };
             dlg.RangeChanges = { {'{Slow}','Fast'} };
@@ -42,6 +44,7 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
             this.trialsPerSession   = this.ExperimentOptions.TrialsPerTilt*(length(this.ExperimentOptions.Tilts)+1)*2;
+            this.trialsBeforeBreak  = this.ExperimentOptions.TrialsPerTilt*(length(this.ExperimentOptions.Tilts)+1);
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
@@ -161,130 +164,8 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
             
             trialResult =  Enum.trialResult.CORRECT;
         end
-        
-        function trialResult = runTrial( this, variables )
-                        
-            try
-                this.lastResponse = [];
-                this.reactionTime = [];
-                
-                Enum = ArumeCore.ExperimentDesign.getEnum();
-                
-                graph = this.Graph;
-                
-                trialResult = Enum.trialResult.CORRECT;
-                
-                
-                %-- add here the trial code
-                Screen('FillRect', graph.window, 0);
-                lastFlipTime        = Screen('Flip', graph.window);
-                secondsRemaining    = this.trialDuration;
-                
-                startLoopTime = lastFlipTime;
-                
-                while secondsRemaining > 0
-                    
-                    secondsElapsed      = GetSecs - startLoopTime;
-                    secondsRemaining    = this.trialDuration - secondsElapsed;
-                    
-                    % -----------------------------------------------------------------
-                    % --- Drawing of stimulus -----------------------------------------
-                    % -----------------------------------------------------------------
-                    
-                    %-- Find the center of the screen
-                    [mx, my] = RectCenter(graph.wRect);
-
-                    t1 = this.ExperimentOptions.fixationDuration/1000;
-                    t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
-                    
-%                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
-                    if ( secondsElapsed > t1)
-                        %-- Draw target
-                        
-                        this.DrawLine(variables);
-                    end
-                    
-%                     if (secondsElapsed < t2)
-%                         % black patch to block part of the line
-                        
-                        fixRect = [0 0 10 10];
-                        fixRect = CenterRectOnPointd( fixRect, mx, my );
-                        Screen('FillOval', graph.window,  this.targetColor, fixRect);
-%                     end
-                    % -----------------------------------------------------------------
-                    % --- END Drawing of stimulus -------------------------------------
-                    % -----------------------------------------------------------------
-                    
-                    
-                % -----------------------------------------------------------------
-                % DEBUG
-                % -----------------------------------------------------------------
-                if (0)
-                    % TODO: it would be nice to have some call back system here
-                    Screen('DrawText', graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.white);
-                    currentline = 50 + 25;
-                    vNames = fieldnames(variables);
-                    for iVar = 1:length(vNames)
-                        if ( ischar(variables.(vNames{iVar})) )
-                            s = sprintf( '%s = %s',vNames{iVar},variables.(vNames{iVar}) );
-                        else
-                            s = sprintf( '%s = %s',vNames{iVar},num2str(variables.(vNames{iVar})) );
-                        end
-                        Screen('DrawText', graph.window, s, 20, currentline, graph.white);
-                        
-                        currentline = currentline + 25;
-                    end
-                end
-                % -----------------------------------------------------------------
-                % END DEBUG
-                % -----------------------------------------------------------------
-                
-                    
-                    % -----------------------------------------------------------------
-                    % -- Flip buffers to refresh screen -------------------------------
-                    % -----------------------------------------------------------------
-                    this.Graph.Flip();
-                    % -----------------------------------------------------------------
-                    
-                    
-                    % -----------------------------------------------------------------
-                    % --- Collecting responses  ---------------------------------------
-                    % -----------------------------------------------------------------
-                    
-                    if ( secondsElapsed > max(t1,0.200)  )
-                        reverse = isequal(variables.Position,'Down');
-                        response = this.CollectLeftRightResponse(reverse);
-                        if ( ~isempty( response) )
-                            this.lastResponse = response;
-                        end
-                    end
-                    
-                    if ( this.lastResponse >= 0 )
-                        this.reactionTime = secondsElapsed-1;
-                        disp(num2str(this.lastResponse));
-                        break;
-                    end
-                    
-                    % -----------------------------------------------------------------
-                    % --- END Collecting responses  -----------------------------------
-                    % -----------------------------------------------------------------
-                    
-                end
-            catch ex
-                if ( ~isempty( this.eyeTracker ) )
-                    this.eyeTracker.StopRecording();
-                end
-                
-                rethrow(ex)
-            end
-            
-            
-            if ( isempty(this.lastResponse))
-                trialResult =  Enum.trialResult.ABORT;
-            end
-        end
     end
-        
+                
     % ---------------------------------------------------------------------
     % Data Analysis methods
     % ---------------------------------------------------------------------

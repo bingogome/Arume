@@ -3,7 +3,6 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
     %   Detailed explanation goes here
     
     properties
-        currentAngle = 0;
         currentCenterRange = 0;
         currentRange = 180;
     end
@@ -12,7 +11,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods ( Access = protected )
-         
+        
         function dlg = GetOptionsDialog( this, importing)
             if ( ~exist('importing','var') )
                 importing = 0;
@@ -32,8 +31,8 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
-            this.trialsPerSession   = 20;
-            this.trialsBeforeBreak     = 5;
+            this.trialsPerSession   = 10000;
+            this.trialsBeforeBreak  = 10000;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
@@ -55,7 +54,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             conditionVars(i).values = {'Up' 'Down'};
             
         end
-                
+        
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
             % Add stuff herea
@@ -71,7 +70,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
         end
         
         function trialResult = runTrial( this, variables )
-                        
+            
             try
                 this.lastResponse = [];
                 this.reactionTime = nan;
@@ -108,87 +107,62 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
                     
                     %-- Find the center of the screen
                     [mx, my] = RectCenter(graph.wRect);
-
+                    
                     t1 = this.ExperimentOptions.fixationDuration/1000;
                     t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
-                                        
-%                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
+                    
+                    %                     if ( secondsElapsed > t1 && secondsElapsed < t2 )
                     if ( secondsElapsed > t1)
                         %-- Draw target
                         
-                        this.DrawLine(variables);
+                        this.DrawLine(this.currentAngle, variables.Position, this.ExperimentOptions.Type_of_line);
                         
                         % SEND TO PARALEL PORT TRIAL NUMBER
                         %write a value to the default LPT1 printer output port (at 0x378)
                         %outp(hex2dec('378'),7);
                     end
                     
-%                     if (secondsElapsed < t2)
-%                         % black patch to block part of the line
-                        
-                        fixRect = [0 0 10 10];
-                        fixRect = CenterRectOnPointd( fixRect, mx, my );
-                        Screen('FillOval', graph.window,  this.targetColor, fixRect);
-%                     end
+                    %                     if (secondsElapsed < t2)
+                    
+                    fixRect = [0 0 10 10];
+                    fixRect = CenterRectOnPointd( fixRect, mx, my );
+                    Screen('FillOval', graph.window,  this.targetColor, fixRect);
+                    %                     end
                     % -----------------------------------------------------------------
                     % --- END Drawing of stimulus -------------------------------------
                     % -----------------------------------------------------------------
                     
                     
-                % -----------------------------------------------------------------
-                % DEBUG
-                % -----------------------------------------------------------------
-                if (0)
-                    % TODO: it would be nice to have some call back system here
-                    Screen('DrawText', graph.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, graph.white);
-                    currentline = 50 + 25;
-                    vNames = fieldnames(variables);
-                    for iVar = 1:length(vNames)
-                        if ( ischar(variables.(vNames{iVar})) )
-                            s = sprintf( '%s = %s',vNames{iVar},variables.(vNames{iVar}) );
-                        else
-                            s = sprintf( '%s = %s',vNames{iVar},num2str(variables.(vNames{iVar})) );
+                    % -----------------------------------------------------------------
+                    % -- Flip buffers to refresh screen -------------------------------
+                    % -----------------------------------------------------------------
+                    this.Graph.Flip();
+                    % -----------------------------------------------------------------
+                    
+                    
+                    % -----------------------------------------------------------------
+                    % --- Collecting responses  ---------------------------------------
+                    % -----------------------------------------------------------------
+                    
+                    if ( secondsElapsed > max(t1,0.200)  )
+                        reverse = variables.Position == 'Down';
+                        response = this.CollectLeftRightResponse(reverse);
+                        if ( ~isempty( response) )
+                            this.lastResponse = response;
+                            this.reactionTime = secondsElapsed-this.ExperimentOptions.fixationDuration/1000;
+                            
+                            % SEND TO PARALEL PORT TRIAL NUMBER
+                            %write a value to the default LPT1 printer output port (at 0x378)
+                            %outp(hex2dec('378'),9);
+                            
+                            break;
                         end
-                        Screen('DrawText', graph.window, s, 20, currentline, graph.white);
-                        
-                        currentline = currentline + 25;
                     end
-                end
-                % -----------------------------------------------------------------
-                % END DEBUG
-                % -----------------------------------------------------------------
-                
-                
-                % -----------------------------------------------------------------
-                % -- Flip buffers to refresh screen -------------------------------
-                % -----------------------------------------------------------------
-                this.Graph.Flip();
-                % -----------------------------------------------------------------
-                
-                
-                % -----------------------------------------------------------------
-                % --- Collecting responses  ---------------------------------------
-                % -----------------------------------------------------------------
-                
-                if ( secondsElapsed > max(t1,0.200)  )
-                    reverse = variables.Position == 'Down';
-                    response = this.CollectLeftRightResponse(reverse);
-                    if ( ~isempty( response) )
-                        this.lastResponse = response;
-                        this.reactionTime = secondsElapsed-this.ExperimentOptions.fixationDuration/1000;
-                        
-                        % SEND TO PARALEL PORT TRIAL NUMBER
-                        %write a value to the default LPT1 printer output port (at 0x378)
-                        %outp(hex2dec('378'),9);
-                        
-                        break;
-                    end
-                end
-                
-                % -----------------------------------------------------------------
-                % --- END Collecting responses  -----------------------------------
-                % -----------------------------------------------------------------
-                
+                    
+                    % -----------------------------------------------------------------
+                    % --- END Collecting responses  -----------------------------------
+                    % -----------------------------------------------------------------
+                    
                 end
             catch ex
                 if ( ~isempty( this.eyeTracker ) )
@@ -279,7 +253,6 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             
             this.currentAngle = (variables.AnglePercentRange/100*this.currentRange) + this.currentCenterRange;
             this.currentAngle = mod(this.currentAngle+90,180)-90;
-            
             this.currentAngle = round(this.currentAngle);
             
             %TODO disp(sprintf(['\nLAST RESP.: ' char(previousResponses(max(end-100,1):end)')]));
@@ -297,44 +270,44 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             trialDataTable = ds;
             data = ds;
             
-%             return;
-%             
-%             torsionFolder = 'F:\DATATEMP\SVVTorsionTMS';
-%             T = nan(size(data.TimeStartTrial));
-%             
-%             if (length(dir(fullfile(torsionFolder,[this.Session.name  '*']))) == 1);
-%                 folders = dir(fullfile(torsionFolder,[this.Session.name  '*']));
-%                 d = GetCalibratedData(fullfile(torsionFolder,folders(1).name));
-%                 T = CleanTorsion(d);
-%                 T(T>10 | T<-10) = nan;
-% 
-%                 
-%                 
-%                 t = data.TimeStartTrial;
-%                 t2 = data.TimeStopTrial;
-%                 t2 = t2-t(1);
-%                 t = t-t(1);
-% %                 t(101:end)= t(101:end)-t(101)+t2(100);
-% %                 t2(101:end)= t2(101:end)-t(101)+t2(100);
-%                 
-%                 L = t2(end)-t(1);
-%                 LT = length(T);
-%                 t = t * LT / L;
-%                 t2 = t2 * LT / L;
-%                 
-%                 torsion = T;
-%                 T = nan(size(t));
-%                 for j=1:length(t)
-%                     idx = t(j):t2(j);
-%                     idx(idx<1) = [];
-%                     idx(idx>length(torsion)) = [];
-%                     T(j) = nanmedian(torsion(round(idx)));
-%                 end
-%             end
-%             
-%             
-%                 T(T>10 | T<-10) = nan;
-%             newData.Torsion = T;
+            %             return;
+            %
+            %             torsionFolder = 'F:\DATATEMP\SVVTorsionTMS';
+            %             T = nan(size(data.TimeStartTrial));
+            %
+            %             if (length(dir(fullfile(torsionFolder,[this.Session.name  '*']))) == 1);
+            %                 folders = dir(fullfile(torsionFolder,[this.Session.name  '*']));
+            %                 d = GetCalibratedData(fullfile(torsionFolder,folders(1).name));
+            %                 T = CleanTorsion(d);
+            %                 T(T>10 | T<-10) = nan;
+            %
+            %
+            %
+            %                 t = data.TimeStartTrial;
+            %                 t2 = data.TimeStopTrial;
+            %                 t2 = t2-t(1);
+            %                 t = t-t(1);
+            % %                 t(101:end)= t(101:end)-t(101)+t2(100);
+            % %                 t2(101:end)= t2(101:end)-t(101)+t2(100);
+            %
+            %                 L = t2(end)-t(1);
+            %                 LT = length(T);
+            %                 t = t * LT / L;
+            %                 t2 = t2 * LT / L;
+            %
+            %                 torsion = T;
+            %                 T = nan(size(t));
+            %                 for j=1:length(t)
+            %                     idx = t(j):t2(j);
+            %                     idx(idx<1) = [];
+            %                     idx(idx>length(torsion)) = [];
+            %                     T(j) = nanmedian(torsion(round(idx)));
+            %                 end
+            %             end
+            %
+            %
+            %                 T(T>10 | T<-10) = nan;
+            %             newData.Torsion = T;
             
             
             
@@ -401,9 +374,9 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             
             trialDataTable = [data struct2table(newData)];
         end
-         
-        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)            
-                        
+        
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+            
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
             angles = this.GetAngles();
@@ -440,7 +413,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
     % Plot methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
-                
+        
         function plotResults = Plot_SVV_TimeCourse(this)
             analysisResults = 0;
             
@@ -472,19 +445,19 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             plot(ds.TrialNumber, ds.RangeCenter,'linewidth',3,'color',MEDIUM_GREEN);
             plot(ds.TrialNumber, ds.RangeCenter-ds.Range,'linewidth',1,'color',MEDIUM_GREEN);
             plot(ds.TrialNumber, ds.RangeCenter+ds.Range,'linewidth',1,'color',MEDIUM_GREEN);
-%             plot(ds.TrialNumber, ds.Bin30SVV,'linewidth',3,'color',[.3 .5 .8]);
-%             plot(ds.TrialNumber, ds.Bin100SVV,'linewidth',3,'color',[.8 .3 .5]);
-
-SVV = [];
-T = [];
-                    for j=1:15;
-                        idx = (50:100) + (j-1)*50;
-                        idx(idx>=length(ds.Bin100SVV)) = [];
-                        if ( length(idx) > 20)
-                            SVV(j) = nanmean(ds.Bin100SVV(idx));
-%                             T(j) = nanmean(ds.Torsion(idx));
-                        end
-                    end
+            %             plot(ds.TrialNumber, ds.Bin30SVV,'linewidth',3,'color',[.3 .5 .8]);
+            %             plot(ds.TrialNumber, ds.Bin100SVV,'linewidth',3,'color',[.8 .3 .5]);
+            
+            SVV = [];
+            T = [];
+            for j=1:15;
+                idx = (50:100) + (j-1)*50;
+                idx(idx>=length(ds.Bin100SVV)) = [];
+                if ( length(idx) > 20)
+                    SVV(j) = nanmean(ds.Bin100SVV(idx));
+                    %                             T(j) = nanmean(ds.Torsion(idx));
+                end
+            end
             SVV(:,[2 12 15]) = nan;
             T(:,[2 12 15]) = nan;
             
@@ -556,7 +529,7 @@ T = [];
                     s.Pre(i) = 1;
                 end
             end
-
+            
             ds = struct2dataset(s);
             
             subjects = unique(ds.Subject);
@@ -634,10 +607,10 @@ T = [];
                         
                         plot(shamdataPost.Bin100SVV-nanmedian(shamdataPre.Bin100SVV(1:299)  ), 'linewidth',2)
                         plot(tmsdataPost.Bin100SVV-nanmedian(tmsdataPre.Bin100SVV(1:299)), 'linewidth',2)
-%                         plot(shamdataPost.Bin100SVV(1:299)-(shamdataPre.Bin100SVV(1:299)  ))
-%                         plot(tmsdataPost.Bin100SVV(1:299)-(tmsdataPre.Bin100SVV(1:299)))
+                        %                         plot(shamdataPost.Bin100SVV(1:299)-(shamdataPre.Bin100SVV(1:299)  ))
+                        %                         plot(tmsdataPost.Bin100SVV(1:299)-(tmsdataPre.Bin100SVV(1:299)))
                         
-
+                        
                         allData{j,i} = (tmsdataPost.Bin100SVV(1:490)-nanmedian(tmsdataPre.Bin100SVV(1:290))) - (shamdataPost.Bin100SVV(1:490)-nanmedian(shamdataPre.Bin100SVV(1:290)));
                         allDataSham{j,i} = (shamdataPost.Bin100SVV(1:490)-nanmedian(shamdataPre.Bin100SVV(1:290)));
                         allDataTMS{j,i} = (tmsdataPost.Bin100SVV(1:490)-nanmedian(tmsdataPre.Bin100SVV(1:290)));
@@ -651,7 +624,7 @@ T = [];
                             firstplot = 1;
                             
                             legend({'Sham', 'TMS'})
-
+                            
                             xlabel('Trial number');
                             ylabel('SVV');
                         end
@@ -661,52 +634,52 @@ T = [];
             end
             
             
-%             firstplot = 0;
-%             figure
-%             allData = {};
-%             allDataT = {};
-%             for i=1:length(subjects)
-%                 subjects{i}
-%                 for j=1:Rows
-%                     if ( sum(strcmp(ds.Subject,subjects{i}) & ds.TMS == j ) >0 )
-%                         d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == 0 & ds.Pre == 1 ,:);
-%                         shamdataPre = sessions(d.SessionNumber(1)).trialDataTable;
-%                         d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == 0 & ds.Pre == 0 ,:);
-%                         shamdataPost = sessions(d.SessionNumber(1)).trialDataTable;
-%                         d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == j & ds.Pre == 1 ,:);
-%                         tmsdataPre = sessions(d.SessionNumber(1)).trialDataTable;
-%                         d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == j & ds.Pre == 0 ,:);
-%                         tmsdataPost = sessions(d.SessionNumber(1)).trialDataTable;
-%                         
-%                         subplot(Rows, length(subjects), i + (j-1)*length(subjects),'nextplot','add');
-%                         
-%                         plot(shamdataPost.Bin100Torsion-nanmedian(shamdataPre.Bin100Torsion(1:299)  ), 'linewidth',2)
-%                         plot(tmsdataPost.Bin100Torsion-nanmedian(tmsdataPre.Bin100Torsion(1:299)), 'linewidth',2)
-% %                         plot(shamdataPost.Bin100SVV(1:299)-(shamdataPre.Bin100SVV(1:299)  ))
-% %                         plot(tmsdataPost.Bin100SVV(1:299)-(tmsdataPre.Bin100SVV(1:299)))
-%                         
-%                         for jj=j:Rows
-% %                             allData{jj,i} = (tmsdataPost.Bin100SVV(1:299)-(tmsdataPre.Bin100SVV(1:299))) - (shamdataPost.Bin100SVV(1:299)-(shamdataPre.Bin100SVV(1:299)));
-%                             allData{jj,i} = (tmsdataPost.Bin100SVV(1:499)-nanmedian(tmsdataPre.Bin100SVV(1:299))) - (shamdataPost.Bin100SVV(1:499)-nanmedian(shamdataPre.Bin100SVV(1:299)));
-%                             allDataT{jj,i} = (tmsdataPost.Bin100Torsion(1:499)-nanmedian(tmsdataPre.Torsion(1:299))) - (shamdataPost.Bin100Torsion(1:499)-nanmedian(shamdataPre.Torsion(1:299)));
-%                         end
-%                         
-%                         if( j == 1)
-%                             title(subjects{i})
-%                         end
-%                         
-%                         if ( firstplot == 0 )
-%                             firstplot = 1;
-%                             
-%                             legend({'Sham', 'TMS'})
-% 
-%                             xlabel('Trial number');
-%                             ylabel('Torsion');
-%                         end
-%                         set(gca,'ylim',[-10 10])
-%                     end
-%                 end
-%             end
+            %             firstplot = 0;
+            %             figure
+            %             allData = {};
+            %             allDataT = {};
+            %             for i=1:length(subjects)
+            %                 subjects{i}
+            %                 for j=1:Rows
+            %                     if ( sum(strcmp(ds.Subject,subjects{i}) & ds.TMS == j ) >0 )
+            %                         d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == 0 & ds.Pre == 1 ,:);
+            %                         shamdataPre = sessions(d.SessionNumber(1)).trialDataTable;
+            %                         d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == 0 & ds.Pre == 0 ,:);
+            %                         shamdataPost = sessions(d.SessionNumber(1)).trialDataTable;
+            %                         d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == j & ds.Pre == 1 ,:);
+            %                         tmsdataPre = sessions(d.SessionNumber(1)).trialDataTable;
+            %                         d = ds(strcmp(ds.Subject,subjects{i}) & ds.TMS == j & ds.Pre == 0 ,:);
+            %                         tmsdataPost = sessions(d.SessionNumber(1)).trialDataTable;
+            %
+            %                         subplot(Rows, length(subjects), i + (j-1)*length(subjects),'nextplot','add');
+            %
+            %                         plot(shamdataPost.Bin100Torsion-nanmedian(shamdataPre.Bin100Torsion(1:299)  ), 'linewidth',2)
+            %                         plot(tmsdataPost.Bin100Torsion-nanmedian(tmsdataPre.Bin100Torsion(1:299)), 'linewidth',2)
+            % %                         plot(shamdataPost.Bin100SVV(1:299)-(shamdataPre.Bin100SVV(1:299)  ))
+            % %                         plot(tmsdataPost.Bin100SVV(1:299)-(tmsdataPre.Bin100SVV(1:299)))
+            %
+            %                         for jj=j:Rows
+            % %                             allData{jj,i} = (tmsdataPost.Bin100SVV(1:299)-(tmsdataPre.Bin100SVV(1:299))) - (shamdataPost.Bin100SVV(1:299)-(shamdataPre.Bin100SVV(1:299)));
+            %                             allData{jj,i} = (tmsdataPost.Bin100SVV(1:499)-nanmedian(tmsdataPre.Bin100SVV(1:299))) - (shamdataPost.Bin100SVV(1:499)-nanmedian(shamdataPre.Bin100SVV(1:299)));
+            %                             allDataT{jj,i} = (tmsdataPost.Bin100Torsion(1:499)-nanmedian(tmsdataPre.Torsion(1:299))) - (shamdataPost.Bin100Torsion(1:499)-nanmedian(shamdataPre.Torsion(1:299)));
+            %                         end
+            %
+            %                         if( j == 1)
+            %                             title(subjects{i})
+            %                         end
+            %
+            %                         if ( firstplot == 0 )
+            %                             firstplot = 1;
+            %
+            %                             legend({'Sham', 'TMS'})
+            %
+            %                             xlabel('Trial number');
+            %                             ylabel('Torsion');
+            %                         end
+            %                         set(gca,'ylim',[-10 10])
+            %                     end
+            %                 end
+            %             end
             
             figure
             for i=1:Rows
@@ -728,28 +701,28 @@ T = [];
                 text(500,0,['p-value = ' num2str(p)]);
             end
             
-                        Selection.AY = 6;
-                        Selection.BV = 1;
-                        Selection.DO = 3;
-                        Selection.HN = 5;
-                        Selection.US = 2;
-                        Selection.WD = 2;
-                        Selection.AM = 2;
-                        Selection.KC = 2;
-                        Selection.ED = 2;
-                        Selection.FA = 2;
-                        Selection.DC = 3;
-                        Selection.MU = 2;
+            Selection.AY = 6;
+            Selection.BV = 1;
+            Selection.DO = 3;
+            Selection.HN = 5;
+            Selection.US = 2;
+            Selection.WD = 2;
+            Selection.AM = 2;
+            Selection.KC = 2;
+            Selection.ED = 2;
+            Selection.FA = 2;
+            Selection.DC = 3;
+            Selection.MU = 2;
             
-%             Selection.AY = 1;
-%             Selection.BV = 1;
-%             Selection.DO = 1;
-%             Selection.HN = 1;
-%             Selection.US = 1;
-%             Selection.WD = 1;
-%             Selection.AM = 1;
-%             Selection.KC = 1;
-%             Selection.ED = 1;
+            %             Selection.AY = 1;
+            %             Selection.BV = 1;
+            %             Selection.DO = 1;
+            %             Selection.HN = 1;
+            %             Selection.US = 1;
+            %             Selection.WD = 1;
+            %             Selection.AM = 1;
+            %             Selection.KC = 1;
+            %             Selection.ED = 1;
             
             allDataSelected =  {};
             allDataSelectedSham =  {};
@@ -769,43 +742,43 @@ T = [];
             %%
             
             clear SelectionBARS
-                        SelectionBARS.AY = [1 2 3 4     5 6];
-                        SelectionBARS.BV = [1 2         3 4];
-                        SelectionBARS.HN = [1 2         3 5];
-                        SelectionBARS.DC = [1           2 3];
-                        SelectionBARS.DO = [1           2 3];
-                        SelectionBARS.ED = [3           1 2];
-                        SelectionBARS.KC = [3           1 2];
-                        SelectionBARS.AM = [3           1 2];
-                        SelectionBARS.US = [3           1 2];
-                        SelectionBARS.FA = [            1 2];
-                        SelectionBARS.MU = [            1 2];
-                        SelectionBARS.WD = [            1 2];
-                        
-%                         subjects = fieldnames(SelectionBARS)
-                        IDX = 1:490;
+            SelectionBARS.AY = [1 2 3 4     5 6];
+            SelectionBARS.BV = [1 2         3 4];
+            SelectionBARS.HN = [1 2         3 5];
+            SelectionBARS.DC = [1           2 3];
+            SelectionBARS.DO = [1           2 3];
+            SelectionBARS.ED = [3           1 2];
+            SelectionBARS.KC = [3           1 2];
+            SelectionBARS.AM = [3           1 2];
+            SelectionBARS.US = [3           1 2];
+            SelectionBARS.FA = [            1 2];
+            SelectionBARS.MU = [            1 2];
+            SelectionBARS.WD = [            1 2];
+            
+            %                         subjects = fieldnames(SelectionBARS)
+            IDX = 1:490;
             figure
             for i=1:length(subjects)
                 subplot(2,length(subjects)/2,i,'nextplot','add')
                 for k=1:length(SelectionBARS.(subjects{i}))-2
                     j = SelectionBARS.(subjects{i})(k);
                     effect = nanmean(allDataTMS{j,i}(IDX)) - nanmean(allDataSham{j,i}(IDX));
-                    b = bar(k, effect); 
+                    b = bar(k, effect);
                     set(b,'facecolor',[1 0.7 0.3])
                 end
                 
-                    j = SelectionBARS.(subjects{i})(end-1);
-                    effect = nanmean(allDataTMS{j,i}(IDX)) - nanmean(allDataSham{j,i}(IDX));
-                    b = bar(length(SelectionBARS.(subjects{i}))-1, effect); 
-                    set(b,'facecolor',[1 0.7 0.3])
-                            set(b,'facecolor','r')
-%                             
-%                     j = SelectionBARS.(subjects{i})(end);
-%                     effect = nanmean(allDataTMS{j,i}(IDX)) - nanmean(allDataSham{j,i}(IDX));
-%                     b = bar(length(SelectionBARS.(subjects{i})), effect); 
-%                     set(b,'facecolor',[1 0.7 0.3])
-%                             set(b,'facecolor','r')
-                            
+                j = SelectionBARS.(subjects{i})(end-1);
+                effect = nanmean(allDataTMS{j,i}(IDX)) - nanmean(allDataSham{j,i}(IDX));
+                b = bar(length(SelectionBARS.(subjects{i}))-1, effect);
+                set(b,'facecolor',[1 0.7 0.3])
+                set(b,'facecolor','r')
+                %
+                %                     j = SelectionBARS.(subjects{i})(end);
+                %                     effect = nanmean(allDataTMS{j,i}(IDX)) - nanmean(allDataSham{j,i}(IDX));
+                %                     b = bar(length(SelectionBARS.(subjects{i})), effect);
+                %                     set(b,'facecolor',[1 0.7 0.3])
+                %                             set(b,'facecolor','r')
+                
                 set(gca,'xlim',[0 7],'ylim',[-5 10])
                 set(gca,'xtick',[])
                 set(gcf,'color','w')
@@ -846,14 +819,14 @@ T = [];
                     j = SelectionBARS.(subjects{i})(k);
                     plot(allDataSham{j,i}(IDX), 'linewidth',2)
                     plot(allDataTMS{j,i}(IDX), 'linewidth',2,'color',[1 0.7 0.3])
-                xlabel(' ');
-                ylabel(' ');
-                set(gca,'ylim',[-10 10])
+                    xlabel(' ');
+                    ylabel(' ');
+                    set(gca,'ylim',[-10 10])
                 end
                 
                 
-%                 set(gca,'xlim',[0 7],'ylim',[-5 10])
-%                 set(gca,'xtick',[])
+                %                 set(gca,'xlim',[0 7],'ylim',[-5 10])
+                %                 set(gca,'xtick',[])
                 set(gcf,'color','w')
             end
             
@@ -926,26 +899,26 @@ T = [];
             
             %%
             
-%             figure
-%             for i=1:Rows
-%                 subplot(Rows,1,i)
-%                 m = nanmean(cell2mat(allDataT(i,:))');
-%                 s = nanstd(cell2mat(allDataT(i,:))');
-%                 s = s./sqrt(sum(~isnan((cell2mat(allDataT(i,:))))'));
-%                 
-%                 svvtime = cell2mat(allDataT(i,:));
-%                 mm = nanmean(svvtime(200:end,:));
-%                 [h p] = ttest(mm);
-%                 
-%                 set(gca,'xlim',[0 500],'ylim',[-5 5])
-%                 errorbar(m,s);
-%                 set(gca,'xlim',[0 500],'ylim',[-5 5])
-%                 line([0 500],[0 0],'color','k');
-%                 xlabel('Trial number');
-%                 ylabel('TMS-sham Torsion (deg');
-%                 text(500,0,['p-value = ' num2str(p)]);
-%                 
-%             end
+            %             figure
+            %             for i=1:Rows
+            %                 subplot(Rows,1,i)
+            %                 m = nanmean(cell2mat(allDataT(i,:))');
+            %                 s = nanstd(cell2mat(allDataT(i,:))');
+            %                 s = s./sqrt(sum(~isnan((cell2mat(allDataT(i,:))))'));
+            %
+            %                 svvtime = cell2mat(allDataT(i,:));
+            %                 mm = nanmean(svvtime(200:end,:));
+            %                 [h p] = ttest(mm);
+            %
+            %                 set(gca,'xlim',[0 500],'ylim',[-5 5])
+            %                 errorbar(m,s);
+            %                 set(gca,'xlim',[0 500],'ylim',[-5 5])
+            %                 line([0 500],[0 0],'color','k');
+            %                 xlabel('Trial number');
+            %                 ylabel('TMS-sham Torsion (deg');
+            %                 text(500,0,['p-value = ' num2str(p)]);
+            %
+            %             end
             
         end
     end

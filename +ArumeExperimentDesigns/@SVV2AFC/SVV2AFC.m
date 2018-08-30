@@ -9,8 +9,8 @@ classdef (Abstract) SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesign
         gamePad = [];
         biteBarMotor = [];
         
-        lastResponse = '';
-        reactionTime = '';
+        lastResponse = [];
+        reactionTime = [];
         
         fixColor = [255 0 0];
         
@@ -114,11 +114,7 @@ classdef (Abstract) SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesign
             response = [];
             
             if ( this.ExperimentOptions.UseMouse )
-                [x,y,buttons] = GetMouse();
-%                 if any(buttons) %wait for release
-%                     if (buttons(1) ==1 && buttons(3)==1)
-%                         disp('both buttons pressed');
-%                     end
+                [~,~,buttons] = GetMouse();
                     if any(buttons) % wait for release
                         if buttons(1) == 1
                             response = 'L';
@@ -127,7 +123,7 @@ classdef (Abstract) SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesign
                         end
                     end
                 elseif ( this.ExperimentOptions.UseGamePad )
-                [d, l, r] = this.gamePad.Query();
+                [~, l, r] = this.gamePad.Query();
                 if ( l == 1)
                     response = 'L';
                 elseif( r == 1)
@@ -171,24 +167,24 @@ classdef (Abstract) SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesign
             end
         end
         
-        function DrawLine(this,variables)
+        function DrawLine(this, angle, position, typeOfLine)
             
-            switch(this.ExperimentOptions.Type_of_line)
+            switch(typeOfLine)
                 case 'Radius'
                     lineLength = this.ExperimentOptions.Length_of_line;
                     [mx, my] = RectCenter(this.Graph.wRect);
-                    
-                    switch(variables.Position)
+                     
+                    switch(position)
                         case 'Up'
                             fromH = mx;
                             fromV = my;
-                            toH = mx + lineLength*sin(this.currentAngle/180*pi);
-                            toV = my - lineLength*cos(this.currentAngle/180*pi);
+                            toH = mx + lineLength*sin(angle/180*pi);
+                            toV = my - lineLength*cos(angle/180*pi);
                         case 'Down'
                             fromH = mx;
                             fromV = my;
-                            toH = mx - lineLength*sin(this.currentAngle/180*pi);
-                            toV = my + lineLength*cos(this.currentAngle/180*pi);
+                            toH = mx - lineLength*sin(angle/180*pi);
+                            toV = my + lineLength*cos(angle/180*pi);
                     end
                     
                     Screen('DrawLine', this.Graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
@@ -196,10 +192,10 @@ classdef (Abstract) SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesign
                     lineLength = this.ExperimentOptions.Length_of_line;
                     [mx, my] = RectCenter(this.Graph.wRect);
                     
-                    fromH = mx - lineLength*sin(this.currentAngle/180*pi);
-                    fromV = my + lineLength*cos(this.currentAngle/180*pi);
-                    toH = mx + lineLength*sin(this.currentAngle/180*pi);
-                    toV = my - lineLength*cos(this.currentAngle/180*pi);
+                    fromH = mx - lineLength*sin(angle/180*pi);
+                    fromV = my + lineLength*cos(angle/180*pi);
+                    toH = mx + lineLength*sin(angle/180*pi);
+                    toV = my - lineLength*cos(angle/180*pi);
                     
                     Screen('DrawLine', this.Graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
             end
