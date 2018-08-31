@@ -210,7 +210,9 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             
             samplesDataTable = VOGAnalysis.DetectQuickPhases(samplesDataTable, params);
             samplesDataTable = VOGAnalysis.DetectSlowPhases(samplesDataTable, params);
-            [eventDataTables.QuickPhases, eventDataTables.QuickPhases] = VOGAnalysis.GetQuickAndSlowPhaseTable(samplesDataTable);
+            [qp, sp] = VOGAnalysis.GetQuickAndSlowPhaseTable(samplesDataTable);
+            eventDataTables.QuickPhases = qp;
+            eventDataTables.SlowPhases = sp;
             
         end
     end
