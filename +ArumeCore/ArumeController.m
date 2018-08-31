@@ -375,6 +375,18 @@ classdef ArumeController < handle
             
             this.currentProject.save();
             
+            try
+                tbl = this.currentProject.GetDataTable;
+                if (~isempty(tbl) )
+                    writetable(tbl,fullfile(this.currentProject.path, [this.currentProject.name '_ArumeSessionTable.xlsx']));
+                end
+                
+                disp('======= ARUME EXCEL DATA SAVED TO DISK ==============================')
+            catch err
+                disp('ERROR saving excel data');
+                disp(err.getReport);
+            end
+            
             if (useWaitBar)
                 close(h);
             end

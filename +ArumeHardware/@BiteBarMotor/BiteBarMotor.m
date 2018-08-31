@@ -44,6 +44,7 @@ classdef BiteBarMotor < handle
                         delete(ss)
                         clear ss;
                         clear this.s;
+                        this.s = [];
                         out = [];
                         return
                     end

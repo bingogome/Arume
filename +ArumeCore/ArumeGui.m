@@ -1011,7 +1011,7 @@ classdef ArumeGui < handle
                                 end
                                 row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, fieldText);
                             case 'string'
-                                fieldText = dataTable{1,i};
+                                fieldText = char(dataTable{1,i});
                                 if ( length(fieldText) > 50 )
                                     fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
                                 end
@@ -1021,7 +1021,7 @@ classdef ArumeGui < handle
                             case 'cell'
                                 if ( length(size(dataTable{1,i}))<=2 && min(size(dataTable{1,i}))==1 && ischar(dataTable{1,i}{1}) && ~isempty(dataTable{1,i}) )
                                     for j=1:length(dataTable{1,i})
-                                        fieldText = dataTable{1,i}{j};
+                                        fieldText = char(dataTable{1,i}{j});
                                         if ( length(fieldText) > 50 )
                                             fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
                                         end

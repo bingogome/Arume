@@ -26,71 +26,20 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             
             dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this, importing);
             
-            dlg.UseGamePad = { {'0','{1}'} };
+            dlg.UseGamePad = { {'{0}','1'} };
             dlg.UseMouse = { {'{0}','1'} };
+            dlg.UseBiteBarMotor = { {'0','{1}'} };
             
+            dlg.TiltHeadAtBegining = { {'0','{1}'} };
+            dlg.HeadAngle = { 0 '* (deg)' [-40 40] };
             
-            dlg.Type_of_line = { {'{Radius}','Diameter'} };
-            dlg.Length_of_line = 300;
-            dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
-            
-            dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
-            dlg.targetDistance = { 125 '* (pix)' [10 500] };
+            dlg.Type_of_line = { '{Radius}|Diameter'} ;
+            dlg.Length_of_line = { 300 '* (pix)' [10 1000] };
             
             dlg.fixationDuration = { 1000 '* (ms)' [1 3000] };
             dlg.targetDuration = { 300 '* (ms)' [100 30000] };
             dlg.Target_On_Until_Response = { {'0','{1}'} }; 
             dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
-            
-            dlg.UseBiteBarMotor = { {'0','{1}'} };
-            dlg.HeadAngle = { 0 '* (deg)' [-40 40] };
-            dlg.TiltHeadAtBegining = { {'0','{1}'} };
-            
-            dlg.offset = {0 '* (deg)' [-20 20] };
-        end
-        
-        function shouldContinue = initBeforeRunning( this )
-            shouldContinue = 1;
-            
-            % Initialize eyetracker
-            initBeforeRunning@ArumeExperimentDesigns.EyeTracking(this);
-            
-            % Initialize gamepad
-            if ( this.ExperimentOptions.UseGamePad )
-                
-                this.gamePad = ArumeHardware.GamePad();
-                
-            end
-            
-            % Initialize bitebar
-            if ( this.ExperimentOptions.UseBiteBarMotor)
-%                 clear this.biteBarMotor;
-%                 this.biteBarMotor = [];
-                this.biteBarMotor = ArumeHardware.BiteBarMotor();
-                
-                if (isfield(this.ExperimentOptions, 'TiltHeadAtBegining') && this.ExperimentOptions.TiltHeadAtBegining )
-                    if ( isempty(this.Session.currentRun.pastTrialTable) )
-                        this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
-                        disp('30 s pause');
-                        result = this.Graph.DlgTimer('Waiting 30s...',30);
-                        if ( result < 0 )
-                            shouldContinue = 0;
-                            return;
-                        end
-                        disp('done');
-                    end
-                end
-            end
-            
-%             if ( 0) % this was for the EEG experiment to output something with the parallel port
-%                 %initialize the inpoutx64 low-level I/O driver
-%                 config_io;
-%                 %optional step: verify that the inpoutx64 driver was successfully installed
-%                 global cogent;
-%                 if( cogent.io.status ~= 0 )
-%                     error('inp/outp installation failed');
-%                 end
-%             end
             
         end
         
@@ -127,14 +76,46 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             conditionVars(i).values = {'Up' 'Down'};
         end
         
+        function shouldContinue = initBeforeRunning( this )
+            shouldContinue = 1;
+            
+            % Initialize eyetracker
+            initBeforeRunning@ArumeExperimentDesigns.EyeTracking(this);
+            
+            % Initialize gamepad
+            if ( this.ExperimentOptions.UseGamePad )
+                this.gamePad = ArumeHardware.GamePad();
+            end
+            
+            % Initialize bitebar
+            if ( this.ExperimentOptions.UseBiteBarMotor)
+                this.biteBarMotor = ArumeHardware.BiteBarMotor();
+            end
+            
+%             if ( 0) % this was for the EEG experiment to output something with the parallel port
+%                 %initialize the inpoutx64 low-level I/O driver
+%                 config_io;
+%                 %optional step: verify that the inpoutx64 driver was successfully installed
+%                 global cogent;
+%                 if( cogent.io.status ~= 0 )
+%                     error('inp/outp installation failed');
+%                 end
+%             end
+            
+        end
+        
+        function [trialResult, thisTrialData] = runPreTrial( this, thisTrialData )
+            Enum = ArumeCore.ExperimentDesign.getEnum();
+            trialResult = Enum.trialResult.CORRECT;
+            if ( isempty(this.Session.currentRun.pastTrialTable) && this.ExperimentOptions.HeadAngle ~= 0 )
+                [trialResult, thisTrialData] = this.TiltBiteBar(this.ExperimentOptions.HeadAngle, thisTrialData);
+            end
+        end
+        
         function [trialResult, thisTrialData] = runTrial( this, thisTrialData )
             
             Enum = ArumeCore.ExperimentDesign.getEnum();
-            trialResult = Enum.trialResult.CORRECT;
             graph = this.Graph;
-            
-            response = [];
-            reactionTime = nan;
             
             %-- add here the trial code
             Screen('FillRect', graph.window, 0);
@@ -146,13 +127,13 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             
             lastFlipTime                        = Screen('Flip', graph.window);
             secondsRemaining                    = this.trialDuration;
-            thisTrialData.StartLoopTime         = lastFlipTime;
+            thisTrialData.TimeStartLoop         = lastFlipTime;
             if ( ~isempty(this.eyeTracker) )
                 thisTrialData.EyeTrackerFrameStartLoop = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_LOOP %d %d', thisTrialData.TrialNumber, thisTrialData.Condition) );
             end
             while secondsRemaining > 0
                 
-                secondsElapsed      = GetSecs - thisTrialData.StartLoopTime;
+                secondsElapsed      = GetSecs - thisTrialData.TimeStartLoop;
                 secondsRemaining    = this.trialDuration - secondsElapsed;
                 
                 % -----------------------------------------------------------------
@@ -193,7 +174,9 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
                     reverse = thisTrialData.Position == 'Down';
                     response = this.CollectLeftRightResponse(reverse);
                     if ( ~isempty( response) )
-                        reactionTime = secondsElapsed-t1;
+                        thisTrialData.Response = response;
+                        thisTrialData.ResponseTime = GetSecs;
+                        thisTrialData.ReactionTime = thisTrialData.ResponseTime - thisTrialData.TimeStartLoop - t1;
                         
                         % SEND TO PARALEL PORT TRIAL NUMBER
                         %write a value to the default LPT1 printer output port (at 0x378)
@@ -209,20 +192,11 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
                 
             end
             
-            % -----------------------------------------------------------------
-            % --- Save data and trial result ----------------------------------
-            % -----------------------------------------------------------------
-            
             if ( isempty(response) )
-                trialResult =  Enum.trialResult.ABORT;
+                trialResult = Enum.trialResult.ABORT;
             else
-                thisTrialData.Response = response;
-                thisTrialData.ReactionTime = reactionTime;
+                trialResult = Enum.trialResult.CORRECT;
             end
-            
-            % -----------------------------------------------------------------
-            % --- END Save data and trial result ------------------------------
-            % -----------------------------------------------------------------
         end
         
         function cleanAfterRunning(this)
@@ -241,6 +215,49 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
                     this.biteBarMotor.Close();
                 end
             end
+        end
+        
+        function [trialResult, thisTrialData] = TiltBiteBar(this, tiltAngle, thisTrialData)
+            
+            Enum = ArumeCore.ExperimentDesign.getEnum();
+            trialResult = Enum.trialResult.QUIT;
+                        
+            result = 'n';
+            while( result ~= 'y' )
+                result = this.Graph.DlgSelect( ...
+                    sprintf('Bite bar is going to tilt to %d degrees. Continue?',tiltAngle), ...
+                    { 'y' 'n'}, ...
+                    { 'Yes'  'No'} , [],[]);
+                if ( result ~= 'y' )
+                    result = this.Graph.DlgSelect( ...
+                        'Do you want to interrupt the experiment?', ...
+                        { 'y' 'n'}, ...
+                        { 'Yes'  'No'} , [],[]);
+                    if ( result ~= 'n' )
+                        trialResult = Enum.trialResult.QUIT;
+                        return;
+                    end
+                end
+            end
+            
+            [mx, my] = RectCenter(this.Graph.wRect);
+            fixRect = [0 0 10 10];
+            fixRect = CenterRectOnPointd( fixRect, mx, my );
+            Screen('FillOval', this.Graph.window,  255, fixRect);
+            Screen('Flip', this.Graph.window);
+            
+            thisTrialData.TimeStartMotorMove = GetSecs;
+            pause(2);
+            this.biteBarMotor.SetTiltAngle(tiltAngle);
+            thisTrialData.TimeEndMotorMove = GetSecs;
+            disp('30 s pause');
+            result = this.Graph.DlgTimer('Waiting 30s...',30);
+            if ( result < 0 )
+                trialResult =  Enum.trialResult.ABORT;
+                return;
+            end
+            thisTrialData.TimeEndMotorMovePause = GetSecs;
+            disp('done with pause');
         end
         
         function response = CollectLeftRightResponse(this, reverse)

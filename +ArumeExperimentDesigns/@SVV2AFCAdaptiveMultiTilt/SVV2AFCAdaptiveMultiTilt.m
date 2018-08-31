@@ -21,16 +21,14 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
             dlg = rmfield(dlg, 'TotalNumberOfTrials');
             dlg = rmfield(dlg, 'HeadAngle');
             dlg = rmfield(dlg, 'TiltHeadAtBegining');
-            dlg = rmfield(dlg, 'offset');
-            
-            dlg.Tilts = [10 20 30];
-            dlg.TrialsPerTilt = {100 '* (trials)' [1 500] };
             
             if ( rand>0.5)
-                dlg.FirstSide = { {'{Left}','Right'} };
+                dlg.Tilts = [0 -10 -20 -30 0 10 20 30];
             else
-                dlg.FirstSide = { {'Left','{Right}'} };
-            end 
+                dlg.Tilts = [0 10 20 30 0 -10 -20 -30];
+            end
+            
+            dlg.TrialsPerTilt = {100 '* (trials)' [1 500] };
             
             dlg.Prisms = { {'{No}','2020Converge'} };
         end
@@ -42,47 +40,30 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
                 + this.ExperimentOptions.targetDuration/1000 ...
                 + this.ExperimentOptions.responseDuration/1000 ; %seconds
             
+            Ntilts = length(this.ExperimentOptions.Tilts);
+            NTrialsPerTilt = this.ExperimentOptions.TrialsPerTilt;
+            NAnglesInRange = length(this.ConditionVars(1).values)*2;
+            NblocksPerTilt = ceil(NTrialsPerTilt/NAnglesInRange);
+            
             % default parameters of any experiment
             this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
             this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
-            this.trialsPerSession   = this.ExperimentOptions.TrialsPerTilt*(length(this.ExperimentOptions.Tilts)+1)*2;
-            this.trialsBeforeBreak  = this.ExperimentOptions.TrialsPerTilt*(length(this.ExperimentOptions.Tilts)+1);
+            this.trialsPerSession   = NTrialsPerTilt*Ntilts;
+            this.trialsBeforeBreak  = NTrialsPerTilt*Ntilts/2;
             
             %%-- Blocking
+            
             this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
             this.numberOfTimesRepeatBlockSequence =  1;
-            NblocksPerTilt = ceil(this.ExperimentOptions.TrialsPerTilt/10);
-            this.blocksToRun = NblocksPerTilt*(length(this.ExperimentOptions.Tilts)+1)*2;
+            this.blocksToRun = NblocksPerTilt*Ntilts;
             
-              
             this.blocks = [];
-            
-            if ( strcmp(this.ExperimentOptions.FirstSide,'Left') )
-                offset1 = 0;
-                offset2 = 30;
-            else
-                offset1 = 30;
-                offset2 = 0;
-            end
-            
-            % initial upright
-            block = struct( 'fromCondition', 1, 'toCondition', 10, 'trialsToRun', 10);
-            this.blocks = cat(1,this.blocks, repmat(block,NblocksPerTilt,1));
-            
-            % first side
-            for j=1:length(this.ExperimentOptions.Tilts)
-                block = struct( 'fromCondition', 1+j*10+offset1, 'toCondition', 10+j*10+offset1, 'trialsToRun', 10);
+            for j=1:Ntilts
+                block = struct( 'fromCondition', 1+j*NAnglesInRange, 'toCondition', NAnglesInRange+j*NAnglesInRange, 'trialsToRun', NAnglesInRange);
                 this.blocks = cat(1,this.blocks, repmat(block,NblocksPerTilt,1));
-            end
-            
-            % second upright
-            block = struct( 'fromCondition', 1, 'toCondition', 10, 'trialsToRun', 10);
-            this.blocks = cat(1,this.blocks, repmat(block,NblocksPerTilt,1));
-            
-            % second side 
-            for j=1:length(this.ExperimentOptions.Tilts)
-                block = struct( 'fromCondition', 1+j*10+offset2, 'toCondition', 10+j*10+offset2, 'trialsToRun', 10);
-                this.blocks = cat(1,this.blocks, repmat(block,NblocksPerTilt,1));
+                if ( rem(NTrialsPerTilt,NAnglesInRange)>0)
+                    this.blocks(end).trialsToRun = rem(NTrialsPerTilt,NAnglesInRange);
+                end
             end
         end
         
@@ -100,7 +81,7 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
             
             i = i+1;
             conditionVars(i).name   = 'Tilt';
-            conditionVars(i).values = [0 -this.ExperimentOptions.Tilts this.ExperimentOptions.Tilts];
+            conditionVars(i).values = this.ExperimentOptions.Tilts;
         end
         
         function [trialResult,thisTrialData] = runPreTrial(this, thisTrialData )
@@ -110,49 +91,16 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
             % Change the angle of the bitebar if necessary
             if ( this.ExperimentOptions.UseBiteBarMotor )
                  if (thisTrialData.Tilt ~= this.biteBarMotor.CurrentAngle )       
-                    result = 'n';
-                    while( result ~= 'y' )
-                        result = this.Graph.DlgSelect( ...
-                            sprintf('Bite bar is going to tilt to %d degrees. Continue?',thisTrialData.Tilt), ...
-                            { 'y' 'n'}, ...
-                            { 'Yes'  'No'} , [],[]);
-                        if ( result ~= 'y' )
-                            result = this.Graph.DlgSelect( ...
-                                'Do you want to interrupt the experiment?', ...
-                                { 'y' 'n'}, ...
-                                { 'Yes'  'No'} , [],[]);
-                            if ( result ~= 'n' )
-                                trialResult = Enum.trialResult.QUIT;
-                                return;
-                            end
-                        end
-                    end
-                                        
-                    [mx, my] = RectCenter(this.Graph.wRect);
-                    fixRect = [0 0 10 10];
-                    fixRect = CenterRectOnPointd( fixRect, mx, my );
-                    Screen('FillOval', this.Graph.window,  255, fixRect);
-                    Screen('Flip', this.Graph.window);
-                    
-                    if ( this.ExperimentOptions.UseBiteBarMotor)
-                        thisTrialData.TimeStartMotorMove = GetSecs;
-                        pause(2);
-                        this.biteBarMotor.SetTiltAngle(thisTrialData.Tilt);
-                        thisTrialData.TimeEndMotorMove = GetSecs;
-                        disp('30 s pause');
-                        result = this.Graph.DlgTimer('Waiting 30s...',30);
-                        if ( result < 0 )
-                            trialResult =  Enum.trialResult.ABORT;
-                            return;
-                        end
-                        thisTrialData.TimeEndMotorMovePause = GetSecs;
-                        disp('done with pause');
+                    [trialResult, thisTrialData] = this.TiltBiteBar(thisTrialData.Tilt, thisTrialData);
+                    if (trialResult ~= 'CORRECT' )
+                        return
                     end
                 end
             end
             
             % adaptive paradigm
             
+            previousTrialsInSameTilt = [];
             if ( ~isempty(this.Session.currentRun.pastTrialTable) )
                 correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  Enum.trialResult.CORRECT ,:);
                 
@@ -161,8 +109,6 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
                     idxLastDifferentTilt = 0;
                 end
                 previousTrialsInSameTilt = correctTrialsTable((idxLastDifferentTilt+1):end,:);
-            else
-                previousTrialsInSameTilt = [];
             end
             
             thisTrialData = this.updateRange(thisTrialData, previousTrialsInSameTilt);
@@ -180,6 +126,22 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
         end
         
         function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+            tdata = this.Session.trialDataTable;
+            tilts = unique(this.Session.trialDataTable.Tilt);
+            for i=1:length(tilts)
+                tidx = tdata.Tilt==tilts(i);
+                angles = tdata{tidx,'Angle'};
+                responses = tdata{tidx,'Response'};
+                [SVV, a, p, allAngles, allResponses, trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
+                
+                sessionDataTable{1,['SVV_' strrep(num2str(tilts(i)),'-','N')]} = SVV;
+                sessionDataTable{1,['SVVth_' strrep(num2str(tilts(i)),'-','N')]} = SVVth;
+                sessionDataTable{1,['Torsion_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(nanmean(tdata{(tidx),{'AverageLeftT' 'AverageRightT'}},2));
+                sessionDataTable{1,['Vergence_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(tdata.AverageLeftX(tidx)-tdata.AverageRightX(tidx));
+                sessionDataTable{1,['Skew_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(tdata.AverageLeftX(tidx)-tdata.AverageRightX(tidx));
+                sessionDataTable{1,['HeadRoll_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(tdata.AverageLeftX(tidx)-tdata.AverageRightX(tidx));
+                sessionDataTable{1,['HeadPitch_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(tdata.AverageLeftX(tidx)-tdata.AverageRightX(tidx));
+            end
         end
         
     end

@@ -122,10 +122,9 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             end
         end
         
-        
         function [samplesDataTable, rawData] = PrepareSamplesDataTable(this)
-            samplesDataTable = [];
-            rawData = [];
+            samplesDataTable = table();
+            rawData = table();
             
             if ( ~isprop(this.Session.currentRun, 'LinkedFiles' ) || ~isfield(this.Session.currentRun.LinkedFiles,  'vogDataFile') )
                 return;
@@ -149,38 +148,71 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             end
             
             for i=1:length(dataFiles)
-                dataFile = dataFiles{i}
+                dataFile = dataFiles{i};
+                cprintf('blue','Reading data File %s\n',dataFile);
                 calibrationFile = calibrationFiles{i};
                 
                 dataFilePath = fullfile(this.Session.dataPath, dataFile);
                 calibrationFilePath = fullfile(this.Session.dataPath, calibrationFile);
                 
-                % load data
-                rawDataFile = VOG.LoadVOGdataset(dataFilePath);
+                % load and preprocess data
+                params = VOGAnalysis.GetParameters();
+                params.timescale = 1000;
                 
-                % calibrate data
-                [calibratedData leftEyeCal rightEyeCal] = VOG.CalibrateData(rawDataFile, calibrationFilePath);
-                
-                [cleanedData, fileSamplesDataSet] = VOG.ResampleAndCleanData3(calibratedData, 1000);
+                rawDataFile         = VOGAnalysis.LoadVOGdata(dataFilePath);
+                calibrationTable    = VOGAnalysis.ReadCalibration(calibrationFilePath);
+                calibratedData      = VOGAnalysis.CalibrateData(rawDataFile, calibrationTable);
+                fileSamplesDataSet  = VOGAnalysis.ResampleAndCleanData(calibratedData, params);
                                 
+                % add a column to indicate which file the samples came from
                 fileSamplesDataSet = [table(repmat(i,height(fileSamplesDataSet),1),'variablenames',{'FileNumber'}), fileSamplesDataSet];
-
-                                
-                if ( isempty(samplesDataTable) )
-                    samplesDataTable = fileSamplesDataSet;
-                else
-                    samplesDataTable = cat(1,samplesDataTable,fileSamplesDataSet);
-                end   
-                
-                if ( isempty(rawData) )
-                    rawData = rawDataFile;
-                else
-                    rawData = cat(1,rawData,rawDataFile);
-                end
+ 
+                samplesDataTable = cat(1,samplesDataTable,fileSamplesDataSet);
+                rawData = cat(1,rawData,rawDataFile);
             end
         end
         
+        function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
+            s = this.Session.samplesDataTable;
+            
+            if ( any(strcmp(trialDataTable.Properties.VariableNames,'EyeTrackerFrameNumberTrialStart')) )
+                ft = trialDataTable.EyeTrackerFrameNumberTrialStart;
+                fte = trialDataTable.EyeTrackerFrameNumberTrialStop;
+            else
+                ft = s.FrameNumber(1);
+                fte = s.FrameNumber(end);
+            end
+            
+            
+            % Find the samples that mark the begining and ends of trials
+            trialDataTable.SampleStartTrial = nan(size(trialDataTable.TrialNumber));
+            s.TrialNumber = nan(size(s.FrameNumber));
+            for i=1:height(trialDataTable)
+                trialDataTable.SampleStartTrial(i) = bins(s.FrameNumber',ft(i));
+                trialDataTable.SampleStopTrial(i) = bins(s.FrameNumber',fte(i));
+                idx = trialDataTable.SampleStartTrial(i):trialDataTable.SampleStopTrial(i);
+                s.TrialNumber(idx) = trialDataTable.TrialNumber(i);
+            end
+            
+            st = grpstats(...
+                s(~isnan(s.TrialNumber),:), ...     % Selected rows of data
+                'TrialNumber', ...                  % GROUP VARIABLE
+                {'median' 'mean' 'std'}, ...        % Stats to calculate
+                'DataVars', {'TrialNumber', 'LeftX' 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'}); 
+            st.Properties.VariableNames{'GroupCount'} = 'count_GoodSamples';
+            st.TrialNumber = [];
+            
+            trialDataTable = [trialDataTable st];
+        end
         
+        function [eventDataTables, samplesDataTable, trialDataTable]  = PrepareEventDataTables(this, eventDataTables, samplesDataTable, trialDataTable)
+            params = VOGAnalysis.GetParameters();
+            
+            samplesDataTable = VOGAnalysis.DetectQuickPhases(samplesDataTable, params);
+            samplesDataTable = VOGAnalysis.DetectSlowPhases(samplesDataTable, params);
+            [eventDataTables.QuickPhases, eventDataTables.QuickPhases] = VOGAnalysis.GetQuickAndSlowPhaseTable(samplesDataTable);
+            
+        end
     end
             
     % ---------------------------------------------------------------------

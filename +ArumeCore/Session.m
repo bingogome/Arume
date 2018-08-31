@@ -53,7 +53,7 @@ classdef Session < ArumeCore.DataDB
         %
         % Basic type of events will be Saccades, blinks, slow phases
         %
-        eventsDataTable 
+        eventDataTables
         
         % Single row data table that will be used to create a multisession
         % table
@@ -88,8 +88,8 @@ classdef Session < ArumeCore.DataDB
             samplesDataTable = this.ReadVariable('samplesDataTable');
         end
         
-        function eventsDataTable = get.eventsDataTable(this)
-            eventsDataTable = this.ReadVariable('eventsDataTable');
+        function eventDataTables = get.eventDataTables(this)
+            eventDataTables = this.ReadVariable('eventDataTables');
         end
         
         function sessionDataTable = get.sessionDataTable(this)
@@ -328,16 +328,24 @@ classdef Session < ArumeCore.DataDB
             
             SHOULD_DO_TRIALS = 1;
             SHOULD_DO_SAMPLES = 1;
-            SHOULD_DO_EVENTS = 0;
+            SHOULD_DO_EVENTS = 1;
             SHOULD_DO_SESSION = 1;
             
             %% 0) Create the basic trial dataaset (without custom experiment stuff)
-            newTrialDataTable = this.currentRun.pastTrialTable;
+            trials = this.currentRun.pastTrialTable;
             % remove errors and aborts for analysis
-            if (~isempty(newTrialDataTable))
-                newTrialDataTable(newTrialDataTable.TrialResult ~= Enum.trialResult.CORRECT ,:) = [];
+            if (~isempty(trials))
+                    % just in case for old data
+                if ( ~iscategorical(trials.TrialResult) )
+                    trials.TrialResult = Enum.trialResult.PossibleResults(trials.TrialResult+1);
+                end
+                if ( ~any(strcmp(trials.Properties.VariableNames,'TrialNumber')) )
+                    tn = cumsum(trials.TrialResult ~= Enum.trialResult.CORRECT)+1;
+                    trials.TrialNumber = [1 tn(1:end-1)];
+                end
+                trials(trials.TrialResult ~= Enum.trialResult.CORRECT ,:) = [];
             end
-            this.WriteVariable(newTrialDataTable,'trialDataTable');
+            this.WriteVariable(trials,'trialDataTable');
             
             if (SHOULD_DO_SAMPLES)
                 %% 1) Prepare the sample dataset
@@ -354,18 +362,26 @@ classdef Session < ArumeCore.DataDB
 
             if (SHOULD_DO_TRIALS)
                 %% 2) Prepare the trial dataset
-                newTrialDataTable = this.experimentDesign.PrepareTrialDataTable(newTrialDataTable);
-                if ( ~isempty(newTrialDataTable) )
-                    this.WriteVariable(newTrialDataTable,'trialDataTable');
+                trials = this.experimentDesign.PrepareTrialDataTable(trials);
+                if ( ~isempty(trials) )
+                    this.WriteVariable(trials,'trialDataTable');
                 end
             end
 
             if (SHOULD_DO_EVENTS)
                 %% 3) Prepare events datasets
-                events = this.experimentDesign.PrepareEventDataSet([]);
+                events = [];
+                [events, samples, trials] = this.experimentDesign.PrepareEventDataTables(events, samples, trials);
                 if ( ~isempty(events) )
-                    this.WriteVariable(events,'eventsDataTable');
+                    this.WriteVariable(events,'eventDataTables');
                 end
+                if ( ~isempty(samples) )
+                    this.WriteVariable(samples,'samplesDataTable');
+                end
+                if ( ~isempty(trials) )
+                    this.WriteVariable(trials,'trialDataTable');
+                end
+                
             end
             
             if (SHOULD_DO_SESSION)
@@ -410,8 +426,10 @@ classdef Session < ArumeCore.DataDB
                     newSessionDataTable.NumberOfTrialsPending = 0;
                     
                     if ( ~isempty(this.currentRun.pastTrialTable) )
-                        newSessionDataTable.NumberOfTrialsCompleted = sum(this.currentRun.pastTrialTable.TrialResult == Enum.trialResult.CORRECT);
-                        newSessionDataTable.NumberOfTrialsAborted   = sum(this.currentRun.pastTrialTable.TrialResult ~= Enum.trialResult.CORRECT);
+                        if ( iscategorical(this.currentRun.pastTrialTable.TrialResult) )
+                            newSessionDataTable.NumberOfTrialsCompleted = sum(this.currentRun.pastTrialTable.TrialResult == Enum.trialResult.CORRECT);
+                            newSessionDataTable.NumberOfTrialsAborted   = sum(this.currentRun.pastTrialTable.TrialResult ~= Enum.trialResult.CORRECT);
+                        end
                     end
                     
                     if ( ~isempty(this.currentRun.futureTrialTable) )

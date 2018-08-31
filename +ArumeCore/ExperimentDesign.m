@@ -136,7 +136,7 @@ classdef ExperimentDesign < handle
         function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
         end
         
-        function eventDataTable = PrepareEventDataTable(this, eventDataTable)
+        function [eventDataTables, samplesDataTable, trialDataTable]  = PrepareEventDataTables(this, eventDataTables, samplesDataTable, trialDataTable)
         end
         
         function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
@@ -274,10 +274,6 @@ classdef ExperimentDesign < handle
                 this.ExperimentOptions  = options;
             end
             
-            %-- init variables
-            this.ConditionVars      = this.getConditionVariables();
-            this.ConditionMatrix    = this.getConditionMatrix( this.ConditionVars );
-            
             %-- init options
             %-- Check if all the options are there, if not add the default
             % values. This is important to mantain past compatibility if
@@ -292,6 +288,11 @@ classdef ExperimentDesign < handle
                     end
                 end
             end
+            
+            %-- init variables
+            this.ConditionVars      = this.getConditionVariables();
+            this.ConditionMatrix    = this.getConditionMatrix( this.ConditionVars );
+            
             
             % default parameters of any experiment
             this.trialsPerSession   = this.NumberOfConditions;

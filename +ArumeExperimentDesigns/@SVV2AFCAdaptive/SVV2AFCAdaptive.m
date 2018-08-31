@@ -13,8 +13,8 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             end
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFC(this, importing);
             
-            dlg.PreviousTrialsForRange = { {'{All}','Previous30'} };
-            dlg.RangeChanges = { {'{Slow}','Fast'} };
+            dlg.PreviousTrialsForRange = { '{All}|Previous30'};
+            dlg.RangeChanges = {'{Slow}|Fast'} ;
             dlg.TotalNumberOfTrials = 100;
         end
         
@@ -145,9 +145,10 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-        function trialDataTable = PrepareTrialDataTable( this, ds)
-            trialDataTable = ds;
-            data = ds;
+        function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
+            trialDataTable = PrepareTrialDataTable@ArumeExperimentDesigns.EyeTracking(this,trialDataTable);
+            
+            data = trialDataTable;
             
             %             return;
             %
