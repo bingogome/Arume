@@ -51,7 +51,8 @@ classdef ArumeGui < handle
         menuPlotGeneratePlotsAggregated
         
         menuTools
-        menuBiteBarGui
+        menuToolsBiteBarGui
+        menuToolsOpenProjectFolderInExplorer
         
         % Session Contextual menu
         sessionContextMenu
@@ -60,6 +61,7 @@ classdef ArumeGui < handle
         sessionContextMenuRenameSubjects
         sessionContextMenuDelete
         sessionContextMenuCopy
+        sessionContextMenuSendDataToWorkspace
     end
     
     %% Constructor
@@ -137,10 +139,10 @@ classdef ArumeGui < handle
                 'Parent'    , this.topPanel,...
                 'Style'     , 'text',...
                 'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
+                'FontSize'	, 8,...
                 'String'    , 'Project: ',...
                 'HorizontalAlignment', 'left',...
-                'Position'  , [5,0,500,15]);
+                'Position'  , [5,0,700,15]);
             
             this.sessionListBox = uicontrol( ...
                 'Parent'    , this.leftPanel,...
@@ -262,9 +264,12 @@ classdef ArumeGui < handle
             this.menuTools = uimenu(this.figureHandle, ...
                 'Label'     , 'Tools');
             
-            this.menuBiteBarGui = uimenu(this.menuTools, ...
+            this.menuToolsBiteBarGui = uimenu(this.menuTools, ...
                 'Label'     , 'Bite bar GUI', ...
                  'Callback'  , @BitebarGUI);
+            this.menuToolsOpenProjectFolderInExplorer = uimenu(this.menuTools, ...
+                'Label'     , 'Open project folder in explorer...', ...
+                 'Callback'  , @this.OpenProjectFolderInExplorer);
         
         
             
@@ -286,6 +291,9 @@ classdef ArumeGui < handle
             this.sessionContextMenuEditSettings = uimenu(this.sessionContextMenu, ...
                 'Label'     , 'Edit settings ...', ...
                 'Callback'  , @this.EditSessionSettings);
+            this.sessionContextMenuSendDataToWorkspace = uimenu(this.sessionContextMenu, ...
+                'Label'     , 'Send data to workspace ...', ...
+                'Callback'  , @this.SendDataToWorkspace);
             set(this.sessionListBox, 'uicontextmenu', this.sessionContextMenu)
             
             
@@ -514,7 +522,7 @@ classdef ArumeGui < handle
                 end
                 
                 % Check if session already exists
-                if ( isempty(this.arumeController.currentProject.findSession( session.Experiment, session.Subject_Code, session.Session_Code)))
+                if ( isempty(this.arumeController.currentProject.findSession( session.Subject_Code, session.Session_Code)))
                     break;
                 else
                     uiwait(msgbox('There is already a session with this name/code', 'Error', 'Modal'));
@@ -574,7 +582,7 @@ classdef ArumeGui < handle
                 end
                 
                 % Check if session already exists
-                if ( isempty(this.arumeController.currentProject.findSession( session.Experiment, session.Subject_Code, session.Session_Code)))
+                if ( isempty(this.arumeController.currentProject.findSession( session.Subject_Code, session.Session_Code)))
                     break;
                 else
                     uiwait(msgbox('There is already a session with this name/code', 'Error', 'Modal'));
@@ -830,6 +838,19 @@ classdef ArumeGui < handle
             this.updateGui();
         end
         
+        function SendDataToWorkspace( this, source, eventdata ) 
+            if (~isempty(this.arumeController.currentSession))
+                TrialDataTable = this.arumeController.currentSession.trialDataTable;
+                SamplesDataTable = this.arumeController.currentSession.samplesDataTable;
+                ProjectDataTable = this.arumeController.currentProject.GetDataTable();
+                EventDataTables = this.arumeController.currentSession.eventDataTables;
+                
+                assignin('base','TrialDataTable',TrialDataTable);
+                assignin('base','SamplesDataTable',SamplesDataTable);
+                assignin('base','EventDataTables',EventDataTables);
+            end
+        end
+        
         function startSession( this, source, eventdata ) 
             this.arumeController.runSession();
             this.updateGui();
@@ -929,6 +950,12 @@ classdef ArumeGui < handle
             this.updateGui();
         end
         
+        function OpenProjectFolderInExplorer( this, source, eventdata ) 
+            if ( ~isempty(this.arumeController.currentProject))
+                winopen(this.arumeController.currentProject.path)
+            end
+        end
+        
         function sessionListBoxCallBack( this, source, eventdata )
             
             sessionListBoxCurrentValue = get(this.sessionListBox,'value');
@@ -941,10 +968,6 @@ classdef ArumeGui < handle
         
         function commentsTextBoxCallBack( this, source, eventdata )
             this.arumeController.currentSession.updateComment(get(this.commentsTextBox, 'string'));
-        end
-        
-        function SendToWorkspace( this, source, eventdata)
-            
         end
     end
     
@@ -1038,6 +1061,8 @@ classdef ArumeGui < handle
                         
                         
                 set(this.infoBox,'string', s);
+            else
+                set(this.infoBox,'string', '');
             end
             
             % update comments text box

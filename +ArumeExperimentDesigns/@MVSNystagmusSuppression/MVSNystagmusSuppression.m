@@ -164,7 +164,7 @@ classdef MVSNystagmusSuppression < ArumeExperimentDesigns.EyeTracking
                     for k=1:3
                         subject = longsubjects{i};
                         sessionCode = [conditions{j} num2str(k)];
-                        session = this.Project.findSession(experiment, subject, sessionCode);
+                        session = this.Project.findSession(subject, sessionCode);
                         if ( isempty(session) )
                             continue;
                         end
@@ -210,7 +210,7 @@ classdef MVSNystagmusSuppression < ArumeExperimentDesigns.EyeTracking
                     for k=1:2
                         subject = subjects{i};
                         sessionCode = [conditions{j} num2str(k)];
-                        session = this.Project.findSession(experiment, subject, sessionCode);
+                        session = this.Project.findSession(subject, sessionCode);
                         
                         vxl = session.analysisResults.SPV.LeftX;
                         vxl2 = interp1(find(~isnan(vxl)),vxl(~isnan(vxl)),1:1:length(vxl));

@@ -86,8 +86,9 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         function ImportSession( this )
             newRun = ArumeCore.ExperimentRun.SetUpNewRun( this );
             vars = newRun.futureTrialTable;
-            vars.TrialResult = 0;
-            newRun.AddPastTrialData(vars)
+            vars.TrialResult = categorical(cellstr('CORRECT'));
+            vars.TrialNumber = 1;
+            newRun.AddPastTrialData(vars);
             newRun.futureTrialTable(:,:) = [];
             this.Session.importCurrentRun(newRun);
             
@@ -156,13 +157,11 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 calibrationFilePath = fullfile(this.Session.dataPath, calibrationFile);
                 
                 % load and preprocess data
-                params = VOGAnalysis.GetParameters();
-                params.timescale = 1000;
                 
                 rawDataFile         = VOGAnalysis.LoadVOGdata(dataFilePath);
                 calibrationTable    = VOGAnalysis.ReadCalibration(calibrationFilePath);
                 calibratedData      = VOGAnalysis.CalibrateData(rawDataFile, calibrationTable);
-                fileSamplesDataSet  = VOGAnalysis.ResampleAndCleanData(calibratedData, params);
+                fileSamplesDataSet  = VOGAnalysis.ResampleAndCleanData(calibratedData, VOGAnalysis.GetParameters());
                                 
                 % add a column to indicate which file the samples came from
                 fileSamplesDataSet = [table(repmat(i,height(fileSamplesDataSet),1),'variablenames',{'FileNumber'}), fileSamplesDataSet];

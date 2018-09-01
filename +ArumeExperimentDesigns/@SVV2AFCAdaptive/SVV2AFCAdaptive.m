@@ -52,16 +52,14 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
         end
         
         function [trialResult, thisTrialData] = runPreTrial(this, thisTrialData )
-            Enum = ArumeCore.ExperimentDesign.getEnum();
-            
             if ( ~isempty(this.Session.currentRun.pastTrialTable) )
-                correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  Enum.trialResult.CORRECT ,:);
+                correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  'CORRECT' ,:);
             else
                 correctTrialsTable = [];
             end
             
-            thisTrialData = this.updateRange(thisTrialData, correctTrialsTable);
-            trialResult = Enum.trialResult.CORRECT;
+            thisTrialData   = this.updateRange(thisTrialData, correctTrialsTable);
+            trialResult     = 'CORRECT';
         end
         
         function thisTrialData = updateRange(this, thisTrialData, previousTrialTableSelection)

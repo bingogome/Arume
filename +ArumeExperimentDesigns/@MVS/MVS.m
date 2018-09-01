@@ -1,4 +1,4 @@
-classdef MVS < ArumeCore.ExperimentDesign
+classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
     
     properties
         
@@ -9,22 +9,12 @@ classdef MVS < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         
-        function dlg = GetOptionsDialog( this )
-            dlg.EyeDataFile = { {['uigetfile(''' fullfile(pwd,'*.txt') ''')']} };
-            dlg.EyeCalibrationFile = { {['uigetfile(''' fullfile(pwd,'*.cal') ''')']} };
-        end
-        
-        function initBeforeRunning( this )
+        function dlg = GetOptionsDialog( this, importing )
+            if( ~exist( 'importing', 'var' ) )
+                importing = 0;
+            end
             
-            % Important variables to use:
-            %
-            % this.ExperimentOptions.NAMEOFOPTION will contain the values
-            %       from GetOptionsDialog   
-            %
-            %
-        end
-        
-        function cleanAfterRunning(this)
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this, importing);
         end
     end
     
@@ -32,39 +22,72 @@ classdef MVS < ArumeCore.ExperimentDesign
     % Data Analysis methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
-        
-        function ImportSession( this )
-        end
-        
-        function trialDataSet = PrepareTrialDataSet( this, ds)
-            % Every class inheriting from SVV2AFC should override this
-            % method and add the proper PresentedAngle and
-            % LeftRightResponse variables
-            
-            trialDataSet = this.PrepareTrialDataSet@ArumeCore.ExperimentDesign(ds);
-            
-            trialDataSet.Condition(1) = 1;
-            trialDataSet.TrialNumber(1) = 1;
-            trialDataSet.TrialResult(1) = 1;
-            trialDataSet.StartTrialSample(1) = 1;
-            trialDataSet.EndTrialSample(1) = size(this.Session.samplesDataSet,1);
-        end
-        
-        function [samplesDataSet, rawData] = PrepareSamplesDataSet(this, samplesDataSet)
-            
-            % load data
-            rawData = VOG.LoadVOGdataset(this.ExperimentOptions.EyeDataFile);
-            
-            % calibrate data
-            [calibratedData leftEyeCal rightEyeCal] = VOG.CalibrateData(rawData, this.ExperimentOptions.EyeCalibrationFile);
-            
-            [cleanedData, samplesDataSet] = VOG.ResampleAndCleanData2(calibratedData);
+%         
+%         function trialDataSet = PrepareTrialDataSet( this, ds)
+%             % Every class inheriting from SVV2AFC should override this
+%             % method and add the proper PresentedAngle and
+%             % LeftRightResponse variables
 %             
-            % clean data
-%             samplesDataSet = VOG.ResampleAndCleanData(calibratedData);
-        end
+%             trialDataSet = this.PrepareTrialDataSet@ArumeCore.ExperimentDesign(ds);
+%             
+%             trialDataSet.Condition(1) = 1;
+%             trialDataSet.TrialNumber(1) = 1;
+%             trialDataSet.TrialResult(1) = 1;
+%             trialDataSet.StartTrialSample(1) = 1;
+%             trialDataSet.EndTrialSample(1) = size(this.Session.samplesDataSet,1);
+%         end
         
-        function samplesDataSet = PrepareEventDataSet(this, eventDataset)
+        function [eventDataTables, samplesDataTable, trialDataTable]  = PrepareEventDataTables(this, eventDataTables, samplesDataTable, trialDataTable)
+            params = VOGAnalysis.GetParameters();
+            
+            x = { samplesDataTable.LeftX, ...
+                samplesDataTable.RightX, ...
+                samplesDataTable.LeftY, ...
+                samplesDataTable.RightY, ...
+                samplesDataTable.LeftT, ...
+                samplesDataTable.RightT};
+            lx = x{1};
+            T = 500;
+            t = 1:ceil(length(lx)/T*2);
+            spv = {nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1)};
+            spvPos = {nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1), ...
+                nan(ceil(length(lx)/T*2),1)};
+            
+            for j =1:length(x)
+                v = diff(x{j})*500;
+                v1 = diff(x{2})*500;
+                qp = boxcar(abs(v1)>50,10)>0;
+                v(qp) = nan;
+                for i=1:length(x{j})/T*2
+                    idx = (1:T) + (i-1)*T/2;
+                    idx(idx>length(v)) = [];
+                    
+                    vchunk = v(idx);
+                    xchunk = x{j}(idx);
+                    if( nanstd(vchunk) < 20)
+                        spv{j}(i) =  nanmedian(vchunk);
+                        spvPos{j}(i) =  nanmedian(xchunk);
+                    end
+                end
+            end
+            
+            eventDataTables.SPV = table(t', spv{1}, spv{3}, spv{5}, spv{2}, spv{4}, spv{6}, spvPos{1}, spvPos{3}, spvPos{5}, spvPos{2}, spvPos{4}, spvPos{6}, ...
+                'VariableNames',{'Time' 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'  'LeftXPos', 'LeftYPos' 'LeftTPos' 'RightXPos' 'RightYPos' 'RightTPos'});
+%             samplesDataTable = VOGAnalysis.DetectQuickPhases(samplesDataTable, params);
+%             samplesDataTable = VOGAnalysis.DetectSlowPhases(samplesDataTable, params);
+%             [qp, sp] = VOGAnalysis.GetQuickAndSlowPhaseTable(samplesDataTable);
+%             eventDataTables.QuickPhases = qp;
+%             eventDataTables.SlowPhases = sp;
+            
         end
         
         % ---------------------------------------------------------------------
@@ -323,7 +346,7 @@ classdef MVS < ArumeCore.ExperimentDesign
             vxr2 = interp1(find(~isnan(vxr)),vxr(~isnan(vxr)),1:1:length(vxr));
             vx1 = nanmean([vxl2;vxr2]);
             
-            
+            %$ TODO fix the finding session
             control = this.Project.findSession('MVSNystagmusSuppression',this.ExperimentOptions.AssociatedControl);
             
             t2 = control.analysisResults.SPV.Time;

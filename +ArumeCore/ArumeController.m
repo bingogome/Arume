@@ -236,10 +236,8 @@ classdef ArumeController < handle
             
             % check if session already exists with that subjectCode and
             % sessionCode
-            for session = this.currentProject.sessions
-                if ( isequal(subjectCode, session.subjectCode) && isequal( sessionCode, session.sessionCode) )
-                    error( 'Arume: session already exists use a diferent name' );
-                end
+            if ( ~isempty(this.currentProject.findSession(subjectCode, sessionCode) ) )
+                error( 'Arume: session already exists use a diferent name' );
             end
             
             session = ArumeCore.Session.NewSession( this.currentProject.path, experiment, subjectCode, sessionCode, experimentOptions );
@@ -248,19 +246,17 @@ classdef ArumeController < handle
             this.currentProject.save();
         end
         
-        function session = importSession( this, experiment, subject_Code, session_Code, options )
+        function session = importSession( this, experiment, subjectCode, sessionCode, options )
             % Imports a session from external files containing the data. It
             % will not be possible to run this session
             
             % check if session already exists with that subjectCode and
             % sessionCode
-            for session = this.currentProject.sessions
-                if ( isequal(subject_Code, session.subjectCode) && isequal( session_Code, session.sessionCode) )
-                    error( 'Arume: session already exists use a diferent name' );
-                end
+            if ( ~isempty(this.currentProject.findSession(subjectCode, sessionCode) ) )
+                error( 'Arume: session already exists use a diferent name' );
             end
             
-            session = ArumeCore.Session.NewSession( this.currentProject.path, experiment, subject_Code, session_Code, options );
+            session = ArumeCore.Session.NewSession( this.currentProject.path, experiment, subjectCode, sessionCode, options );
             this.currentProject.addSession(session);
             this.selectedSessions = session;
             
@@ -279,7 +275,7 @@ classdef ArumeController < handle
             end
             disp(['Renaming session' session.subjectCode ' - ' session.sessionCode ' to '  subjectCode ' - ' sessionCode]);
             
-            [~, i] = this.currentProject.findSession(session.experimentDesign.Name, session.subjectCode, session.sessionCode);
+            [~, i] = this.currentProject.findSession(session.subjectCode, session.sessionCode);
             this.currentProject.sessions(i).rename(subjectCode, sessionCode);
             this.currentProject.save();
         end
@@ -378,7 +374,7 @@ classdef ArumeController < handle
             try
                 tbl = this.currentProject.GetDataTable;
                 if (~isempty(tbl) )
-                    writetable(tbl,fullfile(this.currentProject.path, [this.currentProject.name '_ArumeSessionTable.xlsx']));
+                    writetable(tbl,fullfile(this.currentProject.path, [this.currentProject.name '_ArumeSessionTable.csv']));
                 end
                 
                 disp('======= ARUME EXCEL DATA SAVED TO DISK ==============================')

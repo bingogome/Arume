@@ -103,6 +103,10 @@ classdef Project < handle
         % Other methods
         %
         function addSession( this, session)
+            if ( ~isempty(this.findSession(session.subjectCode, session.sessionCode) ) )
+                error( 'Arume: session already exists use a diferent name' );
+            end
+            
             if ( isempty( this.sessions ) )
                 this.sessions = session;
             else
@@ -115,18 +119,17 @@ classdef Project < handle
             this.sessions( this.sessions == session ) = [];
         end
         
-        function [session, i] = findSession( this, experimentName, subjectCode, sessionCode)
+        function [session, i] = findSession( this, subjectCode, sessionCode)
             
             for i=1:length(this.sessions)
                 if ( exist('sessionCode','var') )
-                    if ( strcmpi(this.sessions(i).experimentDesign.Name, upper(experimentName)) &&  ...
-                            strcmpi(this.sessions(i).subjectCode, upper(subjectCode)) &&  ...
-                            strcmpi(this.sessions(i).sessionCode, upper(sessionCode)))
+                    if ( strcmpi(this.sessions(i).subjectCode, subjectCode) &&  ...
+                            strcmpi(this.sessions(i).sessionCode, sessionCode))
                         session = this.sessions(i);
                         return;
                     end
                 else
-                    if ( strcmpi(this.sessions(i).experimentDesign.Name, upper(experimentName)) &&  ...
+                    if ( strcmpi(this.sessions(i).experimentDesign.Name, experimentName) &&  ...
                             strcmpi([upper(this.sessions(i).subjectCode) upper(this.sessions(i).sessionCode),], subjectCode))
                         session = this.sessions(i);
                         return;

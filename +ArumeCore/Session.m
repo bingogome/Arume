@@ -131,11 +131,11 @@ classdef Session < ArumeCore.DataDB
             this.init( projectPath, newExperimentName, newSubjectCode, newSessionCode, data.experimentOptions );
             
             if (isfield(data, 'currentRun') && ~isempty( data.currentRun ))
-                this.currentRun  = ArumeCore.ExperimentRun.LoadRunData( data.currentRun, this.experimentDesign );
+                this.currentRun  = ArumeCore.ExperimentRun.LoadRunData( data.currentRun );
             end
             
             if (isfield(data, 'pastRuns') && ~isempty( data.pastRuns ))
-                this.pastRuns  = ArumeCore.ExperimentRun.LoadRunDataArray( data.pastRuns, this.experimentDesign );
+                this.pastRuns  = ArumeCore.ExperimentRun.LoadRunDataArray( data.pastRuns );
             end
             
             if (isfield(data, 'comment') && ~isempty( data.comment ))
@@ -381,7 +381,6 @@ classdef Session < ArumeCore.DataDB
                 if ( ~isempty(trials) )
                     this.WriteVariable(trials,'trialDataTable');
                 end
-                
             end
             
             if (SHOULD_DO_SESSION)
