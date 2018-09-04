@@ -237,7 +237,7 @@ classdef ArumeController < handle
             % check if session already exists with that subjectCode and
             % sessionCode
             if ( ~isempty(this.currentProject.findSession(subjectCode, sessionCode) ) )
-                error( 'Arume: session already exists use a diferent name' );
+                error( 'Arume: session already exists, use a diferent name' );
             end
             
             session = ArumeCore.Session.NewSession( this.currentProject.path, experiment, subjectCode, sessionCode, experimentOptions );
@@ -253,7 +253,7 @@ classdef ArumeController < handle
             % check if session already exists with that subjectCode and
             % sessionCode
             if ( ~isempty(this.currentProject.findSession(subjectCode, sessionCode) ) )
-                error( 'Arume: session already exists use a diferent name' );
+                error( 'Arume: session already exists, use a diferent name' );
             end
             
             session = ArumeCore.Session.NewSession( this.currentProject.path, experiment, subjectCode, sessionCode, options );
@@ -356,16 +356,22 @@ classdef ArumeController < handle
             
             for i =1:n
                 try
-                    disp(['ARUME::preparing analysis for session ' sessions(i).name])
+                    cprintf('blue', '++ ARUME::preparing analyses for session %s\n', sessions(i).name);
                     session = sessions(i);
                     session.prepareForAnalysis();
                     if ( useWaitBar )
                         waitbar(i/n,h)
                     end
                 catch ex
-                    disp('Error preparing a session**************************');
-                    ex.getReport()
-                    disp('end Error preparing a session**************************');
+                    
+                    beep
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!! ARUME ERROR PREPARING ANALYSES: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    disp(ex.getReport);
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!! END ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
                 end
             end
             
@@ -388,6 +394,61 @@ classdef ArumeController < handle
             end
         end
                         
+        function runDataAnalyses(this, sessions)
+             useWaitBar = 0;
+                       
+            if ( ~exist('sessions','var') )
+                sessions = this.selectedSessions;
+                useWaitBar = 1;
+            end
+            
+            n = length(sessions);
+            
+            if (useWaitBar)
+                h = waitbar(0,'Please wait...');
+            end
+            
+            for i =1:n
+                try
+                    cprintf('blue', '++ ARUME::running analyses for session %s\n', sessions(i).name);
+                    session = sessions(i);
+                    session.runAnalysis();
+                    if ( useWaitBar )
+                        waitbar(i/n,h)
+                    end
+                catch ex
+                    
+                    beep
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!! ARUME ERROR RUNNING ANALYSES: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    disp(ex.getReport);
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!! END ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                end
+            end
+            
+            this.currentProject.save();
+            
+            try
+                tbl = this.currentProject.GetDataTable;
+                if (~isempty(tbl) )
+                    writetable(tbl,fullfile(this.currentProject.path, [this.currentProject.name '_ArumeSessionTable.csv']));
+                end
+                
+                disp('======= ARUME EXCEL DATA SAVED TO DISK ==============================')
+            catch err
+                disp('ERROR saving excel data');
+                disp(err.getReport);
+            end
+            
+            if (useWaitBar)
+                close(h);
+            end
+        end
+        
+        
         function plotList = GetPlotList( this )
             plotList = {};
             methodList = meta.class.fromName(class(this.currentSession.experimentDesign)).MethodList;

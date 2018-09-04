@@ -44,6 +44,7 @@ classdef ArumeGui < handle
         
         menuAnalyze
         menuAnalyzePrepare
+        menuAnalyzeRunAnalyses
         
         menuPlot
         menuPlotGeneratePlots
@@ -246,6 +247,9 @@ classdef ArumeGui < handle
             this.menuAnalyzePrepare = uimenu(this.menuAnalyze, ...
                 'Label'     , 'Prepare ...', ...
                  'Callback'  , @this.PrepareAnalysis);
+            this.menuAnalyzeRunAnalyses = uimenu(this.menuAnalyze, ...
+                'Label'     , 'Run data analyses ...', ...
+                 'Callback'  , @this.RunDataAnalyses);
             
             
             this.menuPlot = uimenu(this.figureHandle, ...
@@ -892,6 +896,12 @@ classdef ArumeGui < handle
             this.arumeController.prepareAnalysis();
             this.updateGui();
         end
+        
+        function RunDataAnalyses( this, source, eventdata ) 
+            this.arumeController.runDataAnalyses();
+            this.updateGui();
+        end
+        
         
         function Plot( this, source, eventdata )
             

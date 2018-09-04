@@ -46,6 +46,10 @@ classdef Session < ArumeCore.DataDB
         samplesDataTable
         rawDataTable
         
+        % Single row data table that will be used to create a multisession
+        % table
+        sessionDataTable
+        
         % DataTable with all the events data
         % 
         % Different experiments can load different columns.
@@ -53,11 +57,8 @@ classdef Session < ArumeCore.DataDB
         %
         % Basic type of events will be Saccades, blinks, slow phases
         %
-        eventDataTables
+        analysisResults
         
-        % Single row data table that will be used to create a multisession
-        % table
-        sessionDataTable
     end
     
     %
@@ -88,13 +89,20 @@ classdef Session < ArumeCore.DataDB
             samplesDataTable = this.ReadVariable('samplesDataTable');
         end
         
-        function eventDataTables = get.eventDataTables(this)
-            eventDataTables = this.ReadVariable('eventDataTables');
-        end
-        
         function sessionDataTable = get.sessionDataTable(this)
             sessionDataTable = this.ReadVariable('sessionDataTable');
         end
+        
+        function analysisResults = get.analysisResults(this)
+            d = struct2table(dir(fullfile(this.dataPath,'AnalysisResults_*')));
+            analysisResults = [];
+            for i=1:height(d)
+                res = regexp(d.name,'^AnalysisResults_(?<name>[_a-zA-Z0-9]+)\.mat$','names');
+                varName = res.name;
+                analysisResults.(varName) = this.ReadVariable(['AnalysisResults_' varName]);
+            end
+        end
+        
     end
     
     %% Main Session methods
@@ -235,7 +243,6 @@ classdef Session < ArumeCore.DataDB
         function importSession(this)
             this.experimentDesign.ImportSession();
         end
-
         function importCurrentRun(this, newRun)
             this.currentRun = newRun;
         end
@@ -326,11 +333,6 @@ classdef Session < ArumeCore.DataDB
                 return;
             end
             
-            SHOULD_DO_TRIALS = 1;
-            SHOULD_DO_SAMPLES = 1;
-            SHOULD_DO_EVENTS = 1;
-            SHOULD_DO_SESSION = 1;
-            
             %% 0) Create the basic trial dataaset (without custom experiment stuff)
             trials = this.currentRun.pastTrialTable;
             % remove errors and aborts for analysis
@@ -347,49 +349,62 @@ classdef Session < ArumeCore.DataDB
             end
             this.WriteVariable(trials,'trialDataTable');
             
-            if (SHOULD_DO_SAMPLES)
-                %% 1) Prepare the sample dataset
-                [samples, rawData] = this.experimentDesign.PrepareSamplesDataTable();
-                
-                if ( ~isempty(samples) )
-                    this.WriteVariable(samples,'samplesDataTable');
-                end
-                
-                if ( ~isempty(rawData) )
-                    this.WriteVariable(rawData,'rawDataTable');
-                end
-            end
-
-            if (SHOULD_DO_TRIALS)
-                %% 2) Prepare the trial dataset
-                trials = this.experimentDesign.PrepareTrialDataTable(trials);
-                if ( ~isempty(trials) )
-                    this.WriteVariable(trials,'trialDataTable');
-                end
-            end
-
-            if (SHOULD_DO_EVENTS)
-                %% 3) Prepare events datasets
-                events = [];
-                [events, samples, trials] = this.experimentDesign.PrepareEventDataTables(events, samples, trials);
-                if ( ~isempty(events) )
-                    this.WriteVariable(events,'eventDataTables');
-                end
-                if ( ~isempty(samples) )
-                    this.WriteVariable(samples,'samplesDataTable');
-                end
-                if ( ~isempty(trials) )
-                    this.WriteVariable(trials,'trialDataTable');
-                end
+            %% 1) Prepare the sample dataset
+            [samples, rawData] = this.experimentDesign.PrepareSamplesDataTable();
+            
+            if ( ~isempty(samples) )
+                this.WriteVariable(samples,'samplesDataTable');
             end
             
-            if (SHOULD_DO_SESSION)
-                %% 4) Prepare session dataTable
-                newSessionDataTable = this.GetBasicSessionDataTable();
-                newSessionDataTable = this.experimentDesign.PrepareSessionDataTable(newSessionDataTable);
-                if ( ~isempty(newSessionDataTable) )
-                    this.WriteVariable(newSessionDataTable,'sessionDataTable');
+            if ( ~isempty(rawData) )
+                this.WriteVariable(rawData,'rawDataTable');
+            end
+            
+            %% 2) Prepare the trial dataset
+            trials = this.experimentDesign.PrepareTrialDataTable(trials);
+            if ( ~isempty(trials) )
+                this.WriteVariable(trials,'trialDataTable');
+            end
+            
+            %% 3) Prepare session dataTable
+            newSessionDataTable = this.GetBasicSessionDataTable();
+            newSessionDataTable = this.experimentDesign.PrepareSessionDataTable(newSessionDataTable);
+            if ( ~isempty(newSessionDataTable) )
+                this.WriteVariable(newSessionDataTable,'sessionDataTable');
+            end
+        end
+        
+        function runAnalysis(this)
+            
+            %% 1) Prepare events datasets
+            results = [];
+            samplesIn = this.samplesDataTable;
+            trialsIn = this.trialDataTable;
+            [results, samples, trials]  = this.experimentDesign.RunDataAnalyses(results, samplesIn, trialsIn);
+        
+            if ( ~isempty(results) )
+                if ( isstruct(results))
+                    fields = fieldnames(results);
+                    for i=1:length(fields)
+                        result = results.(fields{i});
+                        this.WriteVariable(result,['AnalysisResults_' fields{i}]);
+                    end
+                else
+                    this.WriteVariable(results,'AnalysisResults');
                 end
+            end
+            if ( ~isempty(samples) )
+                this.WriteVariable(samples,'samplesDataTable');
+            end
+            if ( ~isempty(trials) )
+                this.WriteVariable(trials,'trialDataTable');
+            end
+            
+            %% 2) Prepare session dataTable
+            newSessionDataTable = this.GetBasicSessionDataTable();
+            newSessionDataTable = this.experimentDesign.PrepareSessionDataTable(newSessionDataTable);
+            if ( ~isempty(newSessionDataTable) )
+                this.WriteVariable(newSessionDataTable,'sessionDataTable');
             end
         end
                 

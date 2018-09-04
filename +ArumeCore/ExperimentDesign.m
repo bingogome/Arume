@@ -136,7 +136,7 @@ classdef ExperimentDesign < handle
         function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
         end
         
-        function [eventDataTables, samplesDataTable, trialDataTable]  = PrepareEventDataTables(this, eventDataTables, samplesDataTable, trialDataTable)
+        function [analysisResults, samplesDataTable, trialDataTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable)
         end
         
         function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)

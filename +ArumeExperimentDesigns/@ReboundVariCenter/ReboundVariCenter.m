@@ -429,6 +429,115 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
     % Plot  methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
+        
+        function plotResults = Plot_VOG_SPV(this)
+               
+            data = this.Session.samplesDataSet;
+            trialData = this.Session.trialDataSet;
+           
+            
+            g1 = grpstats(trialData,{'CenterLocation', 'Side'},{'mean'},'DataVars',{'SPVBaseline', 'SPVBegRebound'});
+            g2 = grpstats(trialData,{'Side'},{'mean'},'DataVars',{'SPVBegEcc', 'SPVEndEcc'});
+            
+            figure
+            plot(-g1.CenterLocation(g1.Side=='Left'),g1.mean_SPVBegRebound(g1.Side=='Left'),'-o')
+            hold
+            plot(g1.CenterLocation(g1.Side=='Right'),g1.mean_SPVBegRebound(g1.Side=='Right'),'-o')
+            
+            plot(-40,g2.mean_SPVBegEcc(g2.Side=='Left'),'-o')
+            plot(40,g2.mean_SPVBegEcc(g2.Side=='Right'),'-o')
+            plot(-40,g2.mean_SPVEndEcc(g2.Side=='Left'),'-o')
+            plot(40,g2.mean_SPVEndEcc(g2.Side=='Right'),'-o')
+            a=1;
+        end
+        
+        function plotResults = PlotAggregate_VOG_SPVAvg(this, sessions)
+            
+            reboundSessions = [];
+            calibrationSessions = [];
+            for i=1:length(sessions)
+                if ( strcmp(sessions(i).experiment.Name, 'ReboundCalibration'))
+                    if ( isempty(calibrationSessions) )
+                        calibrationSessions = sessions(i);
+                    else
+                        calibrationSessions(end+1) = sessions(i);
+                    end
+                end
+                if ( strcmp(sessions(i).experiment.Name, 'ReboundVariCenter'))
+                    if ( isempty(reboundSessions) )
+                        reboundSessions = sessions(i);
+                    else
+                        reboundSessions(end+1) = sessions(i);
+                    end
+                end
+            end
+             
+             figure
+             hold
+             g1 = table();
+             g2 = table();
+             for i=1:length(reboundSessions)
+                 trialData = reboundSessions(i).trialDataSet;
+                 
+                 g11 = grpstats(trialData,{'CenterLocation', 'Side'},{'mean'},'DataVars',{'SPVBaseline', 'SPVBegRebound'});
+                 g11.Properties.RowNames = {};
+                 g1 = [g1;[g11 table(repmat(i,height(g11),1))]];
+                 
+                 g22 = grpstats(trialData,{'Side'},{'mean'},'DataVars',{'SPVBegEcc', 'SPVEndEcc'});
+                 g22.Properties.RowNames = {};
+                 g2 = [g2;[g22 table(repmat(i,height(g22),1))]];
+                 
+                 plot(-g11.CenterLocation(g11.Side=='Left'),g11.mean_SPVBegRebound(g11.Side=='Left'),'r-o')
+                 plot(g11.CenterLocation(g11.Side=='Right'),g11.mean_SPVBegRebound(g11.Side=='Right'),'b-o')
+             end
+             
+             d = grpstats(g1,{'CenterLocation', 'Side'},{'mean' 'sem'},'DataVars',{'mean_SPVBaseline', 'mean_SPVBegRebound'});
+             d2 = grpstats(g2,{'Side'},{'mean' 'sem'},'DataVars',{'mean_SPVBegEcc', 'mean_SPVEndEcc'});
+             
+             
+             g1 = table();
+             g2 = table();
+             for i=1:length(calibrationSessions)
+                 
+                 data = calibrationSessions(i).samplesDataSet;
+                 trialData = calibrationSessions(i).trialDataSet;
+                 
+                 g11 = grpstats(trialData,{'Position'},{'mean'},'DataVars',{'SPVBegEcc'});
+                 g11.Properties.RowNames = {};
+                 g1 = [g1;[g11 table(repmat(i,height(g11),1))]];
+                 
+                 
+                 plot(g11.Position,g11.mean_SPVBegEcc,'k-o')
+             end
+             
+             dcali = grpstats(g1,{'Position'},{'mean' 'sem'},'DataVars',{'mean_SPVBegEcc'});
+             
+             
+             
+             
+             figure
+             h1=errorbar(-d.CenterLocation(d.Side=='Left'),d.mean_mean_SPVBegRebound(d.Side=='Left'),d.sem_mean_SPVBegRebound(d.Side=='Left'),'-o','linewidth',2)
+             hold
+             h2=errorbar(d.CenterLocation(d.Side=='Right'),d.mean_mean_SPVBegRebound(d.Side=='Right'),d.sem_mean_SPVBegRebound(d.Side=='Right'),'-o','linewidth',2)
+             
+             
+             h3=errorbar([-40 40],d2.mean_mean_SPVBegEcc,d2.sem_mean_SPVBegEcc,'ko','linewidth',2)
+             h4= errorbar(dcali.Position,dcali.mean_mean_SPVBegEcc,dcali.sem_mean_SPVBegEcc,'k-o')
+%              errorbar([-40 40],d2.mean_mean_SPVEndEcc,d2.mean_mean_SPVEndEcc,'o','color',[0.5 .5 .5],'linewidth',2)
+             set(gca,'xlim',[-42 42])
+%              legend({'Rebound after left','Rebound after right','Initial gaze evoked','Final gaze evoked'});
+             xlabel('Position (deg)');
+             ylabel('Slow phase velocity (deg/s)');
+             line([-40 40],[0 0],'linestyle','--');
+             line([0 0],[-2 2],'linestyle','--');
+%              errorbar(40,d2.mean_mean_SPVBegEcc(d2.Side=='Right'),d2.sem_mean_SPVBegEcc(d2.Side=='Right'),'-o')
+%              errorbar(-40,d2.mean_mean_SPVEndEcc(d2.Side=='Left'),d2.sem_mean_SPVEndEcc(d2.Side=='Left'),'-o')
+%              errorbar(40,d2.mean_mean_SPVEndEcc(d2.Side=='Right'),d2.sem_mean_SPVEndEcc(d2.Side=='Right'),'-o')
+             
+%              arrow([40 d2.mean_mean_SPVBegEcc(d2.Side=='Left')], [40 d2.mean_mean_SPVEndEcc(d2.Side=='Left')])
+
+             legend([h1 h2 h3 h4],{'Rebound after left','Rebound after right','Gaze evoked (rebound exp)', 'Gae evoked (calib.)'});
+        end
     end
     
     % ---------------------------------------------------------------------
