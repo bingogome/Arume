@@ -204,15 +204,22 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             trialDataTable = [trialDataTable st];
         end
         
-        function [analysisResults, samplesDataTable, trialDataTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable)
+        function optionsDlg = GetAnalysisOptionsDialog(this)
+            optionsDlg.Detect_Quik_and_Slow_Phases =  { {'{0}','1'} };
+        end
+        
+        function [analysisResults, samplesDataTable, trialDataTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, options)
+            analysisResults = [];
             params = VOGAnalysis.GetParameters();
             
-            samplesDataTable = VOGAnalysis.DetectQuickPhases(samplesDataTable, params);
-            samplesDataTable = VOGAnalysis.DetectSlowPhases(samplesDataTable, params);
-            [qp, sp] = VOGAnalysis.GetQuickAndSlowPhaseTable(samplesDataTable);
-            
-            analysisResults.QuickPhases = qp;
-            analysisResults.SlowPhases = sp;
+            if ( options.Detect_Quik_and_Slow_Phases )
+                samplesDataTable = VOGAnalysis.DetectQuickPhases(samplesDataTable, params);
+                samplesDataTable = VOGAnalysis.DetectSlowPhases(samplesDataTable, params);
+                [qp, sp] = VOGAnalysis.GetQuickAndSlowPhaseTable(samplesDataTable);
+                
+                analysisResults.QuickPhases = qp;
+                analysisResults.SlowPhases = sp;
+            end
             
         end
     end

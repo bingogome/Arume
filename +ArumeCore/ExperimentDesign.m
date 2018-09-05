@@ -128,6 +128,7 @@ classdef ExperimentDesign < handle
     % --------------------------------------------------------------------
     
     methods ( Access = public )
+        
         function [samplesDataTable, rawDataTable] = PrepareSamplesDataTable(this)
             samplesDataTable= [];
             rawDataTable = [];
@@ -136,10 +137,14 @@ classdef ExperimentDesign < handle
         function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
         end
         
-        function [analysisResults, samplesDataTable, trialDataTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable)
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+        end
+
+        function optionsDlg = GetAnalysisOptionsDialog(this)
+            optionsDlg = [];
         end
         
-        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+        function [analysisResults, samplesDataTable, trialDataTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, options)
         end
         
         %% ImportSession
@@ -234,6 +239,9 @@ classdef ExperimentDesign < handle
             trialTable = [newTrialTable variableTable];
         end
         
+        function options = GetDefaultOptions(this)
+            options = StructDlg(this.GetAnalysisOptionsDialog(),'',[],[],'off');
+        end
         
         function UpdateExperimentOptions(this, newOptions)
             this.ExperimentOptions = newOptions;

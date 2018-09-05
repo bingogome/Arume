@@ -361,7 +361,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-        function trialDataTable = PrepareTrialDataTable( this, ds)
+        function trialDataTable = PrepareTrialDataTable( this, ds, options)
             % Every class inheriting from SVV2AFC should override this
             % method and add the proper PresentedAngle and
             % LeftRightResponse variables
@@ -372,7 +372,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
             trialDataTable.LeftRightResponse = trialDataTable.Response;
         end
         
-        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable, options)
             
             
             angles = this.GetAngles();

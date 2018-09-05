@@ -393,8 +393,27 @@ classdef ArumeController < handle
                 close(h);
             end
         end
+        
+        function dlg = getAnalysisOptions(this, sessions)
+            
+            if ( ~exist('sessions','var') )
+                sessions = this.selectedSessions;
+            end
+            
+            dlg = struct();
+            for session = sessions
+                dlg1 = session.experimentDesign.GetAnalysisOptionsDialog();
+                f1 = fields(dlg);
+                f2 = fields(dlg1);
+                for i=1:length(f2)
+                    if ( ~any(contains(f1,f2{i})) )
+                        dlg.(f2{i}) = dlg1.(f2{i});
+                    end
+                end
+            end
+        end
                         
-        function runDataAnalyses(this, sessions)
+        function runDataAnalyses(this, options, sessions)
              useWaitBar = 0;
                        
             if ( ~exist('sessions','var') )
@@ -412,7 +431,7 @@ classdef ArumeController < handle
                 try
                     cprintf('blue', '++ ARUME::running analyses for session %s\n', sessions(i).name);
                     session = sessions(i);
-                    session.runAnalysis();
+                    session.runAnalysis(options);
                     if ( useWaitBar )
                         waitbar(i/n,h)
                     end

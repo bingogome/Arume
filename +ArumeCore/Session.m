@@ -350,7 +350,7 @@ classdef Session < ArumeCore.DataDB
             this.WriteVariable(trials,'trialDataTable');
             
             %% 1) Prepare the sample dataset
-            [samples, rawData] = this.experimentDesign.PrepareSamplesDataTable();
+            [samples, rawData] = this.experimentDesign.PrepareSamplesDataTable(options);
             
             if ( ~isempty(samples) )
                 this.WriteVariable(samples,'samplesDataTable');
@@ -361,26 +361,26 @@ classdef Session < ArumeCore.DataDB
             end
             
             %% 2) Prepare the trial dataset
-            trials = this.experimentDesign.PrepareTrialDataTable(trials);
+            trials = this.experimentDesign.PrepareTrialDataTable(trials,options);
             if ( ~isempty(trials) )
                 this.WriteVariable(trials,'trialDataTable');
             end
             
             %% 3) Prepare session dataTable
             newSessionDataTable = this.GetBasicSessionDataTable();
-            newSessionDataTable = this.experimentDesign.PrepareSessionDataTable(newSessionDataTable);
+            newSessionDataTable = this.experimentDesign.PrepareSessionDataTable(newSessionDataTable,options);
             if ( ~isempty(newSessionDataTable) )
                 this.WriteVariable(newSessionDataTable,'sessionDataTable');
             end
         end
         
-        function runAnalysis(this)
+        function runAnalysis(this, options)
             
             %% 1) Prepare events datasets
             results = [];
             samplesIn = this.samplesDataTable;
             trialsIn = this.trialDataTable;
-            [results, samples, trials]  = this.experimentDesign.RunDataAnalyses(results, samplesIn, trialsIn);
+            [results, samples, trials]  = this.experimentDesign.RunDataAnalyses(results, samplesIn, trialsIn, options);
         
             if ( ~isempty(results) )
                 if ( isstruct(results))

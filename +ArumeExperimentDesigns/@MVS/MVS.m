@@ -5,8 +5,14 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-        function [analysisResults, samplesDataTable, trialDataTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable)
+        function optionsDlg = GetAnalysisOptionsDialog(this)
+            optionsDlg = GetAnalysisOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
+        end
+        
+        function [analysisResults, samplesDataTable, trialDataTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, options)
 
+            [analysisResults, samplesDataTable, trialDataTable] = RunDataAnalyses@ArumeExperimentDesigns.EyeTracking(this, analysisResults, samplesDataTable, trialDataTable, options);
+            
             analysisResults.SPV = table();
             
             T = samplesDataTable.Properties.UserData.sampleRate;

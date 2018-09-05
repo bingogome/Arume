@@ -892,13 +892,23 @@ classdef ArumeGui < handle
             end
         end
         
-        function PrepareAnalysis( this, source, eventdata ) 
+        function PrepareAnalysis( this, source, eventdata )             
             this.arumeController.prepareAnalysis();
             this.updateGui();
         end
         
-        function RunDataAnalyses( this, source, eventdata ) 
-            this.arumeController.runDataAnalyses();
+        function RunDataAnalyses( this, source, eventdata )
+            optionsDlg = this.arumeController.getAnalysisOptions( );
+            if ( ~isempty( optionsDlg) )
+                options = StructDlg(optionsDlg, 'Edit analysis options');
+                if ( isempty( options ) )
+                    return;
+                end
+            else
+                options = [];
+            end
+            
+            this.arumeController.runDataAnalyses(options);
             this.updateGui();
         end
         
