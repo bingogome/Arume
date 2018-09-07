@@ -10,6 +10,11 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
     methods (Access=protected)
         function dlg = GetOptionsDialog( this, importing )
             dlg.UseEyeTracker = { {'0' '{1}'} };
+            dlg.Debug = { {'{0}','1'} };
+            
+            dlg.ScreenWidth = { 40 '* (cm)' [1 3000] };
+            dlg.ScreenHeight = { 30 '* (cm)' [1 3000] };
+            dlg.ScreenDistance = { 135 '* (cm)' [1 3000] };
             
             if ( exist('importing','var') && importing )
                 dlg.DataFiles = { {['uigetfile(''' fullfile(pwd,'*.txt') ''',''MultiSelect'', ''on'')']} };

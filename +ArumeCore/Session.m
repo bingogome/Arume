@@ -109,10 +109,15 @@ classdef Session < ArumeCore.DataDB
         function newNumber = GetNewSessionNumber()
             persistent number;
             if isempty(number)
-                number = 1;
-            else
-                number = number+1;
+                number = 0;
+                a = Arume();
+                if( ~isempty( a.currentProject ) )
+                    for i=1:length(a.currentProject.sessions)
+                        number = max(number, a.currentProject.sessions(i).sessionIDNumber);
+                    end
+                end
             end
+            number = number+1;
             
             newNumber = number;
         end

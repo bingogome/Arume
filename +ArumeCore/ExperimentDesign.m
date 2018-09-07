@@ -269,11 +269,6 @@ classdef ExperimentDesign < handle
                 importing = 0;
             end
             dlg = this.GetOptionsDialog(importing);
-            dlg.Debug = { {'{0}','1'} };
-            
-            dlg.ScreenWidth = { 40 '* (cm)' [1 3000] };
-            dlg.ScreenHeight = { 30 '* (cm)' [1 3000] };
-            dlg.ScreenDistance = { 135 '* (cm)' [1 3000] };
         end
         
         function init(this, session, options)

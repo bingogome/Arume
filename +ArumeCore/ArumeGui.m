@@ -91,6 +91,7 @@ classdef ArumeGui < matlab.apps.AppBase
             this.figureHandle.CloseRequestFcn   = @this.figureCloseRequest;
             this.figureHandle.AutoResizeChildren = 'off';
             this.figureHandle.SizeChangedFcn    = @this.figureResizeFcn;
+            this.figureHandle.UserData          = this
             
             this.InitMenu();
             
@@ -109,6 +110,7 @@ classdef ArumeGui < matlab.apps.AppBase
             
             this.tabSessionTable = uitab(this.rightPanel);
             this.tabSessionTable.Title = 'Session table';
+            this.rightPanel.SelectionChangedFcn = @this.tabRightPanelCallBack;
             
             this.tabTrialTable = uitab(this.rightPanel);
             this.tabTrialTable.Title = 'Trial table';
@@ -325,7 +327,7 @@ classdef ArumeGui < matlab.apps.AppBase
             h = h;
             
             m = 2;      % margin between panels
-            lw = 400;   % left panel width            
+            lw = 300;   % left panel width            
 
             this.leftPanel.Position = [1 1 lw h-2];
             this.rightPanel.Position = [lw+3 1 (w-lw-4) h-2];
@@ -846,7 +848,7 @@ classdef ArumeGui < matlab.apps.AppBase
         end
         
         function GeneratePlotsCombined( this, source, eventdata ) 
-            this.arumeController.generatePlots({source.Label}, 1);
+            this.arumeController.generatePlots({source.Label}, 1,1);
             this.updateGui();
         end
         
@@ -877,6 +879,21 @@ classdef ArumeGui < matlab.apps.AppBase
         function commentsTextBoxCallBack( this, source, eventdata )
             this.arumeController.currentSession.updateComment(get(this.commentsTextBox, 'string'));
         end
+        
+        
+        function tabRightPanelCallBack(this, source, eventdata )
+            switch(eventdata.NewValue.Title)
+                case 'Session table'
+                    if ( ~isempty( this.arumeController.currentProject ) )
+                        this.sessionTable.Data = this.arumeController.currentProject.sessionsTable;
+                    end
+                case 'Trial table'
+                    if ( ~isempty( this.arumeController.currentSession) && ~isempty(this.arumeController.currentSession.currentRun))
+                        this.trialTable.Data = this.arumeController.currentSession.currentRun.pastTrialTable;
+                    end
+            end
+        end
+            
     end
     
     methods(Access=public)
@@ -887,7 +904,7 @@ classdef ArumeGui < matlab.apps.AppBase
             
             % update top box info
             if ( ~isempty( this.arumeController.currentProject ) )
-                this.figureHandle.Name = sprintf('Arume - Project: %s - Path: %s',  this.arumeController.currentProject.name , this.arumeController.currentProject.path);
+                this.figureHandle.Name = sprintf('Arume - %s', this.arumeController.currentProject.path);
             else
                 this.figureHandle.Name = sprintf('Arume');
             end
@@ -1122,14 +1139,15 @@ classdef ArumeGui < matlab.apps.AppBase
                 end
             end
             
-            
-            % update data table
-            if ( ~isempty( this.arumeController.currentProject ) )
-                this.sessionTable.Data = this.arumeController.currentProject.sessionsTable;
-            end
-            
-            if ( ~isempty( this.arumeController.currentSession) && ~isempty(this.arumeController.currentSession.currentRun))
-                this.trialTable.Data = this.arumeController.currentSession.currentRun.pastTrialTable;
+            switch(this.rightPanel.SelectedTab.Title)
+                case 'Session table'
+                    if ( ~isempty( this.arumeController.currentProject ) )
+                        this.sessionTable.Data = this.arumeController.currentProject.sessionsTable;
+                    end
+                case 'Trial table'
+                    if ( ~isempty( this.arumeController.currentSession) && ~isempty(this.arumeController.currentSession.currentRun))
+                        this.trialTable.Data = this.arumeController.currentSession.currentRun.pastTrialTable;
+                    end
             end
         end
     end
