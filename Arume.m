@@ -47,5 +47,7 @@ if ( exist('projectPath','var') )
 end
 
 if ( useGui )
+    % make sure the Arume gui is on th front and update
+    figure(arumeController.gui.figureHandle)
     arumeController.gui.updateGui();
 end

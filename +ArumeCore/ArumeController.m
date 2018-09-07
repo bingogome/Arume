@@ -282,9 +282,14 @@ classdef ArumeController < handle
         
         function copySelectedSessions( this, newSubjectCodes, newSessionCodes)
             
+            newSessions = [];
             for i =1:length(this.selectedSessions)
-                this.currentProject.addSession(this.selectedSessions(i).copy(newSubjectCodes{i}, newSessionCodes{i}));
+                newSession = this.selectedSessions(i).copy(newSubjectCodes{i}, newSessionCodes{i});
+                this.currentProject.addSession(newSession);
+                newSessions = cat(1,newSessions, newSession);
             end
+            
+            this.selectedSessions = newSessions;
             
             this.currentProject.save();
         end
@@ -378,9 +383,11 @@ classdef ArumeController < handle
             this.currentProject.save();
             
             try
-                tbl = this.currentProject.GetDataTable;
-                if (~isempty(tbl) )
-                    writetable(tbl,fullfile(this.currentProject.path, [this.currentProject.name '_ArumeSessionTable.csv']));
+                if (~isempty(this.currentProject.sessionsTable) )
+                    writetable(...
+                        this.currentProject.sessionsTable, ...
+                        fullfile(this.currentProject.path, ...
+                        [this.currentProject.name '_ArumeSessionTable.csv']));
                 end
                 
                 disp('======= ARUME EXCEL DATA SAVED TO DISK ==============================')
@@ -451,9 +458,11 @@ classdef ArumeController < handle
             this.currentProject.save();
             
             try
-                tbl = this.currentProject.GetDataTable;
-                if (~isempty(tbl) )
-                    writetable(tbl,fullfile(this.currentProject.path, [this.currentProject.name '_ArumeSessionTable.csv']));
+                if (~isempty(this.currentProject.sessionsTable) )
+                    writetable(...
+                        this.currentProject.sessionsTable, ...
+                        fullfile(this.currentProject.path, ...
+                        [this.currentProject.name '_ArumeSessionTable.csv']));
                 end
                 
                 disp('======= ARUME EXCEL DATA SAVED TO DISK ==============================')

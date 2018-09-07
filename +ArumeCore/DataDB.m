@@ -10,7 +10,6 @@ classdef DataDB < handle
     
     properties (SetAccess = private)
         folder = '';
-        session = '';
     end
     
     properties (Access = private)
@@ -22,33 +21,25 @@ classdef DataDB < handle
     
     methods (Access = protected)
         
-        function InitDB( this, folder, session)
+        function InitDB( this, folder)
             
             if ( ~ischar(folder) )
                 error( 'Folder should be a string' );
             end
             
             this.folder = folder;
-            this.session = session;
             
             if ( ~exist(this.folder, 'dir') )
                 error('Data folder does not exist');
             end
             
-            if ( ~exist(fullfile(this.folder, this.session),'dir') )
-                mkdir(this.folder, this.session);
+            if ( ~exist(this.folder,'dir') )
+                mkdir(this.folder);
             end
         end
-        
-        function RenameDB( this, newname )
-            if ( ~strcmp( fullfile(this.folder, this.session), fullfile(this.folder , newname) ))
-                movefile(fullfile(this.folder, this.session), fullfile(this.folder , newname));
-            end
-            this.session = newname;
-        end
-        
+                
         function result = IsVariableInDB( this, variableName )
-            d = dir( fullfile( this.folder , this.session, [variableName '.mat'] ) );
+            d = dir( fullfile( this.folder, [variableName '.mat'] ) );
             if isempty(d)
                 result = 0;
                 return
@@ -63,26 +54,26 @@ classdef DataDB < handle
             
             try
                 % if variable is in cache
-                if ( isfield( this.cache, ['Session_' this.session]) && isfield( this.cache.(['Session_' this.session]), variableName ) )
+                if ( isfield( this.cache, variableName ) )
                     % return variable from cache
-                    var = this.cache.(['Session_' this.session]).(variableName);
+                    var = this.cache.(variableName);
                     return
                 else
                     % if variable is not in cache
                     try
-                        d = dir( fullfile( this.folder , this.session, [variableName '.mat'] ) );
+                        d = dir( fullfile( this.folder, [variableName '.mat'] ) );
                         if isempty(d)
                             return
                         end
                         % read variable
-                        dat = load(fullfile( this.folder , this.session, d(1).name));
+                        dat = load(fullfile( this.folder, d(1).name));
                     catch me
                         % if memory error
                         if ( isequal(me.identifier, 'MATLAB:nomem') )
                             % empty cache
                             this.cache = struct();
                             % read variable again
-                            dat = load(fullfile( this.folder, this.session, d(1).name));
+                            dat = load(fullfile( this.folder, d(1).name));
                         else
                             rethrow(me)
                         end
@@ -92,7 +83,7 @@ classdef DataDB < handle
                     
                     if ( this.USECACHE )
                         % add variable to cache
-                        this.cache.(['Session_' this.session]).(variableName) = var;
+                        this.cache.(variableName) = var;
                     end
                 end
             catch me
@@ -106,10 +97,10 @@ classdef DataDB < handle
                     fullname = [variableName '.mat'];
                     eval([variableName ' =  variable ;']);
                     
-                    save(fullfile(this.folder , this.session,fullname), variableName);
+                    save(fullfile(this.folder , fullname), variableName);
                     
-                    if ( isfield( this.cache, ['Session_' this.session]) && isfield( this.cache.(['Session_' this.session]), variableName ) )
-                        this.cache.(['Session_' this.session]).(variableName) = variable;
+                    if ( isfield( this.cache, variableName ) )
+                        this.cache.(variableName) = variable;
                     end
                 catch me
                     rethrow(me);

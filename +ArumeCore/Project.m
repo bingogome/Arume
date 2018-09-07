@@ -3,10 +3,11 @@ classdef Project < handle
     %
     
     properties( SetAccess = private)
-        name        % Name of the project
-        path        % Working path of the project
+        name            % Name of the project
+        path            % Working path of the project
         
-        sessions    % Sessions that belong to this project
+        sessions        % Sessions that belong to this project
+        sessionsTable    % table with information about the sessions
     end
     
     methods(Access=private)
@@ -67,6 +68,8 @@ classdef Project < handle
                     disp(['WARNING: session ' sessionName ' could not be loaded. May be an old result of corruption.']);
                 end
             end
+            
+            this.sessionsTable = this.GetDataTable();
         end
     end
     
@@ -82,6 +85,8 @@ classdef Project < handle
             for session = this.sessions
                 session.save();
             end
+            
+            this.sessionsTable = this.GetDataTable();
             
             disp('======= ARUME PROJECT SAVED TO DISK REMEMBER TO BACKUP ==============================')
         end
@@ -117,6 +122,20 @@ classdef Project < handle
         function deleteSession( this, session )
             session.deleteFolders();
             this.sessions( this.sessions == session ) = [];
+        end
+        
+        function [session, i] = findSessionByIDNumber( this, sessionIDNumber)
+            
+            for i=1:length(this.sessions)
+                if ( this.sessions(i).sessionIDNumber ==sessionIDNumber )
+                    session = this.sessions(i);
+                    return;
+                end
+            end
+            
+            % if not found
+            session = [];
+            i = 0;
         end
         
         function [session, i] = findSession( this, subjectCode, sessionCode)
@@ -174,7 +193,7 @@ classdef Project < handle
                 if ( any(categorical(subjectSelection) == session.subjectCode) && any(categorical(sessionSelection)==session.sessionCode))
                     sessionRow = session.sessionDataTable;
                     if ( isempty( sessionRow ) )
-                        session.GetBasicSessionDataTable();
+                        sessionRow = session.GetBasicSessionDataTable();
                     end
                     if ( isempty(dataTable))
                         dataTable = sessionRow;
