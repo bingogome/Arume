@@ -97,7 +97,7 @@ classdef Session < ArumeCore.DataDB
             d = struct2table(dir(fullfile(this.dataPath,'AnalysisResults_*')));
             analysisResults = [];
             for i=1:height(d)
-                res = regexp(d.name,'^AnalysisResults_(?<name>[_a-zA-Z0-9]+)\.mat$','names');
+                res = regexp(d.name{i},'^AnalysisResults_(?<name>[_a-zA-Z0-9]+)\.mat$','names');
                 varName = res.name;
                 analysisResults.(varName) = this.ReadVariable(['AnalysisResults_' varName]);
             end
@@ -356,7 +356,7 @@ classdef Session < ArumeCore.DataDB
             this.WriteVariable(trials,'trialDataTable');
             
             %% 1) Prepare the sample dataset
-            [samples, rawData] = this.experimentDesign.PrepareSamplesDataTable(options);
+            [samples, rawData] = this.experimentDesign.PrepareSamplesDataTable();
             
             if ( ~isempty(samples) )
                 this.WriteVariable(samples,'samplesDataTable');
@@ -367,14 +367,14 @@ classdef Session < ArumeCore.DataDB
             end
             
             %% 2) Prepare the trial dataset
-            trials = this.experimentDesign.PrepareTrialDataTable(trials,options);
+            trials = this.experimentDesign.PrepareTrialDataTable(trials);
             if ( ~isempty(trials) )
                 this.WriteVariable(trials,'trialDataTable');
             end
             
             %% 3) Prepare session dataTable
             newSessionDataTable = this.GetBasicSessionDataTable();
-            newSessionDataTable = this.experimentDesign.PrepareSessionDataTable(newSessionDataTable,options);
+            newSessionDataTable = this.experimentDesign.PrepareSessionDataTable(newSessionDataTable);
             if ( ~isempty(newSessionDataTable) )
                 this.WriteVariable(newSessionDataTable,'sessionDataTable');
             end
