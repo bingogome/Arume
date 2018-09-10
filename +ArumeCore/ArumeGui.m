@@ -11,7 +11,6 @@ classdef ArumeGui < matlab.apps.AppBase
         figureHandle matlab.ui.Figure
         
         % control handles
-        sessionListBox
         sessionTree
         infoBox
         sessionTable
@@ -70,13 +69,11 @@ classdef ArumeGui < matlab.apps.AppBase
     methods
         function this = ArumeGui( arumeController )
             
-            defaultBackground = get(0,'defaultUicontrolBackgroundColor');
-            
             screenSize = get(groot,'ScreenSize');
             screenWidth = screenSize(3);
             screenHeight = screenSize(4);
-            w = screenWidth*0.7;
-            h = screenHeight*0.7;  
+            w = screenWidth*0.5;
+            h = screenHeight*0.5;  
             left = screenWidth/2-w/2;
             bottom = screenHeight/2-h/2;
             
@@ -91,7 +88,7 @@ classdef ArumeGui < matlab.apps.AppBase
             this.figureHandle.CloseRequestFcn   = @this.figureCloseRequest;
             this.figureHandle.AutoResizeChildren = 'off';
             this.figureHandle.SizeChangedFcn    = @this.figureResizeFcn;
-            this.figureHandle.UserData          = this
+            this.figureHandle.UserData          = this;
             
             this.InitMenu();
             
@@ -116,15 +113,7 @@ classdef ArumeGui < matlab.apps.AppBase
             this.tabTrialTable.Title = 'Trial table';
             
             
-            %  Construct the components                        
-%             this.sessionListBox = uilistbox(this.tabSessions);
-%             this.sessionListBox.Position =  [1 1 this.tabSessions.Position(3)-3 this.tabSessions.Position(4)-35];
-%             this.sessionListBox.FontName = 'consolas';
-%             this.sessionListBox.BackgroundColor =  'w';
-%             this.sessionListBox.Items = {};
-%             this.sessionListBox.Multiselect = 'on';
-%             this.sessionListBox.ValueChangedFcn =  @this.sessionListBoxCallBack;
-            
+            %  Construct the components                                    
             this.sessionTree = uitree( this.tabSessions);
             this.sessionTree.Position =  [1 1 this.tabSessions.Position(3)-3 this.tabSessions.Position(4)-35];
             this.sessionTree.FontName = 'consolas';
@@ -154,11 +143,7 @@ classdef ArumeGui < matlab.apps.AppBase
             this.commentsTextBox.BackgroundColor = [1 1 0.8];
             this.commentsTextBox.ValueChangedFcn = @this.commentsTextBoxCallBack;
             this.commentsTextBox.Position = [1 1 this.tabSessionInfo.Position(3)-3 this.tabSessionInfo.Position(4)*1/5];
-         
-
-            % Move the GUI to the center of the screen.
-%             movegui(this.figureHandle,'center')
-            
+                     
             % This is to avoid a close all closing the GUI
             set(this.figureHandle, 'handlevisibility', 'off');
             
@@ -872,12 +857,14 @@ classdef ArumeGui < matlab.apps.AppBase
 %             
             if ( sessionListBoxCurrentValue > 0 )
                 this.arumeController.setCurrentSession( sessionListBoxCurrentValue );
-                this.updateGui();
+            else
+                this.arumeController.setCurrentSession( [] );
             end
+            this.updateGui();
         end
         
         function commentsTextBoxCallBack( this, source, eventdata )
-            this.arumeController.currentSession.updateComment(get(this.commentsTextBox, 'string'));
+            this.arumeController.currentSession.updateComment(this.commentsTextBox.Value);
         end
         
         
@@ -1053,18 +1040,17 @@ classdef ArumeGui < matlab.apps.AppBase
             
             % top level menus
             if ( ~isempty( this.arumeController.currentSession ) )
-                set(this.menuRun, 'Enable', 'on');
-                set(this.menuAnalyze, 'Enable', 'on');
-                set(this.menuPlot, 'Enable', 'on');
+                this.menuAnalyze.Enable = 'on';
+                this.menuPlot.Enable = 'on';
+                if ( isscalar( this.arumeController.selectedSessions ) )
+                    this.menuRun.Enable = 'on';
+                else
+                    this.menuRun.Enable = 'off';
+                end
             else
-                set(this.menuRun, 'Enable', 'off');
-                set(this.menuAnalyze, 'Enable', 'off');
-                set(this.menuPlot, 'Enable', 'off');
-            end
-            if ( isscalar( this.arumeController.selectedSessions ) )
-                set(this.menuRun, 'Enable', 'on');
-            else
-                set(this.menuRun, 'Enable', 'off');
+                this.menuRun.Enable = 'off';
+                this.menuAnalyze.Enable = 'off';
+                this.menuPlot.Enable = 'off';
             end
             
             

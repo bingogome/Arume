@@ -18,16 +18,6 @@ classdef Project < handle
         % project objects.
         function initNew( this, parentPath, projectName )
             % Initializes a new project
-            
-            if ( ~exist( parentPath, 'dir' ) )
-                error( 'Arume: folder does not exist.' );
-            end
-            
-            if ( exist( fullfile(parentPath, projectName), 'dir' ) )
-                error( 'Arume: project file already exists.' );
-            end
-            
-            % initialize the project
             this.name               = projectName;
             this.path               = fullfile(parentPath, projectName);
             this.sessions           = [];
@@ -42,10 +32,6 @@ classdef Project < handle
         function initExisting( this, path )
             % Initializes a project loading from a folder
             
-            if ( ~exist( path, 'dir' ) )
-                error( 'Arume: project folder does not exist.' );
-            end
-            
             [~, projectName] = fileparts(path);
             
             % initialize the project
@@ -57,6 +43,7 @@ classdef Project < handle
             d = struct2table(dir(path));
             d = d(d.isdir & ~strcmp(d.name,'.') & ~strcmp(d.name,'..'),:);
             d = sortrows(d,'date');
+            
             % load sessions
             for i=1:length(d.name)
                 sessionName = d.name{i};
@@ -73,14 +60,11 @@ classdef Project < handle
         end
     end
     
-    methods
+    methods(Access=public)
         %
         % Save project
         %
         function save( this )
-            % for safer storage do not save the actual matlab Project
-            % object. Instead create a struct and save that. It will be
-            % more robust to version changes.
             
             for session = this.sessions
                 session.save();
@@ -174,34 +158,21 @@ classdef Project < handle
         %
         % Analysis methods
         %
-        function dataTable = GetDataTable(this, subjectSelection, sessionSelection)
-            allSubjects = {};
-            allSessionCodes = {};
-            for session=this.sessions
-                allSubjects{end+1} = session.subjectCode;
-                allSessionCodes{end+1} = session.sessionCode;
-            end
-            if ( ~exist( 'subjectSelection', 'var' ) && ~exist( 'sessionSelection', 'var' ))
-                subjectSelection = unique(allSubjects);
-                sessionSelection = unique(allSessionCodes);
-            end
-            
+        function dataTable = GetDataTable(this)
+         
             dataTable = table();
+            
             for isess=1:length(this.sessions)
-                session=this.sessions(isess);
-                % if this is one of the sessions we want
-                if ( any(categorical(subjectSelection) == session.subjectCode) && any(categorical(sessionSelection)==session.sessionCode))
+                session = this.sessions(isess);
+                
+                if ( ~isempty( session.sessionDataTable ) )
                     sessionRow = session.sessionDataTable;
-                    if ( isempty( sessionRow ) )
-                        sessionRow = session.GetBasicSessionDataTable();
-                    end
-                    if ( isempty(dataTable))
-                        dataTable = sessionRow;
-                    else
-                        dataTable = VertCatTablesMissing(dataTable, sessionRow);
-                    end
+                else
+                    sessionRow = session.GetBasicSessionDataTable();
                 end
-            end 
+                
+                dataTable = VertCatTablesMissing(dataTable, sessionRow);
+            end
             
             %disp(dataTable);
             assignin('base','ProjectTable',dataTable);
@@ -214,11 +185,15 @@ classdef Project < handle
         %
         % Factory methods
         %
-        function project = NewProject( parentPath, projectName)
+        function project = NewProject( parentPath, projectName )
             
             % check if parentFolder exists
             if ( ~exist( parentPath, 'dir' ) )
                 error('Arume: parent folder does not exist');
+            end
+            
+            if ( exist( fullfile(parentPath, projectname), 'dir' ) )
+                error('Arume: project folder already not exist');
             end
             
             % check if name is a valid name

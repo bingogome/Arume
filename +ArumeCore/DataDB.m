@@ -29,10 +29,6 @@ classdef DataDB < handle
             
             this.folder = folder;
             
-            if ( ~exist(this.folder, 'dir') )
-                error('Data folder does not exist');
-            end
-            
             if ( ~exist(this.folder,'dir') )
                 mkdir(this.folder);
             end

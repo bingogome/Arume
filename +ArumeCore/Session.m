@@ -66,7 +66,7 @@ classdef Session < ArumeCore.DataDB
     methods
         
         function name = get.name(this)
-            name = [this.experimentDesign.Name '__' this.subjectCode '__' this.sessionCode];
+            name = ArumeCore.Session.SessionPartsToName(this.experimentDesign.Name, this.subjectCode, this.sessionCode);
         end
         
         function result = get.isStarted(this)
@@ -105,31 +105,8 @@ classdef Session < ArumeCore.DataDB
         
     end
     
-    methods (Static)
-        function newNumber = GetNewSessionNumber()
-            persistent number;
-            if isempty(number)
-                number = 0;
-                a = Arume();
-                if( ~isempty( a.currentProject ) )
-                    for i=1:length(a.currentProject.sessions)
-                        number = max(number, a.currentProject.sessions(i).sessionIDNumber);
-                    end
-                end
-            end
-            number = number+1;
-            
-            newNumber = number;
-        end
-    end
-    
     %% Main Session methods
     methods
-        
-        function this = Session()
-            this.sessionIDNumber    = ArumeCore.Session.GetNewSessionNumber();
-        end
-        
         %
         % INIT METHODS
         %
@@ -137,8 +114,8 @@ classdef Session < ArumeCore.DataDB
             
             this.subjectCode        = subjectCode;
             this.sessionCode        = sessionCode;
-            
-            this.experimentDesign = ArumeCore.ExperimentDesign.Create( experimentName );
+            this.sessionIDNumber    = ArumeCore.Session.GetNewSessionNumber();
+            this.experimentDesign   = ArumeCore.ExperimentDesign.Create( experimentName );
             this.experimentDesign.init(this, experimentOptions);
             
             % to create stand alone sessions that do not belong to a
@@ -151,11 +128,9 @@ classdef Session < ArumeCore.DataDB
         
         function initExisting( this, sessionPath )
              
-            [projectPath,sessionName] = fileparts(sessionPath);        
-            parts = split(sessionName,'__');
-            newExperimentName   = parts{1};
-            newSubjectCode      = parts{2};
-            newSessionCode      = parts{3};
+            [projectPath,sessionName] = fileparts(sessionPath);    
+            
+            [newExperimentName, newSubjectCode, newSessionCode] = ArumeCore.Session.SessionNameToParts(sessionName);
             filename = fullfile( sessionPath, 'ArumeSession.mat');
             
             sessionData = load( filename, 'sessionData' );
@@ -182,16 +157,16 @@ classdef Session < ArumeCore.DataDB
         end
         
         function rename( this, newSubjectCode, newSessionCode)
-            oldpath = this.dataPath;
-            projectPath = fileparts(oldpath);        
-            this.subjectCode = newSubjectCode;
-            this.sessionCode = newSessionCode;
-            newPath = fullfile(projectPath, this.name);
+            projectPath = fileparts(this.dataPath);    
+            newName = ArumeCore.Session.SessionPartsToName(this.experimentDesign.Name, newSubjectCode, newSessionCode);
+            newPath = fullfile(projectPath, newName);
             
-            if ( ~strcmp(oldpath, newPath ))
-                movefile(oldpath, newPath);
+            % rename the folder
+            if ( ~strcmp(this.dataPath, newPath ))
+                movefile(this.dataPath, newPath);
             end
             
+            % reload the session from the new folder
             this.initExisting(newPath);
         end
         
@@ -221,7 +196,7 @@ classdef Session < ArumeCore.DataDB
         
         function session = copy( this, newSubjectCode, newSessionCode)
             projectFolder = fileparts(this.dataPath);
-            newSessionName = [this.experimentDesign.Name '__' newSubjectCode '__' newSessionCode];
+            newSessionName = ArumeCore.Session.SessionPartsToName(this.experimentDesign.Name, newSubjectCode, newSessionCode);
             newSessionDataPath = fullfile(projectFolder, newSessionName);
             if ( exist( newSessionDataPath, 'dir') )
                 error( 'There is already a session in the current project with the same name.');
@@ -540,19 +515,38 @@ classdef Session < ArumeCore.DataDB
             result = result && ~contains(name,'__');
         end
         
-        %
-        % Other methods
-        %
         function result = IsValidSessionCode( name )
             result = ~isempty(regexp(name,'^[_a-zA-Z0-9]+$','ONCE') );
             result = result && ~contains(name,'__');
         end
+        
+        function [experimentName, subjectCode, sessionCode] = SessionNameToParts( sessionName )
+            parts = split(sessionName,'__');
+            experimentName   = parts{1};
+            subjectCode      = parts{2};
+            sessionCode      = parts{3};
+        end
+        
+        function sessionName = SessionPartsToName(experimentName, subjectCode, sessionCode)
+           sessionName = [ experimentName '__' subjectCode '__' sessionCode];
+        end
+        
+        function newNumber = GetNewSessionNumber()
+            persistent number;
+            if isempty(number)
+                number = 0;
+                a = Arume();
+                if( ~isempty( a.currentProject ) )
+                    for i=1:length(a.currentProject.sessions)
+                        number = max(number, a.currentProject.sessions(i).sessionIDNumber);
+                    end
+                end
+            end
+            number = number+1;
+            
+            newNumber = number;
+        end
     end
-    
-    
-    
-   
-    
     
 end
 
