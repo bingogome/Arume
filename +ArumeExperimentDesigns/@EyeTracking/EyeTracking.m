@@ -258,7 +258,7 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             VOGAnalysis.PlotCleanAndResampledData(rawdata,data);
         end
         
-        function Plot_VOG_Saccades(this)
+        function Plot_VOG_SaccadeTraces(this)
             data = this.Session.samplesDataTable;
             VOGAnalysis.PlotQuickPhaseDebug(data)
         end
