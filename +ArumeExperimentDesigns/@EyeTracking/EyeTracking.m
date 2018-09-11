@@ -85,7 +85,6 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
     % --------------------------------------------------------------------
     % Analysis methods --------------------------------------------------
     % --------------------------------------------------------------------
-    
     methods ( Access = public )    
         %% ImportSession
         function ImportSession( this )
@@ -174,6 +173,8 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 fileSamplesDataSet = [table(repmat(i,height(fileSamplesDataSet),1),'variablenames',{'FileNumber'}), fileSamplesDataSet];
  
                 samplesDataTable = cat(1,samplesDataTable,fileSamplesDataSet);
+                % TODO: maybe fix timestamps while concatenating so they
+                % keep growing?
                 rawData = cat(1,rawData,rawDataFile);
             end
         end
@@ -189,6 +190,8 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 fte = s.FrameNumber(end);
             end
             
+            % BIG TODO:!!!!  Match timestamps with samples of the
+            % corresponding file. careful with this!
             
             % Find the samples that mark the begining and ends of trials
             trialDataTable.SampleStartTrial = nan(size(trialDataTable.TrialNumber));

@@ -5,10 +5,10 @@ classdef ArumeGui < matlab.apps.AppBase
     properties (Access = public)
         
         % main controller
-        arumeController
+        arumeController     ArumeCore.ArumeController
         
         % figure handle
-        figureHandle matlab.ui.Figure
+        figureHandle        matlab.ui.Figure
         
         % control handles
         sessionTree
@@ -317,8 +317,6 @@ classdef ArumeGui < matlab.apps.AppBase
             this.leftPanel.Position = [1 1 lw h-2];
             this.rightPanel.Position = [lw+3 1 (w-lw-4) h-2];
         end
-        
-        
         
         function menuProjectCallback( this, source, eventdata )
             
@@ -646,7 +644,6 @@ classdef ArumeGui < matlab.apps.AppBase
             end
         end
         
-        
         function CopySessions( this, source, eventdata )
             
             [newSubjectCodes, newSessionCodes] = this.DlgNewSubjectAndSessionCodes();
@@ -681,7 +678,6 @@ classdef ArumeGui < matlab.apps.AppBase
                 this.updateGui();
             end
         end
-        
         
         function EditSessionSettings(this, source, eventdata )
             
@@ -778,7 +774,6 @@ classdef ArumeGui < matlab.apps.AppBase
             this.arumeController.runDataAnalyses(options);
             this.updateGui();
         end
-        
         
         function Plot( this, source, eventdata )
             

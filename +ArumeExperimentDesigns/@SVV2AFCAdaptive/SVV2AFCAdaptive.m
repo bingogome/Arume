@@ -292,7 +292,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-        function plotResults = Plot_SVV_TimeCourse(this)
+        function Plot_SVV_TimeCourse(this)
             analysisResults = 0;
             
             MEDIUM_BLUE =  [0.1000 0.5000 0.8000];
@@ -349,7 +349,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
         end
         
-        function plotResults = Plot_SVV_ReactionTimes(this)
+        function Plot_SVV_ReactionTimes(this)
             analysisResults = 0;
             
             ds = this.Session.trialDataTable;
@@ -380,7 +380,90 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             %%
         end
         
-        function plotResults = PlotAggregate_SVVCombined(this, sessions)
+        function PlotAggregate_SVV_TMS(this, sessions)
+            %%
+            s = table();
+            s.Subject = cell(length(sessions),1);
+            s.SessionCode = cell(length(sessions),1);
+            s.TMS = cell(length(sessions),1);
+            s.PrePost = cell(length(sessions),1);
+            s.TMSNumber = nan(length(sessions),1);
+            s.SessionObj = sessions';
+            for i=1:length(sessions)
+                s.Subject{i} = sessions(i).subjectCode;
+                s.SessionCode{i} = sessions(i).sessionCode ;
+                if ( strfind(sessions(i).sessionCode, 'Sham') )
+                    s.TMS{i} = 'Sham';
+                elseif ( strfind(sessions(i).sessionCode, 'TMS') )
+                    s.TMS{i} = 'TMS';
+                else
+                    s.TMS{i} = 'None';
+                end
+                if ( strfind(sessions(i).sessionCode, 'PRE') )
+                    s.PrePost{i} = 'PRE';
+                elseif ( strfind(sessions(i).sessionCode, 'POST') )
+                    s.PrePost{i} = 'POST';
+                else
+                    s.PrePost{i} = 'None';
+                end
+            end
+            s.TMS = categorical(s.TMS);
+            s.PrePost = categorical(s.PrePost);
+            s = sortrows(s,'SessionCode');
+            
+            s = s(s.TMS=='TMS' | s.TMS=='Sham',:)
+            s{s.TMS=='TMS' & s.PrePost == 'PRE' ,'TMSNumber'}   = (1:length(s{s.TMS=='TMS' & s.PrePost == 'PRE'  ,'TMSNumber'}))';
+            s{s.TMS=='TMS' & s.PrePost == 'POST' ,'TMSNumber'}  = (1:length(s{s.TMS=='TMS' & s.PrePost == 'POST'  ,'TMSNumber'}))';
+            
+            
+            figure
+            NTMS = max(s.TMSNumber);
+            preShamSVV = s{s.PrePost == 'PRE' & s.TMS=='Sham','SessionObj'}.trialDataTable.Bin100SVV;
+            postShamSVV = s{s.PrePost == 'POST' & s.TMS=='Sham','SessionObj'}.trialDataTable.Bin100SVV;
+            subplot(2,NTMS+1,1,'nextplot','add')
+            plot(preShamSVV,'linewidth',2)
+            plot(postShamSVV,'linewidth',2)
+            title('Sham')
+            ylabel('SVV (deg)');
+            xlabel('Trial number');
+            set(gca,'ylim',[-20 20]);
+            
+            for i=1:NTMS
+                subplot(2,NTMS+1,i+1,'nextplot','add')
+                preSVV = s{s.PrePost == 'PRE' & s.TMSNumber == i,'SessionObj'}.trialDataTable.Bin100SVV;
+                postSVV = s{s.PrePost == 'POST' & s.TMSNumber == i,'SessionObj'}.trialDataTable.Bin100SVV;
+                plot(preSVV,'linewidth',2)
+                plot(postSVV,'linewidth',2)
+                title(['TMS ' num2str(i)])
+                ylabel('SVV (deg)');
+                xlabel('Trial number');
+                set(gca,'ylim',[-20 20]);
+                
+                if ( i==NTMS)
+                    legend({'PRE', 'POST'})
+                end
+            end
+            
+            for i=1:NTMS
+                subplot(2,NTMS+1,NTMS+i+2,'nextplot','add')
+                preSVV = s{s.PrePost == 'PRE' & s.TMSNumber == i,'SessionObj'}.trialDataTable.Bin100SVV;
+                postSVV = s{s.PrePost == 'POST' & s.TMSNumber == i,'SessionObj'}.trialDataTable.Bin100SVV;
+                plot(postShamSVV-nanmean(preShamSVV),'color','k','linewidth',2)
+                plot(postSVV-nanmean(preSVV),'color','r','linewidth',2)
+                title(['TMS ' num2str(i)])
+                ylabel('SVV shift (deg post - mean(pre))');
+                xlabel('Trial number');
+                set(gca,'ylim',[-10 10]);
+                if ( i==NTMS)
+                    legend({'Sham', 'TMS'})
+                end
+                
+                TMSeffect = nanmean(postSVV-nanmean(preSVV)) - nanmean(postShamSVV-nanmean(preShamSVV));
+                text(10,-9,['TMS effect = ' num2str(TMSeffect) ' deg'],'VerticalAlignment','bottom')
+            end
+        end
+        
+        function PlotAggregate_SVVCombined(this, sessions)
             
             s.Subject = cell(length(sessions),1);
             s.SessionNumber = (1:length(sessions))';
