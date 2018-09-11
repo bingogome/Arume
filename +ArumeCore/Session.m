@@ -148,10 +148,11 @@ classdef Session < ArumeCore.DataDB
             this.subjectCode = subjectCode;
             this.sessionCode = sessionCode;
             this.RenameDB( this.name );
+            this.dataPath  = fullfile(projectPath, this.name);
             
-            if ( ~strcmp(fullfile(this.projectPath, oldname),  this.dataPath ))
-                movefile( fullfile(this.projectPath, oldname), this.dataPath);
-            end
+%             if ( ~strcmp(fullfile(this.projectPath, oldname),  this.dataPath ))
+%                 movefile( fullfile(this.projectPath, oldname), this.dataPath);
+%             end
         end
         
         function deleteFolders( this )
