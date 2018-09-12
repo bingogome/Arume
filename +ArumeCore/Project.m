@@ -3,10 +3,11 @@ classdef Project < handle
     %
     
     properties( SetAccess = private)
-        name        % Name of the project
-        path        % Working path of the project
+        name            % Name of the project
+        path            % Working path of the project
         
-        sessions    % Sessions that belong to this project
+        sessions        % Sessions that belong to this project
+        sessionsTable    % table with information about the sessions
     end
     
     methods(Access=private)
@@ -17,16 +18,6 @@ classdef Project < handle
         % project objects.
         function initNew( this, parentPath, projectName )
             % Initializes a new project
-            
-            if ( ~exist( parentPath, 'dir' ) )
-                error( 'Arume: folder does not exist.' );
-            end
-            
-            if ( exist( fullfile(parentPath, projectName), 'dir' ) )
-                error( 'Arume: project file already exists.' );
-            end
-            
-            % initialize the project
             this.name               = projectName;
             this.path               = fullfile(parentPath, projectName);
             this.sessions           = [];
@@ -41,10 +32,6 @@ classdef Project < handle
         function initExisting( this, path )
             % Initializes a project loading from a folder
             
-            if ( ~exist( path, 'dir' ) )
-                error( 'Arume: project folder does not exist.' );
-            end
-            
             [~, projectName] = fileparts(path);
             
             % initialize the project
@@ -56,6 +43,7 @@ classdef Project < handle
             d = struct2table(dir(path));
             d = d(d.isdir & ~strcmp(d.name,'.') & ~strcmp(d.name,'..'),:);
             d = sortrows(d,'date');
+            
             % load sessions
             for i=1:length(d.name)
                 sessionName = d.name{i};
@@ -67,34 +55,28 @@ classdef Project < handle
                     disp(['WARNING: session ' sessionName ' could not be loaded. May be an old result of corruption.']);
                 end
             end
+            
+            try
+            this.sessionsTable = this.GetDataTable();
+            catch
+                disp('ERROR getting data table');
+            end
         end
     end
     
-    methods
+    methods(Access=public)
         %
         % Save project
         %
         function save( this )
-            % for safer storage do not save the actual matlab Project
-            % object. Instead create a struct and save that. It will be
-            % more robust to version changes.
             
             for session = this.sessions
                 session.save();
             end
             
+            this.sessionsTable = this.GetDataTable();
+            
             disp('======= ARUME PROJECT SAVED TO DISK REMEMBER TO BACKUP ==============================')
-            try
-                tbl = this.GetDataTable;
-                if (~isempty(tbl) )
-                    writetable(tbl,fullfile(this.path, [this.name '_ArumeSessionTable.xlsx']));
-                end
-                
-                disp('======= ARUME EXCEL DATA SAVED TO DISK ==============================')
-            catch err
-                disp('ERROR saving excel data');
-                disp(err.getReport);
-            end
         end
         
         function backup(this, file)
@@ -114,6 +96,10 @@ classdef Project < handle
         % Other methods
         %
         function addSession( this, session)
+            if ( ~isempty(this.findSession(session.subjectCode, session.sessionCode) ) )
+                error( 'Arume: session already exists use a diferent name' );
+            end
+            
             if ( isempty( this.sessions ) )
                 this.sessions = session;
             else
@@ -126,18 +112,31 @@ classdef Project < handle
             this.sessions( this.sessions == session ) = [];
         end
         
-        function [session, i] = findSession( this, experimentName, subjectCode, sessionCode)
+        function [session, i] = findSessionByIDNumber( this, sessionIDNumber)
+            
+            for i=1:length(this.sessions)
+                if ( this.sessions(i).sessionIDNumber ==sessionIDNumber )
+                    session = this.sessions(i);
+                    return;
+                end
+            end
+            
+            % if not found
+            session = [];
+            i = 0;
+        end
+        
+        function [session, i] = findSession( this, subjectCode, sessionCode)
             
             for i=1:length(this.sessions)
                 if ( exist('sessionCode','var') )
-                    if ( strcmpi(this.sessions(i).experimentDesign.Name, upper(experimentName)) &&  ...
-                            strcmpi(this.sessions(i).subjectCode, upper(subjectCode)) &&  ...
-                            strcmpi(this.sessions(i).sessionCode, upper(sessionCode)))
+                    if ( strcmpi(this.sessions(i).subjectCode, subjectCode) &&  ...
+                            strcmpi(this.sessions(i).sessionCode, sessionCode))
                         session = this.sessions(i);
                         return;
                     end
                 else
-                    if ( strcmpi(this.sessions(i).experimentDesign.Name, upper(experimentName)) &&  ...
+                    if ( strcmpi(this.sessions(i).experimentDesign.Name, experimentName) &&  ...
                             strcmpi([upper(this.sessions(i).subjectCode) upper(this.sessions(i).sessionCode),], subjectCode))
                         session = this.sessions(i);
                         return;
@@ -163,37 +162,28 @@ classdef Project < handle
         %
         % Analysis methods
         %
-        function dataTable = GetDataTable(this, subjectSelection, sessionSelection)
-            allSubjects = {};
-            allSessionCodes = {};
-            for session=this.sessions
-                allSubjects{end+1} = session.subjectCode;
-                allSessionCodes{end+1} = session.sessionCode;
-            end
-            if ( ~exist( 'subjectSelection', 'var' ) && ~exist( 'sessionSelection', 'var' ))
-                subjectSelection = unique(allSubjects);
-                sessionSelection = unique(allSessionCodes);
-            end
-            
-            dataTable = table();
-            for isess=1:length(this.sessions)
-                session=this.sessions(isess);
-                % if this is one of the sessions we want
-                if ( any(categorical(subjectSelection) == session.subjectCode) && any(categorical(sessionSelection)==session.sessionCode))
-                    sessionRow = session.sessionDataTable;
-                    if ( isempty( sessionRow ) )
-                        session.GetBasicSessionDataTable();
-                    end
-                    if ( isempty(dataTable))
-                        dataTable = sessionRow;
+        function dataTable = GetDataTable(this)
+         
+            try
+                dataTable = table();
+                
+                for isess=1:length(this.sessions)
+                    session = this.sessions(isess);
+                    
+                    if ( ~isempty( session.sessionDataTable ) )
+                        sessionRow = session.sessionDataTable;
                     else
-                        dataTable = VertCatTablesMissing(dataTable, sessionRow);
+                        sessionRow = session.GetBasicSessionDataTable();
                     end
+                    
+                    dataTable = VertCatTablesMissing(dataTable, sessionRow);
                 end
-            end 
-            
-            %disp(dataTable);
-            assignin('base','ProjectTable',dataTable);
+                
+                %disp(dataTable);
+                assignin('base','ProjectTable',dataTable);
+            catch
+                disp('ERROR getting data table');
+            end
         end
     end
     
@@ -203,11 +193,15 @@ classdef Project < handle
         %
         % Factory methods
         %
-        function project = NewProject( parentPath, projectName)
+        function project = NewProject( parentPath, projectName )
             
             % check if parentFolder exists
             if ( ~exist( parentPath, 'dir' ) )
                 error('Arume: parent folder does not exist');
+            end
+            
+            if ( exist( fullfile(parentPath, projectname), 'dir' ) )
+                error('Arume: project folder already not exist');
             end
             
             % check if name is a valid name

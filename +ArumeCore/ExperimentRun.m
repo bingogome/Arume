@@ -44,18 +44,19 @@ classdef ExperimentRun < matlab.mixin.Copyable
         %% setUpNewRun
         function newRun = SetUpNewRun( experimentDesign )
             newRun = ArumeCore.ExperimentRun();
-            newRun.futureTrialTable         = experimentDesign.GetTrialTable();
-            newRun.originalFutureTrialTable = newRun.futureTrialTable;
+            newRun.pastTrialTable           = table([],categorical([]),'VariableNames',{'TrialNumber' 'TrialResult'});
+            newRun.originalFutureTrialTable = experimentDesign.GetTrialTable();
+            newRun.futureTrialTable         = newRun.originalFutureTrialTable;
         end
         
-        function run = LoadRunData( data, experiment )
+        function run = LoadRunData( data )
             
             % create the new object
             run = ArumeCore.ExperimentRun();
             
-            run.pastTrialTable = data.pastTrialTable;
-            run.futureTrialTable = data.futureTrialTable;
-            run.originalFutureTrialTable = data.originalFutureTrialTable;
+            run.pastTrialTable              = data.pastTrialTable;
+            run.futureTrialTable            = data.futureTrialTable;
+            run.originalFutureTrialTable    = data.originalFutureTrialTable;
             
             if ( isfield( data, 'LinkedFiles' ) )
                 run.LinkedFiles = data.LinkedFiles;
@@ -64,14 +65,10 @@ classdef ExperimentRun < matlab.mixin.Copyable
             end
         end
         
-        function runArray = LoadRunDataArray( runs, experiment )
+        function runArray = LoadRunDataArray( runs )
             runArray = [];
             for i=1:length(runs)
-                if ( isempty(runArray) )
-                    runArray  = ArumeCore.ExperimentRun.LoadRunData( runs(i), experiment );
-                else
-                    runArray(i)  = ArumeCore.ExperimentRun.LoadRunData( runs(i), experiment );
-                end
+                runArray  = cat(1,runArray, ArumeCore.ExperimentRun.LoadRunData( runs(i) ));
             end
         end
         
@@ -87,11 +84,7 @@ classdef ExperimentRun < matlab.mixin.Copyable
         function runArray = SaveRunDataArray( runs )
             runArray = [];
             for i=1:length(runs)
-                if ( isempty(runArray) )
-                    runArray = ArumeCore.ExperimentRun.SaveRunData(runs(i));
-                else
-                    runArray(i) = ArumeCore.ExperimentRun.SaveRunData(runs(i));
-                end
+                runArray  = cat(1,runArray, ArumeCore.ExperimentRun.SaveRunData(runs(i)));
             end
         end
     end

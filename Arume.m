@@ -2,6 +2,16 @@ function arumeController = Arume(command, param)
 
 % persistent variable to keep the singleton
 persistent arumeSingleton;
+
+if ( isempty( arumeSingleton ) )
+    h = findall(0,'tag','Arume');
+    if ( ~isempty(h) )
+        arumeSingleton = h.UserData.arumeController;
+    end
+end
+    
+
+
 arumeController = arumeSingleton;
 
 useGui = 1;
@@ -47,5 +57,7 @@ if ( exist('projectPath','var') )
 end
 
 if ( useGui )
+    % make sure the Arume gui is on th front and update
+    figure(arumeController.gui.figureHandle)
     arumeController.gui.updateGui();
 end

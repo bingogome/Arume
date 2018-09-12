@@ -1,40 +1,48 @@
-classdef ArumeGui < handle
+classdef ArumeGui < matlab.apps.AppBase
     %ARUMEGUI Summary of this class goes here
     %   Detailed explanation goes here
     
-    properties
+    properties (Access = public)
         
         % main controller
-        arumeController
+        arumeController     ArumeCore.ArumeController
         
         % figure handle
-        figureHandle
+        figureHandle        matlab.ui.Figure
         
         % control handles
-        projectTextLabel
-        pathTextLabel
-        sessionListBox
-        
+        sessionTree
         infoBox
+        sessionTable
+        trialTable
         commentsTextBox
         
         % panel handles
-        topPanel
         leftPanel
+        tabSessions
         rightPanel
-        bottomPanel
+        tabSessionInfo
+        tabSessionTable
+        tabTrialTable
         
         % Menu items
-        menuFile
-        menuFileNewProject
-        menuFileLoadProject
-        menuFileSaveProjectBackup
-        menuFileLoadProjectBackup
-        menuFileLoadRecentProject
-        menuFileCloseProject
-        menuFileNewSession
-        menuFileImportSession
-        menuFileSortSessions
+        menuProject
+        menuProjectNewProject
+        menuProjectLoadProject
+        menuProjectSaveProjectBackup
+        menuProjectLoadProjectBackup
+        menuProjectLoadRecentProject
+        menuProjectCloseProject
+        
+        menuSession
+        menuSessionNewSession
+        menuSessionImportSession
+        menuSessionSortSessions
+        menuSessionEditSettings
+        menuSessionRename
+        menuSessionDelete
+        menuSessionCopy
+        menuSessionSendDataToWorkspace
         
         menuRun
         menuRunStartSession
@@ -44,6 +52,7 @@ classdef ArumeGui < handle
         
         menuAnalyze
         menuAnalyzePrepare
+        menuAnalyzeRunAnalyses
         
         menuPlot
         menuPlotGeneratePlots
@@ -51,247 +60,90 @@ classdef ArumeGui < handle
         menuPlotGeneratePlotsAggregated
         
         menuTools
-        menuBiteBarGui
+        menuToolsBiteBarGui
+        menuToolsOpenProjectFolderInExplorer
         
-        % Session Contextual menu
-        sessionContextMenu
-        sessionContextMenuEditSettings
-        sessionContextMenuRename
-        sessionContextMenuRenameSubjects
-        sessionContextMenuDelete
-        sessionContextMenuCopy
     end
     
     %% Constructor
     methods
-        function this = ArumeGui( parent )
-              
-            % Ensure singleton behavior
-            h = findall(0,'tag','Arume');
+        function this = ArumeGui( arumeController )
             
-            if ( ~isempty( h ) )
-                figure(h);
-                return
-            end
-            defaultBackground = get(0,'defaultUicontrolBackgroundColor');
+            screenSize = get(groot,'ScreenSize');
+            screenWidth = screenSize(3);
+            screenHeight = screenSize(4);
+            w = screenWidth*0.5;
+            h = screenHeight*0.5;  
+            left = screenWidth/2-w/2;
+            bottom = screenHeight/2-h/2;
             
-            w = 900;
-            h = 600;
-            
-            this.arumeController = parent;
+            this.arumeController = arumeController;
             
             %  Construct the figure
-            this.figureHandle = figure( ...
-                'Tag'           , 'Arume', ...
-                'Visible'       , 'off', ...
-                'Color'         , defaultBackground,...
-                'Name'          , 'Arume',...
-                'NumberTitle'   , 'off',... % Do not show figure number
-                'Position'      , [400,800,w,h], ...
-                'CloseRequestFcn', @this.figureCloseRequest, ...
-                'SizeChangedFcn' , @this.figureResizeFcn); %Jing, change 'ResizeFcn' to 'SizeChangedFcn', becuase it might be removed in future
+            this.figureHandle = uifigure();
+            this.figureHandle.Name              = 'Arume';
+            this.figureHandle.Position          =  [left bottom w h];
+            this.figureHandle.Tag               = 'Arume';
+            this.figureHandle.Visible           = 'off';
+            this.figureHandle.CloseRequestFcn   = @this.figureCloseRequest;
+            this.figureHandle.AutoResizeChildren = 'off';
+            this.figureHandle.SizeChangedFcn    = @this.figureResizeFcn;
+            this.figureHandle.UserData          = this;
+            
+            this.InitMenu();
             
             %  Construct panels
             
-            this.topPanel = uipanel ( ...
-                'Parent'    , this.figureHandle,...
-                'Title'     , '', ...
-                'Units'     , 'Pixels' );
+            this.leftPanel = uitabgroup(this.figureHandle);
             
-            this.leftPanel = uipanel ( ...
-                'Parent'    , this.figureHandle,...
-                'Title'     ,  sprintf('%-19.19s %-10.10s %-12.12s', 'Experiment', 'Subject', 'Session code'),...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
-                'BorderType', 'none',...
-                'Units'     , 'Pixels' );
+            this.rightPanel = uitabgroup(this.figureHandle);
+            this.figureResizeFcn();
             
-            this.rightPanel = uipanel ( ...
-                'Parent'    , this.figureHandle,...
-                'Title'     , 'Session info',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
-                'BorderType', 'none',...
-                'Units'     , 'Pixels' );
+            this.tabSessions = uitab(this.leftPanel);
+            this.tabSessions.Title = 'Sessions';
             
-            this.bottomPanel = uipanel ( ...
-                'Parent'    , this.figureHandle,... 
-                'Title'     , 'Session notes',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
-                'BorderType', 'none',...
-                'Units'     , 'Pixels' );
-                            
+            this.tabSessionInfo = uitab(this.rightPanel);
+            this.tabSessionInfo.Title = 'Session info';
             
-            %  Construct the components
-            this.projectTextLabel = uicontrol( ...
-                'Parent'    , this.topPanel,...
-                'Style'     , 'text',...
-                'String'    , 'Project: ',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 11,...
-                'HorizontalAlignment', 'left',...
-                'Position'  , [5,18,500,15]);
+            this.tabSessionTable = uitab(this.rightPanel);
+            this.tabSessionTable.Title = 'Session table';
+            this.rightPanel.SelectionChangedFcn = @this.tabRightPanelCallBack;
             
-            this.pathTextLabel = uicontrol( ...
-                'Parent'    , this.topPanel,...
-                'Style'     , 'text',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
-                'String'    , 'Project: ',...
-                'HorizontalAlignment', 'left',...
-                'Position'  , [5,0,500,15]);
-            
-            this.sessionListBox = uicontrol( ...
-                'Parent'    , this.leftPanel,...
-                'Style'     , 'listbox',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
-                'String'    , '',...
-                'Units'     ,'normalized',...
-                'Position'  , [0 0 1 1], ...
-                'BackgroundColor'     , 'w', ...
-                'Max'       , 20, ...
-                'Callback'  , @this.sessionListBoxCallBack);
-            
-            this.infoBox = uicontrol( ...
-                'Parent'    , this.rightPanel,...
-                'Style'     , 'edit',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 8,...
-                'Max'       , 10, ...
-                'Enable'    , 'inactive', ...
-                'HorizontalAlignment'   , 'Left',...
-                'FontName'	, 'consolas',...
-                'String'    , '',...
-                'Units'     ,'normalized',...
-                'Position'  , [0 0 1 1], ...
-                'BackgroundColor'     , 'w');
-            
-            this.commentsTextBox = uicontrol( ...
-                'Parent'    , this.bottomPanel,...
-                'Style'     , 'edit',...
-                'FontName'	, 'consolas',...
-                'FontSize'	, 9,...
-                'Max'       , 10, ...
-                'HorizontalAlignment'   , 'Left',...
-                'String'    , '',...
-                'Units'     ,'normalized',...
-                'Position'  , [0 0 1 1], ...
-                'BackgroundColor'     , [1 1 0.8], ...
-                'Callback'  , @this.commentsTextBoxCallBack);
-            
-            % menu
-            set(this.figureHandle,'MenuBar','none'); 
-            
-            this.menuFile = uimenu(this.figureHandle, ...
-                'Label'     , 'File', ...
-                'Callback'  , @this.menuFileCallback);
-            
-            this.menuFileNewProject = uimenu(this.menuFile, ...
-                'Label'     , 'New project ...', ...
-                'Callback'  , @this.newProject);
-            this.menuFileLoadProject = uimenu(this.menuFile, ...
-                'Label'     , 'Load project ...', ...
-                'Callback'  , @this.loadProject);
-            this.menuFileLoadRecentProject = uimenu(this.menuFile, ...
-                'Label'     , 'Load recent project');
-            this.menuFileCloseProject = uimenu(this.menuFile, ...
-                'Label'     , 'Close project', ...
-                'Callback'  , @this.closeProject);
-            
-            this.menuFileSaveProjectBackup = uimenu(this.menuFile, ...
-                'Label'     , 'Backup project ...', ...
-                'Separator' , 'on', ...
-                'Callback'  , @this.saveProjectBackup);
-            this.menuFileLoadProjectBackup = uimenu(this.menuFile, ...
-                'Label'     , 'Restore project backup ...', ...
-                'Callback'  , @this.loadProjectBackup);
-            
-            this.menuFileNewSession = uimenu(this.menuFile, ...
-                'Label'     , 'New session', ...
-                'Separator' , 'on', ...
-                'Callback'  , @this.newSession);
-            this.menuFileImportSession = uimenu(this.menuFile, ...
-                'Label'     , 'Import session', ...
-                'Callback'  , @this.importSession);
-            
-            this.menuFileSortSessions = uimenu(this.menuFile, ...
-                'Label'     , 'Sort sessions', ...
-                'Callback'  , @this.SortSessions);
+            this.tabTrialTable = uitab(this.rightPanel);
+            this.tabTrialTable.Title = 'Trial table';
             
             
-            this.menuRun = uimenu(this.figureHandle, ...
-                'Label'     , 'Run');
+            %  Construct the components                                    
+            this.sessionTree = uitree( this.tabSessions);
+            this.sessionTree.Position =  [1 1 this.tabSessions.Position(3)-3 this.tabSessions.Position(4)-35];
+            this.sessionTree.FontName = 'consolas';
+            this.sessionTree.Multiselect = 'on';
+            this.sessionTree.SelectionChangedFcn = @this.sessionListBoxCallBack;
             
-            this.menuRunStartSession = uimenu(this.menuRun, ...
-                'Label'     , 'Start session...', ...
-                'Callback'  , @this.startSession);
-            this.menuRunResumeSession = uimenu(this.menuRun, ...
-                'Label'     , 'Resume session', ...
-                'Callback'  , @this.resumeSession);
-            this.menuRunRestartSession = uimenu(this.menuRun, ...
-                'Label'     , 'Restart session', ...
-                'Callback'  , @this.restartSession);
-            this.menuResumeSessionFrom = uimenu(this.menuRun, ...
-                'Label'     , 'Resume session from ...', ...
-                'Separator' , 'on' );
+            this.infoBox = uitextarea(this.tabSessionInfo);
+            this.infoBox.FontName = 'consolas';
+            this.infoBox.HorizontalAlignment = 'Left';
+            this.infoBox.Editable = 'off';
+            this.infoBox.Value = '';
+            this.infoBox.Position = [1 this.tabSessionInfo.Position(4)/5+2 this.tabSessionInfo.Position(3)-3 this.tabSessionInfo.Position(4)*4/5-35];
+            this.infoBox.BackgroundColor = 'w';
             
-        
-            this.menuAnalyze = uimenu(this.figureHandle, ...
-                'Label'     , 'Analyze');
+            this.sessionTable = uitable(this.tabSessionTable);
+            this.sessionTable.Position = [1 1 this.tabSessionInfo.Position(3)-3 this.tabSessionInfo.Position(4)-35];
             
-            this.menuAnalyzePrepare = uimenu(this.menuAnalyze, ...
-                'Label'     , 'Prepare ...', ...
-                 'Callback'  , @this.PrepareAnalysis);
+            this.trialTable = uitable(this.tabTrialTable);
+            this.trialTable.Position = [1 1 this.tabSessionInfo.Position(3)-3 this.tabSessionInfo.Position(4)-35];
             
             
-            this.menuPlot = uimenu(this.figureHandle, ...
-                'Label'     , 'Plot', ...
-                 'Callback'  , @this.Plot);
-            
-            this.menuPlotGeneratePlots = uimenu(this.menuPlot, ...
-                'Label'     , 'Generate plots');
-            
-            this.menuPlotGeneratePlotsCombined = uimenu(this.menuPlot, ...
-                'Label'     , 'Generate plots combined');
-            
-            this.menuPlotGeneratePlotsAggregated = uimenu(this.menuPlot, ...
-                'Label'     , 'Generate plots aggregated');
-            
-            this.menuTools = uimenu(this.figureHandle, ...
-                'Label'     , 'Tools');
-            
-            this.menuBiteBarGui = uimenu(this.menuTools, ...
-                'Label'     , 'Bite bar GUI', ...
-                 'Callback'  , @BitebarGUI);
-        
-        
-            
-            % session contextual menu
-            % Define a context menu; it is not attached to anything
-            this.sessionContextMenu = uicontextmenu;
-            this.sessionContextMenuCopy = uimenu(this.sessionContextMenu, ...
-                'Label'     , 'Copy session ...', ...
-                'Callback'  , @this.CopySessions);
-            this.sessionContextMenuDelete = uimenu(this.sessionContextMenu, ...
-                'Label'     , 'Delete sessions ...', ...
-                'Callback'  , @this.DeleteSessions);
-            this.sessionContextMenuRename = uimenu(this.sessionContextMenu, ...
-                'Label'     , 'Rename sessions ...', ...
-                'Callback'  , @this.RenameSessions);
-            this.sessionContextMenuRenameSubjects = uimenu(this.sessionContextMenu, ...
-                'Label'     , 'Rename subjects ...', ...
-                'Callback'  , @this.RenameSubjects);
-            this.sessionContextMenuEditSettings = uimenu(this.sessionContextMenu, ...
-                'Label'     , 'Edit settings ...', ...
-                'Callback'  , @this.EditSessionSettings);
-            set(this.sessionListBox, 'uicontextmenu', this.sessionContextMenu)
-            
-            
-            % Move the GUI to the center of the screen.
-            movegui(this.figureHandle,'center')
-            
+            this.commentsTextBox = 	uitextarea(this.tabSessionInfo);
+            this.commentsTextBox.FontName = 'consolas';
+            this.commentsTextBox.HorizontalAlignment = 'Left';
+            this.commentsTextBox.Value = 'Session notes:';
+            this.commentsTextBox.Editable = 'on';
+            this.commentsTextBox.BackgroundColor = [1 1 0.8];
+            this.commentsTextBox.ValueChangedFcn = @this.commentsTextBoxCallBack;
+            this.commentsTextBox.Position = [1 1 this.tabSessionInfo.Position(3)-3 this.tabSessionInfo.Position(4)*1/5];
+                     
             % This is to avoid a close all closing the GUI
             set(this.figureHandle, 'handlevisibility', 'off');
             
@@ -299,15 +151,151 @@ classdef ArumeGui < handle
             set(this.figureHandle,'Visible','on');
             
             this.updateGui();
+            
+            % Register the app with App Designer
+            registerApp(this, this.figureHandle)
+
+            if nargout == 0
+                clear this
+            end
+        end
+        
+        function InitMenu(this)
+                
+            % menu
+            set(this.figureHandle,'MenuBar','none'); 
+            
+            this.menuProject = uimenu(this.figureHandle);
+            this.menuProject.Text = 'Project';
+            this.menuProject.Callback = @this.menuProjectCallback;
+            
+            this.menuProjectNewProject = uimenu(this.menuProject);
+            this.menuProjectNewProject.Text = 'New project ...';
+            this.menuProjectNewProject.Callback = @this.newProject;
+            
+            this.menuProjectLoadProject = uimenu(this.menuProject);
+            this.menuProjectLoadProject.Text = 'Load project ...';
+            this.menuProjectLoadProject.Callback = @this.loadProject;
+            
+            this.menuProjectLoadRecentProject = uimenu(this.menuProject);
+            this.menuProjectLoadRecentProject.Text = 'Load recent project';
+            
+            this.menuProjectCloseProject = uimenu(this.menuProject);
+            this.menuProjectCloseProject.Text = 'Close project';
+            this.menuProjectCloseProject.Callback =  @this.closeProject;
+            
+            this.menuProjectSaveProjectBackup = uimenu(this.menuProject);
+            this.menuProjectSaveProjectBackup.Text = 'Backup project ...';
+            this.menuProjectSaveProjectBackup.Separator = 'on';
+            this.menuProjectSaveProjectBackup.Callback = @this.saveProjectBackup;
+            
+            this.menuProjectLoadProjectBackup = uimenu(this.menuProject);
+            this.menuProjectLoadProjectBackup.Text = 'Restore project backup ...';
+            this.menuProjectLoadProjectBackup.Callback = @this.loadProjectBackup;
+            
+            
+            this.menuSession = uimenu(this.figureHandle);
+            this.menuSession.Text = 'Session';
+            
+            this.menuSessionNewSession = uimenu(this.menuSession);
+            this.menuSessionNewSession.Text = 'New session';
+            this.menuSessionNewSession.Callback = @this.newSession;
+            
+            this.menuSessionImportSession = uimenu(this.menuSession);
+            this.menuSessionImportSession.Text = 'Import session';
+            this.menuSessionImportSession.Callback =  @this.importSession;
+            
+            this.menuSessionSortSessions = uimenu(this.menuSession);
+            this.menuSessionSortSessions.Text =  'Sort sessions';
+            this.menuSessionSortSessions.Callback = @this.SortSessions;
+            
+            this.menuSessionCopy = uimenu(this.menuSession);
+            this.menuSessionCopy.Label = 'Copy sessions ...';
+            this.menuSessionCopy.Callback = @this.CopySessions;
+            this.menuSessionCopy.Separator = 'on';
+            
+            this.menuSessionDelete = uimenu(this.menuSession);
+            this.menuSessionDelete.Label = 'Delete sessions ...';
+            this.menuSessionDelete.Callback = @this.DeleteSessions;
+            
+            this.menuSessionRename = uimenu(this.menuSession);
+            this.menuSessionRename.Label = 'Rename sessions ...';
+            this.menuSessionRename.Callback = @this.RenameSessions;
+            
+            this.menuSessionEditSettings = uimenu(this.menuSession);
+            this.menuSessionEditSettings.Label = 'Edit settings ...';
+            this.menuSessionEditSettings.Callback = @this.EditSessionSettings;
+            
+            this.menuSessionSendDataToWorkspace = uimenu(this.menuSession);
+            this.menuSessionSendDataToWorkspace.Label = 'Send data to workspace ...';
+            this.menuSessionSendDataToWorkspace.Callback = @this.SendDataToWorkspace;
+
+            
+            this.menuRun = uimenu(this.figureHandle);
+            this.menuRun.Text = 'Run';
+            
+            this.menuRunStartSession = uimenu(this.menuRun);
+            this.menuRunStartSession.Text = 'Start session...';
+            this.menuRunStartSession.Callback = @this.startSession;
+            
+            this.menuRunResumeSession = uimenu(this.menuRun);
+            this.menuRunResumeSession.Text = 'Resume session';
+            this.menuRunResumeSession.Callback = @this.resumeSession;
+            
+            this.menuRunRestartSession = uimenu(this.menuRun);
+            this.menuRunRestartSession.Text = 'Restart session';
+            this.menuRunRestartSession.Callback = @this.restartSession;
+            
+            this.menuResumeSessionFrom = uimenu(this.menuRun);
+            this.menuResumeSessionFrom.Text = 'Resume session from ...';
+            this.menuResumeSessionFrom.Separator = 'on' ;
+            
+        
+            this.menuAnalyze = uimenu(this.figureHandle);
+            this.menuAnalyze.Text = 'Analyze';
+            
+            this.menuAnalyzePrepare = uimenu(this.menuAnalyze);
+            this.menuAnalyzePrepare.Text = 'Prepare ...';
+            this.menuAnalyzePrepare.Callback = @this.PrepareAnalysis;
+            
+            this.menuAnalyzeRunAnalyses = uimenu(this.menuAnalyze);
+            this.menuAnalyzeRunAnalyses.Text = 'Run data analyses ...';
+            this.menuAnalyzeRunAnalyses.Callback = @this.RunDataAnalyses;
+            
+            
+            this.menuPlot = uimenu(this.figureHandle);
+            this.menuPlot.Text = 'Plot';
+            this.menuPlot.Callback = @this.Plot;
+            
+            this.menuPlotGeneratePlots = uimenu(this.menuPlot);
+            this.menuPlotGeneratePlots.Text = 'Generate plots';
+            
+            this.menuPlotGeneratePlotsCombined = uimenu(this.menuPlot);
+            this.menuPlotGeneratePlotsCombined.Text = 'Generate plots combined';
+            
+            this.menuPlotGeneratePlotsAggregated = uimenu(this.menuPlot);
+            this.menuPlotGeneratePlotsAggregated.Text = 'Generate plots aggregated';
+            
+            this.menuTools = uimenu(this.figureHandle);
+            this.menuTools.Text = 'Tools';
+            
+            this.menuToolsBiteBarGui = uimenu(this.menuTools);
+            this.menuToolsBiteBarGui.Text = 'Bite bar GUI';
+            this.menuToolsBiteBarGui.Callback = @BitebarGUI;
+            
+            this.menuToolsOpenProjectFolderInExplorer = uimenu(this.menuTools);
+            this.menuToolsOpenProjectFolderInExplorer.Text = 'Open project folder in explorer...';
+            this.menuToolsOpenProjectFolderInExplorer.Callback = @this.OpenProjectFolderInExplorer;
         end
     end
+    
     
     %%  Callbacks 
     methods 
         
         function figureCloseRequest( this, source, eventdata )
             if ( this.closeProjectQuestdlg( ) )
-                if ( ~isempty( this.arumeController.currentProject) )
+                if ( ~isempty(this.arumeController) && ~isempty( this.arumeController.currentProject) )
                     this.arumeController.currentProject.save();
                 end
                 delete(this.figureHandle)
@@ -316,36 +304,29 @@ classdef ArumeGui < handle
         end
         
         function figureResizeFcn( this, source, eventdata )
-            figurePosition = get(this.figureHandle,'position');
+            figurePosition = this.figureHandle.Position;
+            
+%             this.figureHandle.Position = [this.figureHandle.Position(1:3) max(this.figureHandle.Position(4),600)];
             w = figurePosition(3);  % figure width
             h = figurePosition(4);  % figure height
+            h = h;
             
-            m = 8;      % margin between panels
-            th = 40;    % top panel height
-            bh = 60;    % bottom panel height
-            lw = 400;   % left panel width            
-            
-            set(this.topPanel, ...
-                'Position'  , [m (h-th-m) (w-m*2) th]);
-            set(this.leftPanel, ...
-                'Position'  , [m (bh+m*2) lw (h-m*4-th-bh)]);
-            set(this.rightPanel, ...
-                'Position'  , [(m*2+lw) (bh+m*2) (w- lw-m*3) (h-m*4-th-bh)]);
-            set(this.bottomPanel, ...
-                'Position'  , [m m (w-m*2) bh]);
+            m = 2;      % margin between panels
+            lw = 300;   % left panel width            
+
+            this.leftPanel.Position = [1 1 lw h-2];
+            this.rightPanel.Position = [lw+3 1 (w-lw-4) h-2];
         end
         
-        
-        
-        function menuFileCallback( this, source, eventdata )
+        function menuProjectCallback( this, source, eventdata )
             
             % Clean up and refill the recent projects menu
             
-            delete(get(this.menuFileLoadRecentProject,'children'));
+            delete(get(this.menuProjectLoadRecentProject,'children'));
             
             for i=1:length(this.arumeController.recentProjects)
-                uimenu(this.menuFileLoadRecentProject, ...
-                'Label'     , this.arumeController.recentProjects{i}, ...
+                uimenu(this.menuProjectLoadRecentProject, ...
+                'Text'     , this.arumeController.recentProjects{i}, ...
                 'Callback'  , @this.loadProject);
             end
         end
@@ -396,7 +377,7 @@ classdef ArumeGui < handle
         function loadProject(this, source, eventdata )
             
             if ( this.closeProjectQuestdlg() )
-                if ( this.menuFileLoadProject == source ) 
+                if ( this.menuProjectLoadProject == source ) 
                     pathname = uigetdir(this.arumeController.defaultDataFolder, 'Pick a project folder');
                     if ( isempty(pathname) || (isscalar(pathname) && (~pathname)) || ~exist(pathname,'dir')  )
                         return
@@ -514,7 +495,7 @@ classdef ArumeGui < handle
                 end
                 
                 % Check if session already exists
-                if ( isempty(this.arumeController.currentProject.findSession( session.Experiment, session.Subject_Code, session.Session_Code)))
+                if ( isempty(this.arumeController.currentProject.findSession( session.Subject_Code, session.Session_Code)))
                     break;
                 else
                     uiwait(msgbox('There is already a session with this name/code', 'Error', 'Modal'));
@@ -574,7 +555,7 @@ classdef ArumeGui < handle
                 end
                 
                 % Check if session already exists
-                if ( isempty(this.arumeController.currentProject.findSession( session.Experiment, session.Subject_Code, session.Session_Code)))
+                if ( isempty(this.arumeController.currentProject.findSession( session.Subject_Code, session.Session_Code)))
                     break;
                 else
                     uiwait(msgbox('There is already a session with this name/code', 'Error', 'Modal'));
@@ -604,8 +585,7 @@ classdef ArumeGui < handle
             this.updateGui();
         end
         
-        
-        function CopySessions( this, source, eventdata )
+        function [newSubjectCodes, newSessionCodes] = DlgNewSubjectAndSessionCodes(this)
             
             sessions = this.arumeController.selectedSessions;
             
@@ -625,9 +605,11 @@ classdef ArumeGui < handle
                     newNamesDlg.([session.name '_New_Subject_Code' ]) = newSubjectCodes{i};
                     newNamesDlg.([session.name '_New_Session_Code' ]) = newSessionCodes{i};
                 end
-
+                
                 P = StructDlg(newNamesDlg);
                 if ( isempty( P ) )
+                    newSubjectCodes = {};
+                    newSessionCodes = {};
                     return
                 end
                 
@@ -660,12 +642,30 @@ classdef ArumeGui < handle
                     break;
                 end
             end
+        end
+        
+        function CopySessions( this, source, eventdata )
             
-            %Check that the names don't exist already
+            [newSubjectCodes, newSessionCodes] = this.DlgNewSubjectAndSessionCodes();
             
+            if ( ~isempty( newSubjectCodes ) ) 
+                this.arumeController.copySelectedSessions(newSubjectCodes, newSessionCodes);
+                this.updateGui();
+            end
+        end
+        
+        function RenameSessions( this, source, eventdata )
             
-             this.arumeController.copySelectedSessions(newSubjectCodes, newSessionCodes);
-             this.updateGui();
+            sessions = this.arumeController.selectedSessions;
+            
+            [newSubjectCodes, newSessionCodes] = this.DlgNewSubjectAndSessionCodes();            
+            
+            if ( ~isempty( newSubjectCodes ) )
+                for i=1:length(sessions)
+                    this.arumeController.renameSession(sessions(i), newSubjectCodes{i}, newSessionCodes{i});
+                end
+                this.updateGui();
+            end
         end
         
         function DeleteSessions( this, source, eventdata )
@@ -677,131 +677,6 @@ classdef ArumeGui < handle
                 this.arumeController.deleteSelectedSessions();
                 this.updateGui();
             end
-        end
-        
-        function RenameSessions( this, source, eventdata )
-            
-            sessions = this.arumeController.selectedSessions;
-            
-            
-            newSubjectCodes = {};
-            newSessionCodes = {};
-            for session=sessions
-                newSubjectCodes{end+1} = session.subjectCode;
-                newSessionCodes{end+1} = session.sessionCode;
-            end
-            
-            
-            while(1)
-                newNamesDlg = [];
-                for i=1:length(sessions)
-                    session = sessions(i);
-                    newNamesDlg.([session.name '_New_Session_Code' ]) = newSessionCodes{i};
-                end
-
-                P = StructDlg(newNamesDlg);
-                if ( isempty( P ) )
-                    return
-                end
-                
-                newSessionCodes = {};
-                for session=sessions
-                    newSessionCodes{end+1} = P.([session.name '_New_Session_Code' ]);
-                end
-                
-                allgood = 1;
-                for i=1:length(sessions)
-                    for session = this.arumeController.currentProject.sessions
-                        if ( ~ArumeCore.Session.IsValidSubjectCode(newSubjectCodes{i}) || ~ArumeCore.Session.IsValidSessionCode(newSessionCodes{i}) )
-                            allgood = 0;
-                            break;
-                        end
-                        if ( streq(upper(session.subjectCode), upper(newSubjectCodes{i})) && streq(upper(session.sessionCode), upper(newSessionCodes{i})) )
-                            uiwait(msgbox(['One of the names is repeated ' newSubjectCodes{i} '-' newSessionCodes{i} '.'], 'Error', 'Modal'));
-                            allgood = 0;
-                            break;
-                        end
-                    end
-                    if ( allgood == 0)
-                        break;
-                    end
-                end
-                
-                if ( allgood)
-                    break;
-                end
-            end
-            
-            %Check that the names don't exist already
-            
-            
-            for i=1:length(sessions) 
-                this.arumeController.renameSession(sessions(i), newSubjectCodes{i}, newSessionCodes{i});
-            end
-            this.updateGui();
-        end
-        
-        
-        function RenameSubjects( this, source, eventdata )
-            
-            sessions = this.arumeController.selectedSessions;
-            
-            
-            newSubjectCodes = {};
-            newSessionCodes = {};
-            for session=sessions
-                newSubjectCodes{end+1} = session.subjectCode;
-                newSessionCodes{end+1} = session.sessionCode;
-            end
-            
-            
-            while(1)
-                newNamesDlg = [];
-                for i=1:length(sessions)
-                    session = sessions(i);
-                    newNamesDlg.([session.name '_New_Subject_Code' ]) = newSubjectCodes{i};
-                end
-
-                P = StructDlg(newNamesDlg);
-                if ( isempty( P ) )
-                    return
-                end
-                
-                newSubjectCodes = {};
-                for session=sessions
-                    newSubjectCodes{end+1} = P.([session.name '_New_Subject_Code' ]);
-                end
-                
-                allgood = 1;
-                for i=1:length(sessions)
-                    for session = this.arumeController.currentProject.sessions
-                        if ( ~ArumeCore.Session.IsValidSubjectCode(newSubjectCodes{i}) || ~ArumeCore.Session.IsValidSessionCode(newSessionCodes{i}) )
-                            allgood = 0;
-                            break;
-                        end
-                        if ( streq(session.subjectCode, newSubjectCodes{i}) &&  streq(session.sessionCode, newSessionCodes{i}) )
-                            uiwait(msgbox(['One of the names is repeated ' newSubjectCodes{i} '-' newSessionCodes{i} '.'], 'Error', 'Modal'));
-                            allgood = 0;
-                            break;
-                        end
-                    end
-                    if ( allgood == 0)
-                        break;
-                    end
-                end
-                
-                if ( allgood)
-                    break;
-                end
-            end
-            
-            %Check that the names don't exist already
-            
-            
-            for i=1:length(sessions) 
-                this.arumeController.renameSession(sessions(i), newSubjectCodes{i}, newSessionCodes{i});
-            end
-            this.updateGui();
         end
         
         function EditSessionSettings(this, source, eventdata )
@@ -828,6 +703,19 @@ classdef ArumeGui < handle
             session.updateExperimentOptions( options );
             
             this.updateGui();
+        end
+        
+        function SendDataToWorkspace( this, source, eventdata ) 
+            if (~isempty(this.arumeController.currentSession))
+                TrialDataTable = this.arumeController.currentSession.trialDataTable;
+                SamplesDataTable = this.arumeController.currentSession.samplesDataTable;
+                ProjectDataTable = this.arumeController.currentProject.GetDataTable();
+                EventDataTables = this.arumeController.currentSession.eventDataTables;
+                
+                assignin('base','TrialDataTable',TrialDataTable);
+                assignin('base','SamplesDataTable',SamplesDataTable);
+                assignin('base','EventDataTables',EventDataTables);
+            end
         end
         
         function startSession( this, source, eventdata ) 
@@ -867,8 +755,23 @@ classdef ArumeGui < handle
             end
         end
         
-        function PrepareAnalysis( this, source, eventdata ) 
+        function PrepareAnalysis( this, source, eventdata )             
             this.arumeController.prepareAnalysis();
+            this.updateGui();
+        end
+        
+        function RunDataAnalyses( this, source, eventdata )
+            optionsDlg = this.arumeController.getAnalysisOptions( );
+            if ( ~isempty( optionsDlg) )
+                options = StructDlg(optionsDlg, 'Edit analysis options');
+                if ( isempty( options ) )
+                    return;
+                end
+            else
+                options = [];
+            end
+            
+            this.arumeController.runDataAnalyses(options);
             this.updateGui();
         end
         
@@ -925,27 +828,54 @@ classdef ArumeGui < handle
         end
         
         function GeneratePlotsCombined( this, source, eventdata ) 
-            this.arumeController.generatePlots({source.Label}, 1);
+            this.arumeController.generatePlots({source.Label}, 1,1);
             this.updateGui();
         end
         
-        function sessionListBoxCallBack( this, source, eventdata )
-            
-            sessionListBoxCurrentValue = get(this.sessionListBox,'value');
-            
-            if ( sessionListBoxCurrentValue > 0 )
-                this.arumeController.setCurrentSession( sessionListBoxCurrentValue );
-                this.updateGui();
+        function OpenProjectFolderInExplorer( this, source, eventdata ) 
+            if ( ~isempty(this.arumeController.currentProject))
+                winopen(this.arumeController.currentProject.path)
             end
         end
         
-        function commentsTextBoxCallBack( this, source, eventdata )
-            this.arumeController.currentSession.updateComment(get(this.commentsTextBox, 'string'));
+        function sessionListBoxCallBack( this, source, eventdata )
+
+            sessionListBoxCurrentValue = [];
+            for i =1:length( eventdata.SelectedNodes)
+                node = eventdata.SelectedNodes(i);
+                if ( ~isempty(node.NodeData) )
+                    [~,j] = this.arumeController.currentProject.findSessionByIDNumber( node.NodeData );
+                    sessionListBoxCurrentValue(end+1) = j;
+                end
+            end
+%             sessionListBoxCurrentValue = get(this.sessionListBox,'value');
+%             
+            if ( sessionListBoxCurrentValue > 0 )
+                this.arumeController.setCurrentSession( sessionListBoxCurrentValue );
+            else
+                this.arumeController.setCurrentSession( [] );
+            end
+            this.updateGui();
         end
         
-        function SendToWorkspace( this, source, eventdata)
-            
+        function commentsTextBoxCallBack( this, source, eventdata )
+            this.arumeController.currentSession.updateComment(this.commentsTextBox.Value);
         end
+        
+        
+        function tabRightPanelCallBack(this, source, eventdata )
+            switch(eventdata.NewValue.Title)
+                case 'Session table'
+                    if ( ~isempty( this.arumeController.currentProject ) )
+                        this.sessionTable.Data = this.arumeController.currentProject.sessionsTable;
+                    end
+                case 'Trial table'
+                    if ( ~isempty( this.arumeController.currentSession) && ~isempty(this.arumeController.currentSession.currentRun))
+                        this.trialTable.Data = this.arumeController.currentSession.currentRun.pastTrialTable;
+                    end
+            end
+        end
+            
     end
     
     methods(Access=public)
@@ -956,36 +886,86 @@ classdef ArumeGui < handle
             
             % update top box info
             if ( ~isempty( this.arumeController.currentProject ) )
-                set(this.projectTextLabel,              'String', ['Project: ' this.arumeController.currentProject.name] );
-                set(this.pathTextLabel,                 'String', ['Path: ' this.arumeController.currentProject.path] );
+                this.figureHandle.Name = sprintf('Arume - %s', this.arumeController.currentProject.path);
             else
-                set(this.projectTextLabel,              'String', 'Project: -' );
-                set(this.pathTextLabel,                 'String', 'Path: -' );
+                this.figureHandle.Name = sprintf('Arume');
             end
             
             % update session listbox
-            if ( ~isempty( this.arumeController.currentProject ) )
-                % populate sessionlist
-                sessionNames = cell(length(this.arumeController.currentProject.sessions),1);
-                for i=1:length( this.arumeController.currentProject.sessions )
-                    sessionNames{i} = sprintf('%-20.20s %-10.10s %-20.20s', ...
-                        this.arumeController.currentProject.sessions(i).experimentDesign.Name, ...
-                        char(this.arumeController.currentProject.sessions(i).subjectCode-0), ...
-                        this.arumeController.currentProject.sessions(i).sessionCode);
-                end
-                set(this.sessionListBox, 'String', sessionNames);
-                if ( ~isempty( this.arumeController.currentSession ) )
-                    s = [];
-                    for i=1:length(this.arumeController.selectedSessions)
-                        s = [s; find(this.arumeController.currentProject.sessions == this.arumeController.selectedSessions(i))];
+            if ( ~isempty( this.arumeController.currentProject ) && ~isempty(this.arumeController.currentProject.sessions) )
+                
+                % delete sessions that do not exist anymore and updte text
+                % of existing ones
+                for iSubj = length(this.sessionTree.Children):-1:1
+                    subjNode = this.sessionTree.Children(iSubj);
+                    for iSess = length(subjNode.Children):-1:1
+                        sessNode = subjNode.Children(iSess);
+                        session = this.arumeController.currentProject.findSessionByIDNumber( sessNode.NodeData );
+                        if ( isempty( session ) )
+                            delete(sessNode);
+                        else
+                            sessNode.Text = session.sessionCode;
+                        end
                     end
-                    set(this.sessionListBox, 'Value', s );
-                else
-                    set(this.sessionListBox, 'Value', min(1,length(this.arumeController.currentProject.sessions)) )
+                    if ( isempty(subjNode.Children) )
+                        delete(subjNode);
+                    end
                 end
+                
+                % add nodes for new sessions. Add subject node if necessary
+                for i=1:length(this.arumeController.currentProject.sessions)
+                    found = 0;
+                    foundSubj = 0;
+                    session = this.arumeController.currentProject.sessions(i);
+                    for iSubj = length(this.sessionTree.Children):-1:1
+                        subjNode = this.sessionTree.Children(iSubj);
+                        if ( strcmp(subjNode.Text, session.subjectCode ) )
+                            foundSubj = iSubj;
+                            for iSess = length(subjNode.Children):-1:1
+                                sessNode = subjNode.Children(iSess);
+                                if (sessNode.NodeData == session.sessionIDNumber)
+                                    found = 1;
+                                    break;
+                                end
+                            end
+                            break;
+                        end
+                    end
+                    if ( ~found )
+                        if ( foundSubj > 0 )
+                            subjNode = this.sessionTree.Children(foundSubj);
+                        else
+                            subjNode = uitreenode(this.sessionTree);
+                            subjNode.Text = session.subjectCode;
+                        end
+                        
+                        node = uitreenode(subjNode);
+                        node.Text = session.sessionCode;
+                        node.NodeData = session.sessionIDNumber;
+                    end
+                end
+                
+                % find the nodes corresponding with the selected sessions
+                nodes = [];
+                for i=1:length(this.arumeController.selectedSessions)
+                    session = this.arumeController.selectedSessions(i);
+                    for iSubj = length(this.sessionTree.Children):-1:1
+                        subjNode = this.sessionTree.Children(iSubj);
+                        if ( strcmp(subjNode.Text, session.subjectCode ) )
+                            for iSess = length(subjNode.Children):-1:1
+                                sessNode = subjNode.Children(iSess);
+                                if (sessNode.NodeData == session.sessionIDNumber)
+                                    nodes = cat(1,nodes, sessNode);
+                                end
+                                expand(subjNode);
+                            end
+                        end
+                    end
+                end
+                this.sessionTree.SelectedNodes = nodes;
             else
-                set(this.sessionListBox, 'String', {});
-                set(this.sessionListBox, 'Value', 0 )
+                delete(this.sessionTree.Children);
+                this.sessionTree.SelectedNodes = [];
             end
             
             % update info box
@@ -1011,7 +991,7 @@ classdef ArumeGui < handle
                                 end
                                 row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, fieldText);
                             case 'string'
-                                fieldText = dataTable{1,i};
+                                fieldText = char(dataTable{1,i});
                                 if ( length(fieldText) > 50 )
                                     fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
                                 end
@@ -1021,7 +1001,7 @@ classdef ArumeGui < handle
                             case 'cell'
                                 if ( length(size(dataTable{1,i}))<=2 && min(size(dataTable{1,i}))==1 && ischar(dataTable{1,i}{1}) && ~isempty(dataTable{1,i}) )
                                     for j=1:length(dataTable{1,i})
-                                        fieldText = dataTable{1,i}{j};
+                                        fieldText = char(dataTable{1,i}{j});
                                         if ( length(fieldText) > 50 )
                                             fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
                                         end
@@ -1037,46 +1017,51 @@ classdef ArumeGui < handle
                     end
                         
                         
-                set(this.infoBox,'string', s);
+                this.infoBox.Value = s;
+            else
+                this.infoBox.Value = '';
             end
             
             % update comments text box
             if ( ~isempty( this.arumeController.currentSession ) )
-                set(this.commentsTextBox, 'Enable','on')
-                set(this.commentsTextBox,'string',this.arumeController.currentSession.comment);
+                this.commentsTextBox.Enable = 'on';
+                this.commentsTextBox.Value = this.arumeController.currentSession.comment;
             else
-                set(this.commentsTextBox, 'Enable','off')
-                set(this.commentsTextBox,'string','');
+                this.commentsTextBox.Enable = 'off';
+                this.commentsTextBox.Value = '';
             end
                 
             % update menu 
             
             % top level menus
             if ( ~isempty( this.arumeController.currentSession ) )
-                set(this.menuRun, 'Enable', 'on');
-                set(this.menuAnalyze, 'Enable', 'on');
-                set(this.menuPlot, 'Enable', 'on');
+                this.menuAnalyze.Enable = 'on';
+                this.menuPlot.Enable = 'on';
+                if ( isscalar( this.arumeController.selectedSessions ) )
+                    this.menuRun.Enable = 'on';
+                else
+                    this.menuRun.Enable = 'off';
+                end
             else
-                set(this.menuRun, 'Enable', 'off');
-                set(this.menuAnalyze, 'Enable', 'off');
-                set(this.menuPlot, 'Enable', 'off');
-            end
-            if ( isscalar( this.arumeController.selectedSessions ) )
-                set(this.menuRun, 'Enable', 'on');
-            else
-                set(this.menuRun, 'Enable', 'off');
+                this.menuRun.Enable = 'off';
+                this.menuAnalyze.Enable = 'off';
+                this.menuPlot.Enable = 'off';
             end
             
             
             % sub menus
             
             if ( ~isempty( this.arumeController.currentProject ) )
-                set(this.menuFileCloseProject, 'Enable', 'on');
-                set(this.menuFileNewSession, 'Enable', 'on');
+                set(this.menuProjectCloseProject, 'Enable', 'on');
+                set(this.menuProjectSaveProjectBackup, 'Enable', 'on');
+                set(this.menuSession, 'Enable', 'on');
+                set(this.menuSessionNewSession, 'Enable', 'on');
                 
             else
-                set(this.menuFileCloseProject, 'Enable', 'off');
-                set(this.menuFileNewSession, 'Enable', 'off');
+                set(this.menuProjectCloseProject, 'Enable', 'off');
+                set(this.menuProjectSaveProjectBackup, 'Enable', 'off');
+                set(this.menuSession, 'Enable', 'off');
+                set(this.menuSessionNewSession, 'Enable', 'off');
             end
             
             if ( ~isempty( this.arumeController.currentSession ) )
@@ -1099,15 +1084,15 @@ classdef ArumeGui < handle
                     set(this.menuRunRestartSession, 'Enable', 'off');
                 end
                 
-                set(this.sessionContextMenuDelete, 'Enable', 'on');
-                set(this.sessionContextMenuRename, 'Enable', 'on');
+                set(this.menuSessionDelete, 'Enable', 'on');
+                set(this.menuSessionRename, 'Enable', 'on');
             else
                 
                 set(this.menuRunStartSession, 'Enable', 'off');
                 set(this.menuRunResumeSession, 'Enable', 'off');
                 set(this.menuRunRestartSession, 'Enable', 'off');
                 
-                set(this.sessionContextMenuDelete, 'Enable', 'off');
+                set(this.menuSessionDelete, 'Enable', 'off');
             end
             
             % Update past runs
@@ -1135,6 +1120,16 @@ classdef ArumeGui < handle
                 end
             end
             
+            switch(this.rightPanel.SelectedTab.Title)
+                case 'Session table'
+                    if ( ~isempty( this.arumeController.currentProject ) )
+                        this.sessionTable.Data = this.arumeController.currentProject.sessionsTable;
+                    end
+                case 'Trial table'
+                    if ( ~isempty( this.arumeController.currentSession) && ~isempty(this.arumeController.currentSession.currentRun))
+                        this.trialTable.Data = this.arumeController.currentSession.currentRun.pastTrialTable;
+                    end
+            end
         end
     end
     
@@ -1143,7 +1138,7 @@ classdef ArumeGui < handle
     methods
         function result = closeProjectQuestdlg( this )
             result = 0;
-            if ( isempty( this.arumeController.currentProject) )
+            if (isempty(this.arumeController) || isempty( this.arumeController.currentProject) )
                 result = 1;
                 return
             end

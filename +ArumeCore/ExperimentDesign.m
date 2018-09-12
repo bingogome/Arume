@@ -128,6 +128,7 @@ classdef ExperimentDesign < handle
     % --------------------------------------------------------------------
     
     methods ( Access = public )
+        
         function [samplesDataTable, rawDataTable] = PrepareSamplesDataTable(this)
             samplesDataTable= [];
             rawDataTable = [];
@@ -136,10 +137,14 @@ classdef ExperimentDesign < handle
         function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
         end
         
-        function eventDataTable = PrepareEventDataTable(this, eventDataTable)
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+        end
+
+        function optionsDlg = GetAnalysisOptionsDialog(this)
+            optionsDlg = [];
         end
         
-        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+        function [analysisResults, samplesDataTable, trialDataTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, options)
         end
         
         %% ImportSession
@@ -234,6 +239,9 @@ classdef ExperimentDesign < handle
             trialTable = [newTrialTable variableTable];
         end
         
+        function options = GetDefaultOptions(this)
+            options = StructDlg(this.GetAnalysisOptionsDialog(),'',[],[],'off');
+        end
         
         function UpdateExperimentOptions(this, newOptions)
             this.ExperimentOptions = newOptions;
@@ -261,11 +269,6 @@ classdef ExperimentDesign < handle
                 importing = 0;
             end
             dlg = this.GetOptionsDialog(importing);
-            dlg.Debug = { {'{0}','1'} };
-            
-            dlg.ScreenWidth = { 40 '* (cm)' [1 3000] };
-            dlg.ScreenHeight = { 30 '* (cm)' [1 3000] };
-            dlg.ScreenDistance = { 135 '* (cm)' [1 3000] };
         end
         
         function init(this, session, options)
@@ -273,10 +276,6 @@ classdef ExperimentDesign < handle
                 this.Session            = session;
                 this.ExperimentOptions  = options;
             end
-            
-            %-- init variables
-            this.ConditionVars      = this.getConditionVariables();
-            this.ConditionMatrix    = this.getConditionMatrix( this.ConditionVars );
             
             %-- init options
             %-- Check if all the options are there, if not add the default
@@ -292,6 +291,11 @@ classdef ExperimentDesign < handle
                     end
                 end
             end
+            
+            %-- init variables
+            this.ConditionVars      = this.getConditionVariables();
+            this.ConditionMatrix    = this.getConditionMatrix( this.ConditionVars );
+            
             
             % default parameters of any experiment
             this.trialsPerSession   = this.NumberOfConditions;

@@ -236,10 +236,8 @@ classdef ArumeController < handle
             
             % check if session already exists with that subjectCode and
             % sessionCode
-            for session = this.currentProject.sessions
-                if ( isequal(subjectCode, session.subjectCode) && isequal( sessionCode, session.sessionCode) )
-                    error( 'Arume: session already exists use a diferent name' );
-                end
+            if ( ~isempty(this.currentProject.findSession(subjectCode, sessionCode) ) )
+                error( 'Arume: session already exists, use a diferent name' );
             end
             
             session = ArumeCore.Session.NewSession( this.currentProject.path, experiment, subjectCode, sessionCode, experimentOptions );
@@ -248,19 +246,17 @@ classdef ArumeController < handle
             this.currentProject.save();
         end
         
-        function session = importSession( this, experiment, subject_Code, session_Code, options )
+        function session = importSession( this, experiment, subjectCode, sessionCode, options )
             % Imports a session from external files containing the data. It
             % will not be possible to run this session
             
             % check if session already exists with that subjectCode and
             % sessionCode
-            for session = this.currentProject.sessions
-                if ( isequal(subject_Code, session.subjectCode) && isequal( session_Code, session.sessionCode) )
-                    error( 'Arume: session already exists use a diferent name' );
-                end
+            if ( ~isempty(this.currentProject.findSession(subjectCode, sessionCode) ) )
+                error( 'Arume: session already exists, use a diferent name' );
             end
             
-            session = ArumeCore.Session.NewSession( this.currentProject.path, experiment, subject_Code, session_Code, options );
+            session = ArumeCore.Session.NewSession( this.currentProject.path, experiment, subjectCode, sessionCode, options );
             this.currentProject.addSession(session);
             this.selectedSessions = session;
             
@@ -279,16 +275,21 @@ classdef ArumeController < handle
             end
             disp(['Renaming session' session.subjectCode ' - ' session.sessionCode ' to '  subjectCode ' - ' sessionCode]);
             
-            [~, i] = this.currentProject.findSession(session.experimentDesign.Name, session.subjectCode, session.sessionCode);
+            [~, i] = this.currentProject.findSession(session.subjectCode, session.sessionCode);
             this.currentProject.sessions(i).rename(subjectCode, sessionCode);
             this.currentProject.save();
         end
         
         function copySelectedSessions( this, newSubjectCodes, newSessionCodes)
             
+            newSessions = [];
             for i =1:length(this.selectedSessions)
-                this.currentProject.addSession(this.selectedSessions(i).copy(newSubjectCodes{i}, newSessionCodes{i}));
+                newSession = this.selectedSessions(i).copy(newSubjectCodes{i}, newSessionCodes{i});
+                this.currentProject.addSession(newSession);
+                newSessions = cat(1,newSessions, newSession);
             end
+            
+            this.selectedSessions = newSessions;
             
             this.currentProject.save();
         end
@@ -360,26 +361,122 @@ classdef ArumeController < handle
             
             for i =1:n
                 try
-                    disp(['ARUME::preparing analysis for session ' sessions(i).name])
+                    cprintf('blue', '++ ARUME::preparing analyses for session %s\n', sessions(i).name);
                     session = sessions(i);
                     session.prepareForAnalysis();
                     if ( useWaitBar )
                         waitbar(i/n,h)
                     end
                 catch ex
-                    disp('Error preparing a session**************************');
-                    ex.getReport()
-                    disp('end Error preparing a session**************************');
+                    
+                    beep
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!! ARUME ERROR PREPARING ANALYSES: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    disp(ex.getReport);
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!! END ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
                 end
             end
             
             this.currentProject.save();
             
+            try
+                if (~isempty(this.currentProject.sessionsTable) )
+                    writetable(...
+                        this.currentProject.sessionsTable, ...
+                        fullfile(this.currentProject.path, ...
+                        [this.currentProject.name '_ArumeSessionTable.csv']));
+                end
+                
+                disp('======= ARUME EXCEL DATA SAVED TO DISK ==============================')
+            catch err
+                disp('ERROR saving excel data');
+                disp(err.getReport);
+            end
+            
             if (useWaitBar)
                 close(h);
             end
         end
+        
+        function dlg = getAnalysisOptions(this, sessions)
+            
+            if ( ~exist('sessions','var') )
+                sessions = this.selectedSessions;
+            end
+            
+            dlg = struct();
+            for session = sessions
+                dlg1 = session.experimentDesign.GetAnalysisOptionsDialog();
+                f1 = fields(dlg);
+                f2 = fields(dlg1);
+                for i=1:length(f2)
+                    if ( ~any(contains(f1,f2{i})) )
+                        dlg.(f2{i}) = dlg1.(f2{i});
+                    end
+                end
+            end
+        end
                         
+        function runDataAnalyses(this, options, sessions)
+             useWaitBar = 0;
+                       
+            if ( ~exist('sessions','var') )
+                sessions = this.selectedSessions;
+                useWaitBar = 1;
+            end
+            
+            n = length(sessions);
+            
+            if (useWaitBar)
+                h = waitbar(0,'Please wait...');
+            end
+            
+            for i =1:n
+                try
+                    cprintf('blue', '++ ARUME::running analyses for session %s\n', sessions(i).name);
+                    session = sessions(i);
+                    session.runAnalysis(options);
+                    if ( useWaitBar )
+                        waitbar(i/n,h)
+                    end
+                catch ex
+                    
+                    beep
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!! ARUME ERROR RUNNING ANALYSES: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    disp(ex.getReport);
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!! END ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                    cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                end
+            end
+            
+            this.currentProject.save();
+            
+            try
+                if (~isempty(this.currentProject.sessionsTable) )
+                    writetable(...
+                        this.currentProject.sessionsTable, ...
+                        fullfile(this.currentProject.path, ...
+                        [this.currentProject.name '_ArumeSessionTable.csv']));
+                end
+                
+                disp('======= ARUME EXCEL DATA SAVED TO DISK ==============================')
+            catch err
+                disp('ERROR saving excel data');
+                disp(err.getReport);
+            end
+            
+            if (useWaitBar)
+                close(h);
+            end
+        end
+        
+        
         function plotList = GetPlotList( this )
             plotList = {};
             methodList = meta.class.fromName(class(this.currentSession.experimentDesign)).MethodList;
