@@ -56,7 +56,11 @@ classdef Project < handle
                 end
             end
             
+            try
             this.sessionsTable = this.GetDataTable();
+            catch
+                disp('ERROR getting data table');
+            end
         end
     end
     
@@ -160,22 +164,26 @@ classdef Project < handle
         %
         function dataTable = GetDataTable(this)
          
-            dataTable = table();
-            
-            for isess=1:length(this.sessions)
-                session = this.sessions(isess);
+            try
+                dataTable = table();
                 
-                if ( ~isempty( session.sessionDataTable ) )
-                    sessionRow = session.sessionDataTable;
-                else
-                    sessionRow = session.GetBasicSessionDataTable();
+                for isess=1:length(this.sessions)
+                    session = this.sessions(isess);
+                    
+                    if ( ~isempty( session.sessionDataTable ) )
+                        sessionRow = session.sessionDataTable;
+                    else
+                        sessionRow = session.GetBasicSessionDataTable();
+                    end
+                    
+                    dataTable = VertCatTablesMissing(dataTable, sessionRow);
                 end
                 
-                dataTable = VertCatTablesMissing(dataTable, sessionRow);
+                %disp(dataTable);
+                assignin('base','ProjectTable',dataTable);
+            catch
+                disp('ERROR getting data table');
             end
-            
-            %disp(dataTable);
-            assignin('base','ProjectTable',dataTable);
         end
     end
     

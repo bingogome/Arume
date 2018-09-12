@@ -182,36 +182,38 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
             s = this.Session.samplesDataTable;
             
-            if ( any(strcmp(trialDataTable.Properties.VariableNames,'EyeTrackerFrameNumberTrialStart')) )
-                ft = trialDataTable.EyeTrackerFrameNumberTrialStart;
-                fte = trialDataTable.EyeTrackerFrameNumberTrialStop;
-            else
-                ft = s.FrameNumber(1);
-                fte = s.FrameNumber(end);
+            if ( ~isempty( s) )
+                if ( any(strcmp(trialDataTable.Properties.VariableNames,'EyeTrackerFrameNumberTrialStart')) )
+                    ft = trialDataTable.EyeTrackerFrameNumberTrialStart;
+                    fte = trialDataTable.EyeTrackerFrameNumberTrialStop;
+                else
+                    ft = s.FrameNumber(1);
+                    fte = s.FrameNumber(end);
+                end
+                
+                % BIG TODO:!!!!  Match timestamps with samples of the
+                % corresponding file. careful with this!
+                
+                % Find the samples that mark the begining and ends of trials
+                trialDataTable.SampleStartTrial = nan(size(trialDataTable.TrialNumber));
+                s.TrialNumber = nan(size(s.FrameNumber));
+                for i=1:height(trialDataTable)
+                    trialDataTable.SampleStartTrial(i) = bins(s.FrameNumber',ft(i));
+                    trialDataTable.SampleStopTrial(i) = bins(s.FrameNumber',fte(i));
+                    idx = trialDataTable.SampleStartTrial(i):trialDataTable.SampleStopTrial(i);
+                    s.TrialNumber(idx) = trialDataTable.TrialNumber(i);
+                end
+                
+                st = grpstats(...
+                    s(~isnan(s.TrialNumber),:), ...     % Selected rows of data
+                    'TrialNumber', ...                  % GROUP VARIABLE
+                    {'median' 'mean' 'std'}, ...        % Stats to calculate
+                    'DataVars', {'TrialNumber', 'LeftX' 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'});
+                st.Properties.VariableNames{'GroupCount'} = 'count_GoodSamples';
+                st.TrialNumber = [];
+                
+                trialDataTable = [trialDataTable st];
             end
-            
-            % BIG TODO:!!!!  Match timestamps with samples of the
-            % corresponding file. careful with this!
-            
-            % Find the samples that mark the begining and ends of trials
-            trialDataTable.SampleStartTrial = nan(size(trialDataTable.TrialNumber));
-            s.TrialNumber = nan(size(s.FrameNumber));
-            for i=1:height(trialDataTable)
-                trialDataTable.SampleStartTrial(i) = bins(s.FrameNumber',ft(i));
-                trialDataTable.SampleStopTrial(i) = bins(s.FrameNumber',fte(i));
-                idx = trialDataTable.SampleStartTrial(i):trialDataTable.SampleStopTrial(i);
-                s.TrialNumber(idx) = trialDataTable.TrialNumber(i);
-            end
-            
-            st = grpstats(...
-                s(~isnan(s.TrialNumber),:), ...     % Selected rows of data
-                'TrialNumber', ...                  % GROUP VARIABLE
-                {'median' 'mean' 'std'}, ...        % Stats to calculate
-                'DataVars', {'TrialNumber', 'LeftX' 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'}); 
-            st.Properties.VariableNames{'GroupCount'} = 'count_GoodSamples';
-            st.TrialNumber = [];
-            
-            trialDataTable = [trialDataTable st];
         end
         
         function optionsDlg = GetAnalysisOptionsDialog(this)
