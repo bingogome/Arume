@@ -386,7 +386,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             s.Subject = cell(length(sessions),1);
             s.SessionCode = cell(length(sessions),1);
             s.TMS = cell(length(sessions),1);
-            s.PrePost = cell(length(sessions),1);
+            s.PrePost = cell(length(sessions),1); 
             s.TMSNumber = nan(length(sessions),1);
             s.SessionObj = sessions';
             for i=1:length(sessions)
