@@ -904,8 +904,6 @@ classdef ArumeGui < matlab.apps.AppBase
                 % update session listbox
                 if ( ~isempty( this.arumeController.currentProject ) && ~isempty(this.arumeController.currentProject.sessions) )
                     
-                    disp('time')
-                    
                     % delete sessions that do not exist anymore and updte text
                     % of existing ones
                     for iSubj = length(this.sessionTree.Children):-1:1
