@@ -52,6 +52,12 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
         end
         
         function [trialResult, thisTrialData] = runPreTrial(this, thisTrialData )
+            
+            [trialResult, thisTrialData] = runPreTrial@ArumeExperimentDesigns.SVV2AFC(this, thisTrialData);
+            if ( trialResult ~= 'CORRECT' )
+                return;
+            end
+            
             if ( ~isempty(this.Session.currentRun.pastTrialTable) )
                 correctTrialsTable = this.Session.currentRun.pastTrialTable(this.Session.currentRun.pastTrialTable.TrialResult ==  'CORRECT' ,:);
             else

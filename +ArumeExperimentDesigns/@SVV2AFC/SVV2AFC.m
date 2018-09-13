@@ -220,7 +220,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracki
         function [trialResult, thisTrialData] = TiltBiteBar(this, tiltAngle, thisTrialData)
             
             Enum = ArumeCore.ExperimentDesign.getEnum();
-            trialResult = Enum.trialResult.QUIT;
+            trialResult = Enum.trialResult.CORRECT;
                         
             result = 'n';
             while( result ~= 'y' )
