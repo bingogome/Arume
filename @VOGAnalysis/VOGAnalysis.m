@@ -151,6 +151,130 @@ classdef VOGAnalysis < handle
             
         end
         
+        function [calibrationTable] = CalculateCalibrationCR(rawCalibrationData, targetPosition)
+            
+            % regress target and data to get coefficients of calibraiton
+            
+            calibrationTable = table();
+            rawCalibrationData.LeftCR1X(rawCalibrationData.LeftCR1X==0) = nan;
+            rawCalibrationData.LeftCR1Y(rawCalibrationData.LeftCR1Y==0) = nan;
+            rawCalibrationData.RightCR1X(rawCalibrationData.RightCR1X==0) = nan;
+            rawCalibrationData.RightCR1Y(rawCalibrationData.RightCR1Y==0) = nan;
+            
+            lx = rawCalibrationData.LeftX - rawCalibrationData.LeftCR1X;
+            ly = rawCalibrationData.LeftY - rawCalibrationData.LeftCR1Y;
+            rx = rawCalibrationData.RightX - rawCalibrationData.RightCR1X;
+            ry = rawCalibrationData.RightY - rawCalibrationData.RightCR1Y;
+            bLeftX = robustfit(targetPosition.LeftX(~isnan(targetPosition.LeftX)),lx(~isnan(targetPosition.LeftX)));
+            bLeftY = robustfit(targetPosition.LeftY(~isnan(targetPosition.LeftY)),ly(~isnan(targetPosition.LeftY)));
+            bRightX = robustfit(targetPosition.RightX(~isnan(targetPosition.RightX)),rx(~isnan(targetPosition.RightX)));
+            bRightY = robustfit(targetPosition.RightY(~isnan(targetPosition.RightY)),ry(~isnan(targetPosition.RightY)));
+            
+            calibrationTable{'LeftEye', 'GlobeX'} = bLeftX(1);
+            calibrationTable{'LeftEye', 'GlobeY'} = bLeftY(1);
+            calibrationTable{'LeftEye', 'GlobeRadiusX'} = abs(60*bLeftX(2));
+            calibrationTable{'LeftEye', 'GlobeRadiusY'} = abs(60*bLeftY(2));
+            calibrationTable{'LeftEye', 'SignX'} = sign(bLeftX(2));
+            calibrationTable{'LeftEye', 'SignY'} = sign(bLeftY(2));
+            calibrationTable{'LeftEye', 'RefX'} = bLeftX(1);
+            calibrationTable{'LeftEye', 'RefY'} = bLeftY(1);
+            
+            calibrationTable{'RightEye', 'GlobeX'} = bRightX(1);
+            calibrationTable{'RightEye', 'GlobeY'} = bRightY(1);
+            calibrationTable{'RightEye', 'GlobeRadiusX'} = abs(60*bRightX(2));
+            calibrationTable{'RightEye', 'GlobeRadiusY'} = abs(60*bRightY(2));
+            calibrationTable{'RightEye', 'SignX'} = sign(bRightX(2));
+            calibrationTable{'RightEye', 'SignY'} = sign(bRightY(2));
+            calibrationTable{'RightEye', 'RefX'} = bRightX(1);
+            calibrationTable{'RightEye', 'RefY'} = bRightY(1);
+            
+            calibrationTable{'LeftEye', 'OffsetX'}  = bLeftX(1);
+            calibrationTable{'LeftEye', 'GainX'}    = bLeftX(2);
+            calibrationTable{'LeftEye', 'OffsetY'}  = bLeftY(1);
+            calibrationTable{'LeftEye', 'GainY'}    = bLeftY(2);
+            calibrationTable{'RightEye', 'OffsetX'}  = bRightX(1);
+            calibrationTable{'RightEye', 'GainX'}    = bRightX(2);
+            calibrationTable{'RightEye', 'OffsetY'}  = bRightY(1);
+            calibrationTable{'RightEye', 'GainY'}    = bRightY(2);
+            
+        end
+        
+        function [calibratedData] = CalibrateDataCR(rawData, calibrationTable )
+            % CALIBRATE DATA calibrates the raw data from pixels to degrees
+            %
+            %  [calibratedData] = CalibrateData(rawData, calibrationTable, [targetOnForDriftCorrection])
+            %
+            %   Inputs:
+            %       - rawData: raw data table
+            %       - calibrationTable: table with the calibration parameters
+            %
+            %   Outputs:
+            %       - calibratedData: calibrated data
+            
+            
+            if ( calibrationTable{'LeftEye', 'GlobeX'} == 0 )
+                disp( ' WARNING GLOBE NOT SET' )
+                calibrationTable{'LeftEye', 'GlobeX'} = calibrationTable{'LeftEye', 'RefX'};
+                calibrationTable{'LeftEye', 'GlobeY'} = calibrationTable{'LeftEye', 'RefY'};
+                calibrationTable{'LeftEye', 'GlobeRadiusX'} = 85*2;
+                calibrationTable{'LeftEye', 'GlobeRadiusY'} = 85*2;
+                calibrationTable{'LeftEye', 'SignX'} = -1;
+                calibrationTable{'LeftEye', 'SignY'} = 1;
+            end
+            if ( calibrationTable{'RightEye', 'GlobeX'} == 0 )
+                disp( ' WARNING GLOBE NOT SET' )
+                calibrationTable{'RightEye', 'GlobeX'} = calibrationTable{'RightEye', 'RefX'};
+                calibrationTable{'RightEye', 'GlobeY'} = calibrationTable{'RightEye', 'RefY'};
+                calibrationTable{'RightEye', 'GlobeRadiusX'} = 85*2;
+                calibrationTable{'RightEye', 'GlobeRadiusY'} = 85*2;
+                calibrationTable{'RightEye', 'SignX'} = -1;
+                calibrationTable{'RightEye', 'SignY'} = 1;
+            end
+            
+            
+            lx = rawData.LeftX - rawData.LeftCR1X;
+            ly = rawData.LeftY - rawData.LeftCR1Y;
+            rx = rawData.RightX - rawData.RightCR1X;
+            ry = rawData.RightY - rawData.RightCR1Y;
+            
+            
+            t = (rawData.LeftSeconds-rawData.LeftSeconds(1))*1000;
+            lx = calibrationTable{'LeftEye', 'SignX'}*(lx- calibrationTable{'LeftEye', 'RefX'})/calibrationTable{'LeftEye', 'GlobeRadiusX'}*60;
+            ly = calibrationTable{'LeftEye', 'SignY'}*(ly - calibrationTable{'LeftEye', 'RefY'})/calibrationTable{'LeftEye', 'GlobeRadiusY'}*60;
+            rx = calibrationTable{'RightEye', 'SignX'}*(rx - calibrationTable{'RightEye', 'RefX'})/calibrationTable{'RightEye', 'GlobeRadiusX'}*60;
+            ry = calibrationTable{'RightEye', 'SignY'}*(ry - calibrationTable{'RightEye', 'RefY'})/calibrationTable{'RightEye', 'GlobeRadiusY'}*60;
+            
+            lt = rawData.LeftTorsionAngle;
+            rt = rawData.RightTorsionAngle;
+            
+            lel = rawData.LeftUpperEyelid;
+            rel = rawData.RightUpperEyelid;
+            
+            lell = rawData.LeftLowerEyelid;
+            rell = rawData.RightLowerEyelid;
+            
+            lp = (rawData.LeftPupilWidth+rawData.LeftPupilHeight)/2;
+            rp = (rawData.RightPupilWidth+rawData.RightPupilHeight)/2;
+            
+            if ( any(strcmp(rawData.Properties.VariableNames,'LeftFrameNumber') ) )
+                f = rawData.LeftFrameNumber;
+            else
+                f = rawData.LeftFrameNumberRaw;
+            end
+            fr = rawData.LeftFrameNumberRaw;
+            
+            calibratedData = table(t, f, fr, lx, ly, lt, rx, ry, rt, lel,rel,lell,rell, lp, rp, ...
+                'VariableNames',{'Time' 'FrameNumber', 'FrameNumberRaw', 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT' 'LeftUpperLid' 'RightUpperLid'  'LeftLowerLid' 'RightLowerLid' 'LeftPupil' 'RightPupil'});
+            
+            headData = table( rawData.AccelerometerX, rawData.AccelerometerY, rawData.AccelerometerZ, rawData.GyroX, rawData.GyroY, rawData.GyroZ, ...
+                'VariableNames', {'HeadRoll', 'HeadPitch', 'HeadYaw', 'HeadRollVel', 'HeadPitchVel', 'HeadYawVel'});
+            
+            calibratedData = [calibratedData headData];
+            
+            % TODO: drift correction
+            
+        end
+        
         function [calibratedData] = CalibrateData(rawData, calibrationTable )
             % CALIBRATE DATA calibrates the raw data from pixels to degrees
             %

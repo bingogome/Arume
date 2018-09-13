@@ -54,10 +54,11 @@ classdef Project < handle
                 else
                     disp(['WARNING: session ' sessionName ' could not be loaded. May be an old result of corruption.']);
                 end
+                
             end
-            
+                        
             try
-            this.sessionsTable = this.GetDataTable();
+                this.sessionsTable = this.GetDataTable();
             catch
                 disp('ERROR getting data table');
             end
@@ -155,7 +156,7 @@ classdef Project < handle
             for i=1:length(this.sessions)
                 sessionNames{i} = [this.sessions(i).subjectCode this.sessions(i).sessionCode];
             end
-            [~, i] = sort(sessionNames);
+            [~, i] = sort(upper(sessionNames));
             this.sessions = this.sessions(i);
         end
         

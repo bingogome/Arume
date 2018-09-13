@@ -37,7 +37,6 @@ classdef ArumeGui < matlab.apps.AppBase
         menuSession
         menuSessionNewSession
         menuSessionImportSession
-        menuSessionSortSessions
         menuSessionEditSettings
         menuSessionRename
         menuSessionDelete
@@ -73,7 +72,7 @@ classdef ArumeGui < matlab.apps.AppBase
             screenWidth = screenSize(3);
             screenHeight = screenSize(4);
             w = screenWidth*0.5;
-            h = screenHeight*0.5;  
+            h = screenHeight*0.5;
             left = screenWidth/2-w/2;
             bottom = screenHeight/2-h/2;
             
@@ -113,7 +112,7 @@ classdef ArumeGui < matlab.apps.AppBase
             this.tabTrialTable.Title = 'Trial table';
             
             
-            %  Construct the components                                    
+            %  Construct the components
             this.sessionTree = uitree( this.tabSessions);
             this.sessionTree.Position =  [1 1 this.tabSessions.Position(3)-3 this.tabSessions.Position(4)-35];
             this.sessionTree.FontName = 'consolas';
@@ -143,7 +142,7 @@ classdef ArumeGui < matlab.apps.AppBase
             this.commentsTextBox.BackgroundColor = [1 1 0.8];
             this.commentsTextBox.ValueChangedFcn = @this.commentsTextBoxCallBack;
             this.commentsTextBox.Position = [1 1 this.tabSessionInfo.Position(3)-3 this.tabSessionInfo.Position(4)*1/5];
-                     
+            
             % This is to avoid a close all closing the GUI
             set(this.figureHandle, 'handlevisibility', 'off');
             
@@ -154,16 +153,16 @@ classdef ArumeGui < matlab.apps.AppBase
             
             % Register the app with App Designer
             registerApp(this, this.figureHandle)
-
+            
             if nargout == 0
                 clear this
             end
         end
         
         function InitMenu(this)
-                
+            
             % menu
-            set(this.figureHandle,'MenuBar','none'); 
+            set(this.figureHandle,'MenuBar','none');
             
             this.menuProject = uimenu(this.figureHandle);
             this.menuProject.Text = 'Project';
@@ -204,11 +203,7 @@ classdef ArumeGui < matlab.apps.AppBase
             this.menuSessionImportSession = uimenu(this.menuSession);
             this.menuSessionImportSession.Text = 'Import session';
             this.menuSessionImportSession.Callback =  @this.importSession;
-            
-            this.menuSessionSortSessions = uimenu(this.menuSession);
-            this.menuSessionSortSessions.Text =  'Sort sessions';
-            this.menuSessionSortSessions.Callback = @this.SortSessions;
-            
+                        
             this.menuSessionCopy = uimenu(this.menuSession);
             this.menuSessionCopy.Label = 'Copy sessions ...';
             this.menuSessionCopy.Callback = @this.CopySessions;
@@ -229,7 +224,7 @@ classdef ArumeGui < matlab.apps.AppBase
             this.menuSessionSendDataToWorkspace = uimenu(this.menuSession);
             this.menuSessionSendDataToWorkspace.Label = 'Send data to workspace ...';
             this.menuSessionSendDataToWorkspace.Callback = @this.SendDataToWorkspace;
-
+            
             
             this.menuRun = uimenu(this.figureHandle);
             this.menuRun.Text = 'Run';
@@ -250,7 +245,7 @@ classdef ArumeGui < matlab.apps.AppBase
             this.menuResumeSessionFrom.Text = 'Resume session from ...';
             this.menuResumeSessionFrom.Separator = 'on' ;
             
-        
+            
             this.menuAnalyze = uimenu(this.figureHandle);
             this.menuAnalyze.Text = 'Analyze';
             
@@ -290,8 +285,8 @@ classdef ArumeGui < matlab.apps.AppBase
     end
     
     
-    %%  Callbacks 
-    methods 
+    %%  Callbacks
+    methods
         
         function figureCloseRequest( this, source, eventdata )
             if ( this.closeProjectQuestdlg( ) )
@@ -306,14 +301,14 @@ classdef ArumeGui < matlab.apps.AppBase
         function figureResizeFcn( this, source, eventdata )
             figurePosition = this.figureHandle.Position;
             
-%             this.figureHandle.Position = [this.figureHandle.Position(1:3) max(this.figureHandle.Position(4),600)];
+            %             this.figureHandle.Position = [this.figureHandle.Position(1:3) max(this.figureHandle.Position(4),600)];
             w = figurePosition(3);  % figure width
             h = figurePosition(4);  % figure height
             h = h;
             
             m = 2;      % margin between panels
-            lw = 300;   % left panel width            
-
+            lw = 300;   % left panel width
+            
             this.leftPanel.Position = [1 1 lw h-2];
             this.rightPanel.Position = [lw+3 1 (w-lw-4) h-2];
         end
@@ -326,14 +321,14 @@ classdef ArumeGui < matlab.apps.AppBase
             
             for i=1:length(this.arumeController.recentProjects)
                 uimenu(this.menuProjectLoadRecentProject, ...
-                'Text'     , this.arumeController.recentProjects{i}, ...
-                'Callback'  , @this.loadProject);
+                    'Text'     , this.arumeController.recentProjects{i}, ...
+                    'Callback'  , @this.loadProject);
             end
         end
-            
+        
         function newProject(this, source, eventdata )
             if ( this.closeProjectQuestdlg() )
-               
+                
                 P.Path = this.arumeController.defaultDataFolder;
                 P.Name = 'ProjectName';
                 
@@ -377,27 +372,29 @@ classdef ArumeGui < matlab.apps.AppBase
         function loadProject(this, source, eventdata )
             
             if ( this.closeProjectQuestdlg() )
-                if ( this.menuProjectLoadProject == source ) 
+                
+                if ( this.menuProjectLoadProject == source )    
                     pathname = uigetdir(this.arumeController.defaultDataFolder, 'Pick a project folder');
-                    if ( isempty(pathname) || (isscalar(pathname) && (~pathname)) || ~exist(pathname,'dir')  )
-                        return
-                    end
-                                        
-                    if ( ~isempty(this.arumeController.currentProject) )
-                        this.arumeController.currentProject.save();
-                    end
                 else % load a recent project
                     pathname = get(source,'Label');
-                    if ( ~exist(pathname,'dir') )
-                        msgbox('File does not exist');
-                        return;
-                    end
                 end
                 
-                h=waitbar(0,'Please wait..');
-                waitbar(1/2)
+                if ( isempty(pathname) || (isscalar(pathname) && (~pathname)) || ~exist(pathname,'dir')  )
+                    msgbox('File does not exist');
+                    return
+                end
+                
+                h = waitbar(0,'Please wait..');
+                
+                waitbar(1/3)
+                if ( ~isempty(this.arumeController.currentProject) )
+                    this.arumeController.currentProject.save();
+                    this.arumeController.closeProject();
+                end
+                
+                waitbar(2/3)
                 this.arumeController.loadProject(pathname);
-                waitbar(2/2)
+                waitbar(3/3)
                 this.updateGui();
                 close(h)
             end
@@ -452,7 +449,7 @@ classdef ArumeGui < matlab.apps.AppBase
             close(h)
             
         end
-                
+        
         function closeProject(this, source, eventdata )
             if ( this.closeProjectQuestdlg )
                 this.arumeController.closeProject();
@@ -460,7 +457,7 @@ classdef ArumeGui < matlab.apps.AppBase
             end
         end
         
-        function newSession( this, source, eventdata ) 
+        function newSession( this, source, eventdata )
             
             experiments = this.arumeController.possibleExperiments;
             if (~isempty(this.arumeController.currentProject.sessions) )
@@ -473,7 +470,7 @@ classdef ArumeGui < matlab.apps.AppBase
             session.Subject_Code = '000';
             session.Session_Code = 'Z';
             
-            while(1) 
+            while(1)
                 sessionDlg.Experiment = {experiments};
                 sessionDlg.Experiment{1}{strcmp(experiments,lastExperiment)} = ['{'  lastExperiment '}'];
                 
@@ -520,7 +517,7 @@ classdef ArumeGui < matlab.apps.AppBase
             this.updateGui();
         end
         
-        function importSession( this, source, eventdata )     
+        function importSession( this, source, eventdata )
             
             experiments = this.arumeController.possibleExperiments;
             if (~isempty(this.arumeController.currentProject.sessions) )
@@ -533,7 +530,7 @@ classdef ArumeGui < matlab.apps.AppBase
             session.Subject_Code = '000';
             session.Session_Code = 'Z';
             
-            while(1) 
+            while(1)
                 sessionDlg.Experiment = {experiments};
                 sessionDlg.Experiment{1}{strcmp(experiments,lastExperiment)} = ['{'  lastExperiment '}'];
                 
@@ -574,17 +571,12 @@ classdef ArumeGui < matlab.apps.AppBase
             else
                 options = [];
             end
-                        
+            
             this.arumeController.importSession( session.Experiment, session.Subject_Code, session.Session_Code, options  );
             
             this.updateGui();
-        end 
-        
-        function SortSessions( this, source, eventdata )
-            this.arumeController.currentProject.sortSessions();
-            this.updateGui();
         end
-        
+                
         function [newSubjectCodes, newSessionCodes] = DlgNewSubjectAndSessionCodes(this)
             
             sessions = this.arumeController.selectedSessions;
@@ -648,7 +640,7 @@ classdef ArumeGui < matlab.apps.AppBase
             
             [newSubjectCodes, newSessionCodes] = this.DlgNewSubjectAndSessionCodes();
             
-            if ( ~isempty( newSubjectCodes ) ) 
+            if ( ~isempty( newSubjectCodes ) )
                 this.arumeController.copySelectedSessions(newSubjectCodes, newSessionCodes);
                 this.updateGui();
             end
@@ -658,7 +650,7 @@ classdef ArumeGui < matlab.apps.AppBase
             
             sessions = this.arumeController.selectedSessions;
             
-            [newSubjectCodes, newSessionCodes] = this.DlgNewSubjectAndSessionCodes();            
+            [newSubjectCodes, newSessionCodes] = this.DlgNewSubjectAndSessionCodes();
             
             if ( ~isempty( newSubjectCodes ) )
                 for i=1:length(sessions)
@@ -674,8 +666,8 @@ classdef ArumeGui < matlab.apps.AppBase
                 'Yes','No','No');
             switch choice
                 case 'Yes'
-                this.arumeController.deleteSelectedSessions();
-                this.updateGui();
+                    this.arumeController.deleteSelectedSessions();
+                    this.updateGui();
             end
         end
         
@@ -705,7 +697,7 @@ classdef ArumeGui < matlab.apps.AppBase
             this.updateGui();
         end
         
-        function SendDataToWorkspace( this, source, eventdata ) 
+        function SendDataToWorkspace( this, source, eventdata )
             if (~isempty(this.arumeController.currentSession))
                 TrialDataTable = this.arumeController.currentSession.trialDataTable;
                 SamplesDataTable = this.arumeController.currentSession.samplesDataTable;
@@ -718,17 +710,17 @@ classdef ArumeGui < matlab.apps.AppBase
             end
         end
         
-        function startSession( this, source, eventdata ) 
+        function startSession( this, source, eventdata )
             this.arumeController.runSession();
             this.updateGui();
         end
         
-        function resumeSession( this, source, eventdata ) 
+        function resumeSession( this, source, eventdata )
             this.arumeController.resumeSession();
             this.updateGui();
         end
         
-        function resumeSessionFrom( this, source, eventdata ) 
+        function resumeSessionFrom( this, source, eventdata )
             
             choice = questdlg('Are you sure you want to resume from a past point?', ...
                 'Closing', ...
@@ -743,7 +735,7 @@ classdef ArumeGui < matlab.apps.AppBase
             end
         end
         
-        function restartSession( this, source, eventdata ) 
+        function restartSession( this, source, eventdata )
             
             choice = questdlg('Are you sure you want to restart the sessions?', ...
                 'Closing', ...
@@ -755,7 +747,7 @@ classdef ArumeGui < matlab.apps.AppBase
             end
         end
         
-        function PrepareAnalysis( this, source, eventdata )             
+        function PrepareAnalysis( this, source, eventdata )
             this.arumeController.prepareAnalysis();
             this.updateGui();
         end
@@ -782,7 +774,7 @@ classdef ArumeGui < matlab.apps.AppBase
             delete(get(this.menuPlotGeneratePlotsAggregated,'children'));
             
             if ( ~isempty( this.arumeController.currentSession ) )
-            
+                
                 plotsList = {};
                 plotsListAgg = {};
                 for session = this.arumeController.selectedSessions
@@ -822,40 +814,53 @@ classdef ArumeGui < matlab.apps.AppBase
         end
         
         function GeneratePlots( this, source, eventdata )
-                        
+            
             this.arumeController.generatePlots({source.Label}, 1);
             this.updateGui();
         end
         
-        function GeneratePlotsCombined( this, source, eventdata ) 
+        function GeneratePlotsCombined( this, source, eventdata )
             this.arumeController.generatePlots({source.Label}, 1,1);
             this.updateGui();
         end
         
-        function OpenProjectFolderInExplorer( this, source, eventdata ) 
+        function OpenProjectFolderInExplorer( this, source, eventdata )
             if ( ~isempty(this.arumeController.currentProject))
                 winopen(this.arumeController.currentProject.path)
             end
         end
         
         function sessionListBoxCallBack( this, source, eventdata )
-
-            sessionListBoxCurrentValue = [];
+            
+            % first if there are subject nodes selected select all the
+            % sessions
+            shouldSelect = [];
             for i =1:length( eventdata.SelectedNodes)
                 node = eventdata.SelectedNodes(i);
-                if ( ~isempty(node.NodeData) )
-                    [~,j] = this.arumeController.currentProject.findSessionByIDNumber( node.NodeData );
-                    sessionListBoxCurrentValue(end+1) = j;
+                if ( isempty(node.NodeData) )
+                    shouldSelect = cat(1,shouldSelect, node.Children);
                 end
             end
-%             sessionListBoxCurrentValue = get(this.sessionListBox,'value');
-%             
+            this.sessionTree.SelectedNodes = unique(cat(1,this.sessionTree.SelectedNodes,shouldSelect));
+            
+            
+            nodes = this.sessionTree.SelectedNodes;
+            sessionListBoxCurrentValue = nan(length(nodes),1);
+            for i =1:length( nodes)
+                node = nodes(i);
+                if ( ~isempty(node.NodeData) )
+                    [~,j] = this.arumeController.currentProject.findSessionByIDNumber( node.NodeData );
+                    sessionListBoxCurrentValue(i) = j;
+                end
+            end
+            sessionListBoxCurrentValue(isnan(sessionListBoxCurrentValue)) = [];
+            
             if ( sessionListBoxCurrentValue > 0 )
                 this.arumeController.setCurrentSession( sessionListBoxCurrentValue );
             else
                 this.arumeController.setCurrentSession( [] );
             end
-            this.updateGui();
+            this.updateGui(1);
         end
         
         function commentsTextBoxCallBack( this, source, eventdata )
@@ -875,149 +880,189 @@ classdef ArumeGui < matlab.apps.AppBase
                     end
             end
         end
-            
+        
     end
     
     methods(Access=public)
-        function updateGui( this )
+        function updateGui( this, fastOption )
+            if ( ~exist('fastOption','var') )
+                fastOption = 0;
+            end
+            
             if ( isempty( this.arumeController ))
                 return;
             end
             
             % update top box info
             if ( ~isempty( this.arumeController.currentProject ) )
-                this.figureHandle.Name = sprintf('Arume - %s', this.arumeController.currentProject.path);
+                this.figureHandle.Name = sprintf('Arume - Project: %s', this.arumeController.currentProject.path);
             else
                 this.figureHandle.Name = sprintf('Arume');
             end
             
-            % update session listbox
-            if ( ~isempty( this.arumeController.currentProject ) && ~isempty(this.arumeController.currentProject.sessions) )
-                
-                % delete sessions that do not exist anymore and updte text
-                % of existing ones
-                for iSubj = length(this.sessionTree.Children):-1:1
-                    subjNode = this.sessionTree.Children(iSubj);
-                    for iSess = length(subjNode.Children):-1:1
-                        sessNode = subjNode.Children(iSess);
-                        session = this.arumeController.currentProject.findSessionByIDNumber( sessNode.NodeData );
-                        if ( isempty( session ) )
-                            delete(sessNode);
-                        else
-                            sessNode.Text = session.sessionCode;
-                        end
-                    end
-                    if ( isempty(subjNode.Children) )
-                        delete(subjNode);
-                    end
-                end
-                
-                % add nodes for new sessions. Add subject node if necessary
-                for i=1:length(this.arumeController.currentProject.sessions)
-                    found = 0;
-                    foundSubj = 0;
-                    session = this.arumeController.currentProject.sessions(i);
+            if ( ~fastOption )
+                % update session listbox
+                if ( ~isempty( this.arumeController.currentProject ) && ~isempty(this.arumeController.currentProject.sessions) )
+                    
+                    disp('time')
+                    
+                    % delete sessions that do not exist anymore and updte text
+                    % of existing ones
                     for iSubj = length(this.sessionTree.Children):-1:1
                         subjNode = this.sessionTree.Children(iSubj);
-                        if ( strcmp(subjNode.Text, session.subjectCode ) )
-                            foundSubj = iSubj;
-                            for iSess = length(subjNode.Children):-1:1
-                                sessNode = subjNode.Children(iSess);
-                                if (sessNode.NodeData == session.sessionIDNumber)
-                                    found = 1;
+                        for iSess = length(subjNode.Children):-1:1
+                            sessNode = subjNode.Children(iSess);
+                            session = this.arumeController.currentProject.findSessionByIDNumber( sessNode.NodeData );
+                            if ( isempty( session ) )
+                                delete(sessNode);
+                            else
+                                sessNode.Text = session.sessionCode;
+                            end
+                        end
+                        
+                        % if the subject does not have children (sessions) delete it too
+                        if ( isempty(subjNode.Children) )
+                            delete(subjNode);
+                        end
+                    end
+                    
+                    % add nodes for new sessions. Add subject node if necessary
+                    for i=1:length(this.arumeController.currentProject.sessions)
+                        foundSession = 0;
+                        foundSubject = 0;
+                        session = this.arumeController.currentProject.sessions(i);
+                        for iSubj = length(this.sessionTree.Children):-1:1
+                            subjNode = this.sessionTree.Children(iSubj);
+                            if ( strcmp(subjNode.Text, session.subjectCode ) )
+                                foundSubject = iSubj;
+                                for iSess = length(subjNode.Children):-1:1
+                                    sessNode = subjNode.Children(iSess);
+                                    if (sessNode.NodeData == session.sessionIDNumber)
+                                        foundSession = 1;
+                                        break;
+                                    end
+                                end
+                                break;
+                            end
+                        end
+                        
+                        if ( ~foundSession )
+                            if ( foundSubject > 0 )
+                                newSubjNode = this.sessionTree.Children(foundSubject);
+                            else
+                                newSubjNode = uitreenode(this.sessionTree);
+                                newSubjNode.Text = session.subjectCode;
+                                
+                                % move to keep alphabetical sorting
+                                for iSubj = 1:length(this.sessionTree.Children)
+                                    subjNode = this.sessionTree.Children(iSubj);
+                                    [~,j] = sort(upper({subjNode.Text, newSubjNode.Text}));
+                                    if ( j(1) > 1 )
+                                        move(newSubjNode, subjNode, 'before');
+                                        break;
+                                    end
+                                end
+                            end
+                            
+                            newSessNode = uitreenode(newSubjNode);
+                            newSessNode.Text = session.sessionCode;
+                            newSessNode.NodeData = session.sessionIDNumber;
+                            
+                            % move to keep alphabetical sorting
+                            for iSess = 1:length(newSubjNode.Children)
+                                sessNode = newSubjNode.Children(iSess);
+                                [~,j] = sort(upper({sessNode.Text, newSessNode.Text}) );
+                                if ( j(1) > 1 )
+                                    move(newSessNode, sessNode, 'before');
                                     break;
                                 end
                             end
-                            break;
                         end
                     end
-                    if ( ~found )
-                        if ( foundSubj > 0 )
-                            subjNode = this.sessionTree.Children(foundSubj);
-                        else
-                            subjNode = uitreenode(this.sessionTree);
-                            subjNode.Text = session.subjectCode;
-                        end
-                        
-                        node = uitreenode(subjNode);
-                        node.Text = session.sessionCode;
-                        node.NodeData = session.sessionIDNumber;
-                    end
-                end
-                
-                % find the nodes corresponding with the selected sessions
-                nodes = [];
-                for i=1:length(this.arumeController.selectedSessions)
-                    session = this.arumeController.selectedSessions(i);
-                    for iSubj = length(this.sessionTree.Children):-1:1
-                        subjNode = this.sessionTree.Children(iSubj);
-                        if ( strcmp(subjNode.Text, session.subjectCode ) )
-                            for iSess = length(subjNode.Children):-1:1
-                                sessNode = subjNode.Children(iSess);
-                                if (sessNode.NodeData == session.sessionIDNumber)
-                                    nodes = cat(1,nodes, sessNode);
+                    
+                    % find the nodes corresponding with the selected sessions
+                    nodes = [];
+                    for i=1:length(this.arumeController.selectedSessions)
+                        session = this.arumeController.selectedSessions(i);
+                        for iSubj = length(this.sessionTree.Children):-1:1
+                            subjNode = this.sessionTree.Children(iSubj);
+                            if ( strcmp(subjNode.Text, session.subjectCode ) )
+                                for iSess = length(subjNode.Children):-1:1
+                                    sessNode = subjNode.Children(iSess);
+                                    if (sessNode.NodeData == session.sessionIDNumber)
+                                        nodes = cat(1,nodes, sessNode);
+                                    end
+                                    expand(subjNode);
                                 end
-                                expand(subjNode);
                             end
                         end
                     end
+                    this.sessionTree.SelectedNodes = nodes;
+                else
+                    delete(this.sessionTree.Children);
+                    this.sessionTree.SelectedNodes = [];
                 end
-                this.sessionTree.SelectedNodes = nodes;
-            else
-                delete(this.sessionTree.Children);
-                this.sessionTree.SelectedNodes = [];
             end
             
             % update info box
-            if ( ~isempty( this.arumeController.currentSession ) )
-                s = '';               
+            if ( ~isempty( this.arumeController.currentSession ) && length(this.arumeController.selectedSessions)==1 )
+                s = '';
                 if ( ~isempty(this.arumeController.currentSession.sessionDataTable) )
                     dataTable = this.arumeController.currentSession.sessionDataTable;
                 else
                     dataTable = this.arumeController.currentSession.GetBasicSessionDataTable();
                 end
-                    for i=1:length(dataTable.Properties.VariableNames)
-                        optionClass = class(dataTable{1,i});
-                        row = '';
-                        switch(optionClass)
-                            case 'double'
-                                if ( isscalar(dataTable{1,i}))
-                                   row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, num2str(dataTable{1,i}));
-                                end
-                            case 'char'
-                                fieldText = dataTable{1,i};
-                                if ( length(fieldText) > 50 )
-                                    fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
-                                end
-                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, fieldText);
-                            case 'string'
-                                fieldText = char(dataTable{1,i});
-                                if ( length(fieldText) > 50 )
-                                    fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
-                                end
-                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, fieldText);
-                            case 'categorical'
-                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, string(dataTable{1,i}));
-                            case 'cell'
-                                if ( length(size(dataTable{1,i}))<=2 && min(size(dataTable{1,i}))==1 && ischar(dataTable{1,i}{1}) && ~isempty(dataTable{1,i}) )
-                                    for j=1:length(dataTable{1,i})
-                                        fieldText = char(dataTable{1,i}{j});
-                                        if ( length(fieldText) > 50 )
-                                            fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
-                                        end
-                                        row = [row sprintf('%-25s: %s\n', [dataTable.Properties.VariableNames{i} num2str(j)], fieldText)];
+                for i=1:length(dataTable.Properties.VariableNames)
+                    optionClass = class(dataTable{1,i});
+                    row = '';
+                    switch(optionClass)
+                        case 'double'
+                            if ( isscalar(dataTable{1,i}))
+                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, num2str(dataTable{1,i}));
+                            end
+                        case 'char'
+                            fieldText = dataTable{1,i};
+                            if ( length(fieldText) > 50 )
+                                fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
+                            end
+                            row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, fieldText);
+                        case 'string'
+                            fieldText = char(dataTable{1,i});
+                            if ( length(fieldText) > 50 )
+                                fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
+                            end
+                            row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, fieldText);
+                        case 'categorical'
+                            row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, string(dataTable{1,i}));
+                        case 'cell'
+                            if ( length(size(dataTable{1,i}))<=2 && min(size(dataTable{1,i}))==1 && ischar(dataTable{1,i}{1}) && ~isempty(dataTable{1,i}) )
+                                for j=1:length(dataTable{1,i})
+                                    fieldText = char(dataTable{1,i}{j});
+                                    if ( length(fieldText) > 50 )
+                                        fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
                                     end
-                                else
-                                    row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, 'CELL');
+                                    row = [row sprintf('%-25s: %s\n', [dataTable.Properties.VariableNames{i} num2str(j)], fieldText)];
                                 end
-                            otherwise
-                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, '-');
-                        end   
-                         s = [s row];
+                            else
+                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, 'CELL');
+                            end
+                        otherwise
+                            row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, '-');
                     end
-                        
-                        
+                    s = [s row];
+                end
+                
+                
                 this.infoBox.Value = s;
+            elseif ( length(this.arumeController.selectedSessions) > 1 )
+                sessions = this.arumeController.selectedSessions;
+                sessionNames = cell(length(sessions),1);
+                for i=1:length(sessions)
+                    sessionNames{i} = [sessions(i).subjectCode ' __ ' sessions(i).sessionCode];
+                end
+                sessionNames = strcat(sessionNames,'\n');
+                sessionNames = horzcat(sessionNames{:});
+                this.infoBox.Value = sprintf(['\nSelected sessions: \n\n' sessionNames]);
             else
                 this.infoBox.Value = '';
             end
@@ -1030,8 +1075,8 @@ classdef ArumeGui < matlab.apps.AppBase
                 this.commentsTextBox.Enable = 'off';
                 this.commentsTextBox.Value = '';
             end
-                
-            % update menu 
+            
+            % update menu
             
             % top level menus
             if ( ~isempty( this.arumeController.currentSession ) )
@@ -1134,7 +1179,7 @@ classdef ArumeGui < matlab.apps.AppBase
     end
     
     
-    %%  Utility functions 
+    %%  Utility functions
     methods
         function result = closeProjectQuestdlg( this )
             result = 0;
