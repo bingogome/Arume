@@ -59,7 +59,7 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
             
             this.blocks = [];
             for j=1:Ntilts
-                block = struct( 'fromCondition', 1+j*NAnglesInRange, 'toCondition', NAnglesInRange+j*NAnglesInRange, 'trialsToRun', NAnglesInRange);
+                block = struct( 'fromCondition', 1+(j-1)*NAnglesInRange, 'toCondition', j*NAnglesInRange, 'trialsToRun', NAnglesInRange);
                 this.blocks = cat(1,this.blocks, repmat(block,NblocksPerTilt,1));
                 if ( rem(NTrialsPerTilt,NAnglesInRange)>0)
                     this.blocks(end).trialsToRun = rem(NTrialsPerTilt,NAnglesInRange);
