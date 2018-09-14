@@ -1524,45 +1524,6 @@ classdef VOGAnalysis < handle
                 
             end
         end
-                
-        function PlotMainsequence(QucikPhaseProps)
-            
-             figure
-             subplot(1,3,1,'nextplot','add') 
-             plot(QucikPhaseProps.Left_X_Displacement,abs(QucikPhaseProps.Left_X_PeakVelocity),'o')
-             plot(QucikPhaseProps.Right_X_Displacement,abs(QucikPhaseProps.Right_X_PeakVelocity),'o')
-             line([0 0],[0 500])
-             xlabel('H displacement (deg)');
-             ylabel('H peak vel. (deg/s)');
-             subplot(1,3,2,'nextplot','add') 
-             plot(QucikPhaseProps.Left_Y_Displacement,abs(QucikPhaseProps.Left_Y_PeakVelocity),'o')
-             plot(QucikPhaseProps.Right_Y_Displacement,abs(QucikPhaseProps.Right_Y_PeakVelocity),'o')
-             line([0 0],[0 500])
-             xlabel('V displacement (deg)');
-             ylabel('V peak vel. (deg/s)');
-             subplot(1,3,3,'nextplot','add') 
-             plot(QucikPhaseProps.Left_T_Displacement,abs(QucikPhaseProps.Left_T_PeakVelocity),'o')
-             plot(QucikPhaseProps.Right_T_Displacement,abs(QucikPhaseProps.Right_T_PeakVelocity),'o')
-             line([0 0],[0 500])
-             xlabel('T displacement (deg)');
-             ylabel('T peak vel. (deg/s)');
-             
-             set(get(gcf,'children'),'xlim',[-30 30],'ylim',[0 300])
-
-             
-             figure
-             subplot(1,3,1,'nextplot','add') 
-             plot(QucikPhaseProps.Left_X_PeakVelocity,abs(QucikPhaseProps.Left_Y_PeakVelocity),'o')
-             plot(QucikPhaseProps.Right_X_PeakVelocity,abs(QucikPhaseProps.Right_Y_PeakVelocity),'o')
-             subplot(1,3,2,'nextplot','add') 
-             plot(QucikPhaseProps.Left_X_PeakVelocity,abs(QucikPhaseProps.Left_T_PeakVelocity),'o')
-             plot(QucikPhaseProps.Right_X_PeakVelocity,abs(QucikPhaseProps.Right_T_PeakVelocity),'o')
-             subplot(1,3,3,'nextplot','add') 
-             plot(QucikPhaseProps.Left_Y_PeakVelocity,abs(QucikPhaseProps.Left_T_PeakVelocity),'o')
-             plot(QucikPhaseProps.Right_Y_PeakVelocity,abs(QucikPhaseProps.Right_T_PeakVelocity),'o')
-             
-             set(get(gcf,'children'),'xlim',[-300 300],'ylim',[0 300])
-        end
     end
     
     methods (Static) 
@@ -1946,6 +1907,45 @@ classdef VOGAnalysis < handle
             set(get(gcf,'children'), 'ylim',[-400 400], 'fontsize',14);
             set(h,'ylim',[-2 2])
             set(h1,'ylim',[-20 20])
+        end
+                
+        function PlotMainsequence(QucikPhaseProps)
+            
+             figure
+             subplot(1,3,1,'nextplot','add') 
+             plot(QucikPhaseProps.Left_X_Displacement,abs(QucikPhaseProps.Left_X_PeakVelocity),'o')
+             plot(QucikPhaseProps.Right_X_Displacement,abs(QucikPhaseProps.Right_X_PeakVelocity),'o')
+             line([0 0],[0 500])
+             xlabel('H displacement (deg)');
+             ylabel('H peak vel. (deg/s)');
+             subplot(1,3,2,'nextplot','add') 
+             plot(QucikPhaseProps.Left_Y_Displacement,abs(QucikPhaseProps.Left_Y_PeakVelocity),'o')
+             plot(QucikPhaseProps.Right_Y_Displacement,abs(QucikPhaseProps.Right_Y_PeakVelocity),'o')
+             line([0 0],[0 500])
+             xlabel('V displacement (deg)');
+             ylabel('V peak vel. (deg/s)');
+             subplot(1,3,3,'nextplot','add') 
+             plot(QucikPhaseProps.Left_T_Displacement,abs(QucikPhaseProps.Left_T_PeakVelocity),'o')
+             plot(QucikPhaseProps.Right_T_Displacement,abs(QucikPhaseProps.Right_T_PeakVelocity),'o')
+             line([0 0],[0 500])
+             xlabel('T displacement (deg)');
+             ylabel('T peak vel. (deg/s)');
+             
+             set(get(gcf,'children'),'xlim',[-30 30],'ylim',[0 300])
+
+             
+             figure
+             subplot(1,3,1,'nextplot','add') 
+             plot(QucikPhaseProps.Left_X_PeakVelocity,abs(QucikPhaseProps.Left_Y_PeakVelocity),'o')
+             plot(QucikPhaseProps.Right_X_PeakVelocity,abs(QucikPhaseProps.Right_Y_PeakVelocity),'o')
+             subplot(1,3,2,'nextplot','add') 
+             plot(QucikPhaseProps.Left_X_PeakVelocity,abs(QucikPhaseProps.Left_T_PeakVelocity),'o')
+             plot(QucikPhaseProps.Right_X_PeakVelocity,abs(QucikPhaseProps.Right_T_PeakVelocity),'o')
+             subplot(1,3,3,'nextplot','add') 
+             plot(QucikPhaseProps.Left_Y_PeakVelocity,abs(QucikPhaseProps.Left_T_PeakVelocity),'o')
+             plot(QucikPhaseProps.Right_Y_PeakVelocity,abs(QucikPhaseProps.Right_T_PeakVelocity),'o')
+             
+             set(get(gcf,'children'),'xlim',[-300 300],'ylim',[0 300])
         end
     end
 end
