@@ -136,11 +136,11 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
                 
                 sessionDataTable{1,['SVV_' strrep(num2str(tilts(i)),'-','N')]} = SVV;
                 sessionDataTable{1,['SVVth_' strrep(num2str(tilts(i)),'-','N')]} = SVVth;
-                sessionDataTable{1,['Torsion_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(nanmean(tdata{(tidx),{'AverageLeftT' 'AverageRightT'}},2));
-                sessionDataTable{1,['Vergence_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(tdata.AverageLeftX(tidx)-tdata.AverageRightX(tidx));
-                sessionDataTable{1,['Skew_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(tdata.AverageLeftX(tidx)-tdata.AverageRightX(tidx));
-                sessionDataTable{1,['HeadRoll_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(tdata.AverageLeftX(tidx)-tdata.AverageRightX(tidx));
-                sessionDataTable{1,['HeadPitch_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(tdata.AverageLeftX(tidx)-tdata.AverageRightX(tidx));
+                sessionDataTable{1,['Torsion_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(nanmean(tdata{(tidx),{'mean_LeftT' 'mean_RightT'}},2));
+                sessionDataTable{1,['Vergence_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(tdata.mean_LeftX(tidx)-tdata.mean_RightX(tidx));
+                sessionDataTable{1,['Skew_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(tdata.mean_LeftX(tidx)-tdata.mean_RightX(tidx));
+                sessionDataTable{1,['HeadRoll_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(tdata.mean_LeftX(tidx)-tdata.mean_RightX(tidx));
+                sessionDataTable{1,['HeadPitch_' strrep(num2str(tilts(i)),'-','N')]} = nanmean(tdata.mean_LeftX(tidx)-tdata.mean_RightX(tidx));
             end
         end
         
@@ -151,10 +151,10 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-        function plotResults = Plot_SVV_SigmoidMultitilt(this)
+        function Plot_SVV_Multitilt_Sigmoid(this)
             
             figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-            ax1 = gca;
+            ax1 = subplot(2,1,1);
             set(ax1,'nextplot','add', 'fontsize',12);
             tilts = unique(this.Session.trialDataTable.Tilt);
             for i=1:length(tilts)
@@ -191,6 +191,17 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
                 ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
                 xlabel('Angle (deg)', 'fontsize',16);
             end
+        end
+        
+        function PlotAggregate_SVV_Multitilt_Tilt_Torsion_SVV(this, sessions)
+%             a=1;
+%             figure
+%             
+%             tilts = [-30:10:30];
+%             SVVfields = strrep(num2str(tilts(i)),'-','N');
+%             for i=1:length(sessions)
+%                 
+%             end
         end
     end
     

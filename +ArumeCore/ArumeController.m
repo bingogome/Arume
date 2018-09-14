@@ -419,6 +419,10 @@ classdef ArumeController < handle
                 end
             end
         end
+        
+        function options = getDefaultAnalysisOptions(this, sessions)
+            options = StructDlg(this.getAnalysisOptions(sessions),'',[],[],'off');
+        end
                         
         function runDataAnalyses(this, options, sessions)
              useWaitBar = 0;

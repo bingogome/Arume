@@ -49,7 +49,7 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-        function Plot_MVS_SPVTrace(this)
+        function Plot_MVS_SPV_Trace(this)
             if ( ~isfield(this.Session.analysisResults, 'SPV' ) )
                 error( 'Need to run analysis SPV before ploting SPV');
             end
@@ -87,65 +87,100 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             
         end
         
-        function Plot_PlotPositionWithHead(this)
-            VOG.PlotPositionWithHead(this.Session.samplesDataSet, this.Session.rawDataSet);
-        end
-        function Plot_PlotVelocityWithHead(this)
-            VOG.PlotVelocityWithHead(this.Session.samplesDataSet, this.Session.rawDataSet);
+        function PlotAggregate_MVS_SPV_Trace_combined(this, sessions)
+            
+            s = table();
+            s.Subject = cell(length(sessions),1);
+            s.SessionCode = cell(length(sessions),1);
+            s.SessionObj = sessions';
+            for i=1:length(sessions)
+                s.Subject{i} = sessions(i).subjectCode;
+                s.SessionCode{i} = sessions(i).sessionCode ;
+            end
+            s = sortrows(s,'SessionCode');
+            %%
+            figure('color','w')
+            subjects = unique(s.Subject);
+            for i=1:length(subjects)
+                subplot(length(subjects),1, i,'nextplot','add');
+                ss = s(strcmp(s.Subject,subjects{i}),:);
+                for j=1:height(ss)
+                    t = ss.SessionObj(j).analysisResults.SPV.Time;
+                    vxl = ss.SessionObj(j).analysisResults.SPV.LeftX;
+                    vxr = ss.SessionObj(j).analysisResults.SPV.RightX;
+                    spv = nanmean([vxl vxr],2);
+                    if (~isempty(strfind(ss.SessionCode{j},'HeadMoving') ) )
+                        spv(t>180 & t<405) = nan;
+                    end
+                    plot(t,spv,'.','markersize',10);
+                end
+                line(get(gca,'xlim'),[0 0],'color',[0.5 0.5 0.5],'linestyle','-.')
+                legend(strrep(ss.SessionCode,'_',' '));
+                title(subjects{i});
+                xlabel('Time (s)');
+                ylabel('SPV (deg/s)');
+            end
         end
         
-        function Plot_PlotSPVFeetAndHead(this)
-            
-            t1 = this.Session.analysisResults.SPV.Time;
-            vxl = this.Session.analysisResults.SPV.LeftX;
-            vxl2 = interp1(find(~isnan(vxl)),vxl(~isnan(vxl)),1:1:length(vxl));
-            vxr = this.Session.analysisResults.SPV.RightX;
-            vxr2 = interp1(find(~isnan(vxr)),vxr(~isnan(vxr)),1:1:length(vxr));
-            vx1 = nanmean([vxl2;vxr2]);
-            
-            %$ TODO fix the finding session
-            control = this.Project.findSession('MVSNystagmusSuppression',this.ExperimentOptions.AssociatedControl);
-            
-            t2 = control.analysisResults.SPV.Time;
-            vxl = control.analysisResults.SPV.LeftX;
-            vxl2 = interp1(find(~isnan(vxl)),vxl(~isnan(vxl)),1:1:length(vxl));
-            vxr = control.analysisResults.SPV.RightX;
-            vxr2 = interp1(find(~isnan(vxr)),vxr(~isnan(vxr)),1:1:length(vxr));
-            vx2 = nanmean([vxl2;vxr2]);
-            
-            events =  fields(this.ExperimentOptions.Events);
-            eventTimes = zeros(size(events));
-            for i=1:length(events)
-                eventTimes(i) = this.ExperimentOptions.Events.(events{i});
-            end
-            
-            if ( strfind(this.Session.sessionCode,'Head')>0)
-                if ( isfield( this.ExperimentOptions.Events, 'StartMoving' ) )
-                    tstartMoving = this.ExperimentOptions.Events.StartMoving*60;
-                    tstopMoving = this.ExperimentOptions.Events.StopMoving*60;
-                else
-                    tstartMoving = this.ExperimentOptions.Events.LightsOn*60;
-                    tstopMoving = this.ExperimentOptions.Events.LightsOff*60;
-                end
-                vx1(tstartMoving:tstopMoving) = nan;
-            end
-            
-            figure
-            plot(t1/60, vx1,'.');
-            hold
-            plot(t2/60, vx2,'.');
-            title([this.Session.subjectCode ' ' this.Session.sessionCode])
-            
-            ylim = [-50 50];
-            xlim = [0 max(eventTimes)];
-            set(gca,'ylim',ylim,'xlim',xlim);
-            
-            for i=1:length(events)
-                line(eventTimes(i)*[1 1], ylim,'color',[0.5 0.5 0.5]);
-                text( eventTimes(i), ylim(2)-mod(i,2)*5-5, events{i});
-            end
-            line(xlim, [0 0],'color',[0.5 0.5 0.5])
-        end
+%         function Plot_PlotPositionWithHead(this)
+%             VOG.PlotPositionWithHead(this.Session.samplesDataSet, this.Session.rawDataSet);
+%         end
+%         function Plot_PlotVelocityWithHead(this)
+%             VOG.PlotVelocityWithHead(this.Session.samplesDataSet, this.Session.rawDataSet);
+%         end
+%         
+%         function Plot_PlotSPVFeetAndHead(this)
+%             
+%             t1 = this.Session.analysisResults.SPV.Time;
+%             vxl = this.Session.analysisResults.SPV.LeftX;
+%             vxl2 = interp1(find(~isnan(vxl)),vxl(~isnan(vxl)),1:1:length(vxl));
+%             vxr = this.Session.analysisResults.SPV.RightX;
+%             vxr2 = interp1(find(~isnan(vxr)),vxr(~isnan(vxr)),1:1:length(vxr));
+%             vx1 = nanmean([vxl2;vxr2]);
+%             
+%             %$ TODO fix the finding session
+%             control = this.Project.findSession('MVSNystagmusSuppression',this.ExperimentOptions.AssociatedControl);
+%             
+%             t2 = control.analysisResults.SPV.Time;
+%             vxl = control.analysisResults.SPV.LeftX;
+%             vxl2 = interp1(find(~isnan(vxl)),vxl(~isnan(vxl)),1:1:length(vxl));
+%             vxr = control.analysisResults.SPV.RightX;
+%             vxr2 = interp1(find(~isnan(vxr)),vxr(~isnan(vxr)),1:1:length(vxr));
+%             vx2 = nanmean([vxl2;vxr2]);
+%             
+%             events =  fields(this.ExperimentOptions.Events);
+%             eventTimes = zeros(size(events));
+%             for i=1:length(events)
+%                 eventTimes(i) = this.ExperimentOptions.Events.(events{i});
+%             end
+%             
+%             if ( strfind(this.Session.sessionCode,'Head')>0)
+%                 if ( isfield( this.ExperimentOptions.Events, 'StartMoving' ) )
+%                     tstartMoving = this.ExperimentOptions.Events.StartMoving*60;
+%                     tstopMoving = this.ExperimentOptions.Events.StopMoving*60;
+%                 else
+%                     tstartMoving = this.ExperimentOptions.Events.LightsOn*60;
+%                     tstopMoving = this.ExperimentOptions.Events.LightsOff*60;
+%                 end
+%                 vx1(tstartMoving:tstopMoving) = nan;
+%             end
+%             
+%             figure
+%             plot(t1/60, vx1,'.');
+%             hold
+%             plot(t2/60, vx2,'.');
+%             title([this.Session.subjectCode ' ' this.Session.sessionCode])
+%             
+%             ylim = [-50 50];
+%             xlim = [0 max(eventTimes)];
+%             set(gca,'ylim',ylim,'xlim',xlim);
+%             
+%             for i=1:length(events)
+%                 line(eventTimes(i)*[1 1], ylim,'color',[0.5 0.5 0.5]);
+%                 text( eventTimes(i), ylim(2)-mod(i,2)*5-5, events{i});
+%             end
+%             line(xlim, [0 0],'color',[0.5 0.5 0.5])
+%         end
         
     end
     

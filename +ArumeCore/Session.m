@@ -94,7 +94,7 @@ classdef Session < ArumeCore.DataDB
         end
         
         function analysisResults = get.analysisResults(this)
-            d = struct2table(dir(fullfile(this.dataPath,'AnalysisResults_*')));
+            d = struct2table(dir(fullfile(this.dataPath,'AnalysisResults_*')),'asarray',1);
             analysisResults = [];
             for i=1:height(d)
                 res = regexp(d.name{i},'^AnalysisResults_(?<name>[_a-zA-Z0-9]+)\.mat$','names');

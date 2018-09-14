@@ -311,7 +311,7 @@ classdef VOGAnalysis < handle
             % TODO: deal with corneal reflections...
                 
             if ( ~geomCorrected )
-                t = (rawData.LeftSeconds-rawData.LeftSeconds(1))*1000;
+                t = (rawData.LeftSeconds-rawData.LeftSeconds(1));
                 lx = calibrationTable{'LeftEye', 'SignX'}*(rawData.LeftX - calibrationTable{'LeftEye', 'RefX'})/calibrationTable{'LeftEye', 'GlobeRadiusX'}*60;
                 ly = calibrationTable{'LeftEye', 'SignY'}*(rawData.LeftY - calibrationTable{'LeftEye', 'RefY'})/calibrationTable{'LeftEye', 'GlobeRadiusY'}*60;
                 rx = calibrationTable{'RightEye', 'SignX'}*(rawData.RightX - calibrationTable{'RightEye', 'RefX'})/calibrationTable{'RightEye', 'GlobeRadiusX'}*60;
@@ -338,7 +338,7 @@ classdef VOGAnalysis < handle
                 
             else
                 
-                t = (rawData.LeftSeconds-rawData.LeftSeconds(1))*1000;
+                t = (rawData.LeftSeconds-rawData.LeftSeconds(1));
                 
                 referenceXDeg = asin((calibrationTable{'LeftEye', 'RefX'} - calibrationTable{'LeftEye', 'GlobeX'}) / calibrationTable{'LeftEye', 'GlobeRadiusX'}) * 180 / pi;
                 referenceYDeg = asin((calibrationTable{'LeftEye', 'RefY'} - calibrationTable{'LeftEye', 'GlobeY'}) / calibrationTable{'LeftEye', 'GlobeRadiusY'}) * 180 / pi;
@@ -451,7 +451,7 @@ classdef VOGAnalysis < handle
             params.VFAC = 4; % saccade detection threshold factor
             params.HFAC = 4;
             params.InterPeakMinInterval = 50; % ms
-            params.timescale = 1;
+            params.units = 'seconds'; % could also be miliseconds
         end
         
         function [eyes, eyeSignals, headSignals] = GetEyesAndSignals(calibratedData)
@@ -515,7 +515,12 @@ classdef VOGAnalysis < handle
                     f = cumsum(round(diff(calibratedData.Time)/median(diff(calibratedData.Time))));
                     calibratedData.FrameNumber = [0;f];
                 end
-                calibratedData.Time = calibratedData.Time/params.timescale/1000;
+                switch(params.units)
+                    case 'seconds'
+                        calibratedData.Time = calibratedData.Time;
+                    case 'miliseconds'
+                        calibratedData.Time = calibratedData.Time/1000;
+                end
                 RawSampleRate = 1/median(diff(calibratedData.Time));
                 [eyes, eyeSignals, headSignals] = VOGAnalysis.GetEyesAndSignals(calibratedData);
                 cleanedData = table;    % cleaned data
