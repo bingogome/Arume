@@ -768,12 +768,15 @@ classdef ExperimentDesign < handle
         function experimentList = GetExperimentList()
             experimentList = {};
             
-            expPackage = meta.package.fromName('ArumeExperimentDesigns');
+            % It is important to not navigate the expPackage object in the
+            % loop. It is vry slow. Keep the objects in their own variables
+            % and used them like that.
+            classList = meta.package.fromName('ArumeExperimentDesigns').ClassList;
             disp('Setting up experiments...')
-            for i=1:length(expPackage.ClassList)
-                if (~expPackage.ClassList(i).Abstract)
-                    experimentList{end+1} = strrep( expPackage.ClassList(i).Name, 'ArumeExperimentDesigns.','');
-                    disp(experimentList{end});
+            for i=1:length(classList)
+                c = classList(i);
+                if (~c.Abstract)
+                    experimentList{end+1} = strrep( c.Name, 'ArumeExperimentDesigns.','');
                 end
             end
         end

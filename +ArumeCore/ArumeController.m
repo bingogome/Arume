@@ -517,8 +517,8 @@ classdef ArumeController < handle
                                 end
                             else
                                 
-                                nplot1 = [1 2 1 2 2 2 2 2 3 2 4 4 4 4 4 4 5 5 5 5 5 5 5 5 5];
-                                nplot2 = [1 1 3 2 3 3 4 4 3 5 3 3 4 4 4 4 4 4 4 4 5 5 5 5 5];
+                                nplot1 = [1 1 1 2 2 2 2 2 3 2 3 3 3 3 4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5];
+                                nplot2 = [1 2 3 2 3 3 4 4 3 5 4 4 5 5 4 5 5 5 5 5 5 5 5 5 6 6 6 6 6 6 7 7 7 7 7 7];
                                 combinedFigures = [];
                                 nSessions = length(this.selectedSessions);
                                 p1 = nplot1(nSessions);

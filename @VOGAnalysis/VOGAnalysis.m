@@ -40,6 +40,28 @@ classdef VOGAnalysis < handle
                 data.RightY = data.RightPupilY;
                 data.RightTorsionAngle = data.RightTorsion;
             end
+            
+            % fix the timestamps in case they are not always growing
+            % (did happen in some old files because of a bug in the eye
+            % tracking software).
+            timestampVars = {'LeftSeconds' 'RightSeconds' 'Seconds' 'TimeStamp' 'timestamp' 'Time'};
+            for i=1:length(timestampVars)
+                if ( sum(strcmp(timestampVars{i},data.Properties.VariableNames))>0)
+                    disp(['WARNING: fixing some timestamps that were not always growing: ' timestampVars{i}]);
+                    t = data.(timestampVars{i});
+                    dt = diff(t);
+                    if ( min(dt) < 0 )
+                        % replace the samples with negative time change
+                        % with the typical (median) time between samples.
+                        dt(dt<=0) = nanmedian(dt(dt>0));
+                        % go back from diff to real time starting on the
+                        % first timestamp.
+                        t = cumsum([t(1);dt]);
+                    end
+                    data.(['UNCOCRRECTED_' timestampVars{i}]) = data.(timestampVars{i}) ;
+                    data.(timestampVars{i}) = t;
+                end
+            end
         end
         
         function [calibrationTable] = ReadCalibration(file)
@@ -617,7 +639,8 @@ classdef VOGAnalysis < handle
                     
                     badAcceleration = acc>50000;
                     
-                    badData = badData | badPosition | badVelocity | badAcceleration;
+%                     badData = badData | badPosition | badVelocity | badAcceleration;
+                    badData = badData | badVelocity | badAcceleration;
                     
                     badFlatPeriods = nan(size(badData));
                     if ( params.DETECT_FLAT_PERIODS )
@@ -684,13 +707,6 @@ classdef VOGAnalysis < handle
                 %% Upsample to 500Hz
                 tic
                 t = cleanedData.Time;
-                % fix the timestamps in case they are not always growing
-                % (did happn in some old files because of a bug
-                if ( min(diff(t)) < 0 )
-                    dt = diff(t);
-                    dt(dt<=0) = min(dt(dt>0));
-                    t = cumsum([t(1);dt]);
-                end
                 
                 
                 rest = (0:0.002:max(t))';

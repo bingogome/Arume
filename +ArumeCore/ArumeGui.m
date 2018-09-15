@@ -83,7 +83,6 @@ classdef ArumeGui < matlab.apps.AppBase
             this.figureHandle.Name              = 'Arume';
             this.figureHandle.Position          =  [left bottom w h];
             this.figureHandle.Tag               = 'Arume';
-            this.figureHandle.Visible           = 'off';
             this.figureHandle.CloseRequestFcn   = @this.figureCloseRequest;
             this.figureHandle.AutoResizeChildren = 'off';
             this.figureHandle.SizeChangedFcn    = @this.figureResizeFcn;
@@ -145,9 +144,6 @@ classdef ArumeGui < matlab.apps.AppBase
             
             % This is to avoid a close all closing the GUI
             set(this.figureHandle, 'handlevisibility', 'off');
-            
-            % Make the GUI visible.
-            set(this.figureHandle,'Visible','on');
             
             this.updateGui();
             

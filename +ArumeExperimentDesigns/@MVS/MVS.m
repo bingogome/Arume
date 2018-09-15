@@ -87,6 +87,36 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             
         end
         
+        
+        function Plot_MVS_SPVH_Trace(this)
+            if ( ~isfield(this.Session.analysisResults, 'SPV' ) )
+                error( 'Need to run analysis SPV before ploting SPV');
+            end
+            
+            t = this.Session.analysisResults.SPV.Time/60;
+            vxl = this.Session.analysisResults.SPV.LeftX;
+            vxr = this.Session.analysisResults.SPV.RightX;
+            
+            
+            %%
+            figure('name', [this.Session.subjectCode '  ' this.Session.sessionCode]);
+            grid
+            plot(t,nanmean([vxl vxr],2),'o')
+            % make the y axis symmetrical around 0 and a multiple of 10
+            set(gca,'ylim',[-1 1]*10*ceil(max(abs(get(gca,'ylim')))/10));
+            ylabel('Horizontal (deg/s)')
+            xlabel('Time (min)');
+            
+            if ( isfield(this.Session.experimentDesign.ExperimentOptions, 'Events') ...
+                    && isstruct(this.Session.experimentDesign.ExperimentOptions.Events) )
+                events = struct2array(this.Session.experimentDesign.ExperimentOptions.Events);
+                for i=1:length(events)
+                    line([1 1]*events(i), get(gca,'ylim'),'linestyle','--','color',0.7*[1 1 1]);
+                end
+            end
+            
+        end
+        
         function PlotAggregate_MVS_SPV_Trace_combined(this, sessions)
             
             s = table();
