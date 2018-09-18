@@ -124,10 +124,11 @@ classdef Session < ArumeCore.DataDB
                 this.dataPath  = fullfile(projectPath, this.name);
                 this.InitDB( this.dataPath );
             end
+            
         end
         
         function initExisting( this, sessionPath )
-             
+            
             [projectPath,sessionName] = fileparts(sessionPath);    
             
             [newExperimentName, newSubjectCode, newSessionCode] = ArumeCore.Session.SessionNameToParts(sessionName);
@@ -249,6 +250,7 @@ classdef Session < ArumeCore.DataDB
         function importSession(this)
             this.experimentDesign.ImportSession();
         end
+        
         function importCurrentRun(this, newRun)
             this.currentRun = newRun;
         end
@@ -503,9 +505,7 @@ classdef Session < ArumeCore.DataDB
             
             session = ArumeCore.Session();
             session.initExisting( sessionPath );
-            disp(['Loaded session ' session.name]);
         end
-        
         
         %
         % Other methods
@@ -534,6 +534,10 @@ classdef Session < ArumeCore.DataDB
         function newNumber = GetNewSessionNumber()
             persistent number;
             if isempty(number)
+                % all this is just in case clear all was called. In that
+                % case number will be empty but we can recover it more or
+                % less by looking at the current project. A bit messy but
+                % works.
                 number = 0;
                 a = Arume();
                 if( ~isempty( a.currentProject ) )
@@ -542,6 +546,7 @@ classdef Session < ArumeCore.DataDB
                     end
                 end
             end
+            
             number = number+1;
             
             newNumber = number;

@@ -639,8 +639,7 @@ classdef VOGAnalysis < handle
                     
                     badAcceleration = acc>50000;
                     
-%                     badData = badData | badPosition | badVelocity | badAcceleration;
-                    badData = badData | badVelocity | badAcceleration;
+                    badData = badData | badPosition | badVelocity | badAcceleration;
                     
                     badFlatPeriods = nan(size(badData));
                     if ( params.DETECT_FLAT_PERIODS )
@@ -667,7 +666,7 @@ classdef VOGAnalysis < handle
                     % TODO: maybe better than blink span find the first N samples
                     % around the blink that are wihtin a more stringent criteria
                     blinks = boxcar( badData & ~spikes, round(params.blinkSpan/1000*RawSampleRate))>0;
-                    blinkst = boxcar( bt & ~spikes, round(params.blinkSpan/1000*RawSampleRate))>0;
+                    blinkst = boxcar( bt & ~spikest, round(params.blinkSpan/1000*RawSampleRate))>0;
                     
                     cleanedData.([eyes{i} 'Spikes']) = spikes;
                     cleanedData.([eyes{i} 'Blinks']) = blinks;
@@ -711,8 +710,8 @@ classdef VOGAnalysis < handle
                 
                 rest = (0:0.002:max(t))';
                 resampledData.Time = rest;
-                resampledData.FrameNumber = interp1(t(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),cleanedData.RawFrameNumber(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),rest,'nearest');
-                resampledData.RawFrameNumber = interp1(t(~isnan(cleanedData.FrameNumber) & ~isnan(t)),cleanedData.FrameNumber(~isnan(cleanedData.FrameNumber) & ~isnan(t)),rest,'nearest');
+                resampledData.RawFrameNumber = interp1(t(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),cleanedData.RawFrameNumber(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),rest,'nearest');
+                resampledData.FrameNumber = interp1(t(~isnan(cleanedData.FrameNumber) & ~isnan(t)),cleanedData.FrameNumber(~isnan(cleanedData.FrameNumber) & ~isnan(t)),rest,'nearest');
                 for i=1:length(eyes)
                     for j=1:length(eyeSignals)
                         x = cleanedData.([eyes{i} eyeSignals{j}]);

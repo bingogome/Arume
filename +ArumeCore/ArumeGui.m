@@ -147,6 +147,7 @@ classdef ArumeGui < matlab.apps.AppBase
             
             this.updateGui();
             
+            
             % Register the app with App Designer
             registerApp(this, this.figureHandle)
             

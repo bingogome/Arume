@@ -1,18 +1,23 @@
 function arumeController = Arume(command, param)
 
-% persistent variable to keep the singleton
+% Persistent variable to keep the singleton to make sure there is only one
+% arume controller loaded at any point in time. That way we can open the UI
+% and then also call arume in the command line to get a reference to the
+% controller and write scripts working with the current project.
 persistent arumeSingleton;
 
 if ( isempty( arumeSingleton ) )
+    % The persistent variable gets deleted with clear all. However,
+    % variables within the UI do not until UI is closed. So, we can search
+    % for the handle of the UI window and get the controller from there.
+    % This way we avoid problems if clear all is called with the UI open
+    % and then Arume is called again.
     h = findall(0,'tag','Arume');
     if ( ~isempty(h) )
         arumeSingleton = h.UserData.arumeController;
     end
 end
     
-
-
-arumeController = arumeSingleton;
 
 useGui = 1;
 
@@ -28,6 +33,7 @@ if ( exist('command','var') )
             if ( exist('param','var') )
                 projectPath = param;
             end
+            
         case 'nogui'
             if ( exist('param','var') )
                 projectPath = param;
@@ -42,14 +48,6 @@ if isempty(arumeSingleton)
     
     arumeSingleton = ArumeCore.ArumeController();
     arumeSingleton.init();
-    arumeController = arumeSingleton;
-else
-    arumeController = arumeSingleton;
-end
-
-if ( useGui && isempty(arumeController.gui))
-    % Load the GUI
-    arumeController.gui = ArumeCore.ArumeGui( arumeSingleton );
 end
 
 if ( exist('projectPath','var') )
@@ -57,7 +55,13 @@ if ( exist('projectPath','var') )
 end
 
 if ( useGui )
-    % make sure the Arume gui is on th front and update
-    figure(arumeController.gui.figureHandle)
-    arumeController.gui.updateGui();
+    if ( isempty(arumeSingleton.gui) )
+        % Load the GUI
+        arumeSingleton.gui = ArumeCore.ArumeGui( arumeSingleton );
+    end
+    % make sure the Arume gui is on the front and update
+    figure(arumeSingleton.gui.figureHandle)
+    arumeSingleton.gui.updateGui();
 end
+
+arumeController = arumeSingleton;

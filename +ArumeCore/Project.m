@@ -9,62 +9,7 @@ classdef Project < handle
         sessions        % Sessions that belong to this project
         sessionsTable    % table with information about the sessions
     end
-    
-    methods(Access=private)
-        %
-        % Initialization methods
-        %
-        % Always use the static methods Load and Create to create new
-        % project objects.
-        function initNew( this, parentPath, projectName )
-            % Initializes a new project
-            this.name               = projectName;
-            this.path               = fullfile(parentPath, projectName);
-            this.sessions           = [];
-            
-            % prepare folder structure
-            mkdir( parentPath, projectName );
-            
-            % save the project
-            this.save();
-        end
         
-        function initExisting( this, path )
-            % Initializes a project loading from a folder
-            
-            [~, projectName] = fileparts(path);
-            
-            % initialize the project
-            this.name               = projectName;
-            this.path               = path;
-            this.sessions           = [];
-            
-            % find the session folders
-            d = struct2table(dir(path));
-            d = d(d.isdir & ~strcmp(d.name,'.') & ~strcmp(d.name,'..'),:);
-            d = sortrows(d,'date');
-            
-            % load sessions
-            for i=1:length(d.name)
-                sessionName = d.name{i};
-                sessionPath = fullfile(path, sessionName);
-                session = ArumeCore.Session.LoadSession( sessionPath );
-                if ( ~isempty(session) )
-                    this.addSession(session);
-                else
-                    disp(['WARNING: session ' sessionName ' could not be loaded. May be an old result of corruption.']);
-                end
-                
-            end
-                        
-            try
-                this.sessionsTable = this.GetDataTable();
-            catch
-                disp('ERROR getting data table');
-            end
-        end
-    end
-    
     methods(Access=public)
         %
         % Save project
@@ -72,8 +17,12 @@ classdef Project < handle
         function save( this )
             
             for session = this.sessions
-                session.save();
+                if ( ~isempty(session) )
+                    session.save();
+                end
             end
+            
+            this.sortSessions();
             
             this.sessionsTable = this.GetDataTable();
             
@@ -188,7 +137,6 @@ classdef Project < handle
         end
     end
     
-    
     methods ( Static = true )
         
         %
@@ -201,8 +149,8 @@ classdef Project < handle
                 error('Arume: parent folder does not exist');
             end
             
-            if ( exist( fullfile(parentPath, projectname), 'dir' ) )
-                error('Arume: project folder already not exist');
+            if ( exist( fullfile(parentPath, projectName), 'dir' ) )
+                error('Arume: project folder already exist');
             end
             
             % check if name is a valid name
@@ -212,7 +160,17 @@ classdef Project < handle
             
             % create project object
             project = ArumeCore.Project();
-            project.initNew( parentPath, projectName );
+            
+            % Initializes a new project
+            project.name               = projectName;
+            project.path               = fullfile(parentPath, projectName);
+            project.sessions           = [];
+            
+            % prepare folder structure
+            mkdir( parentPath, projectName );
+            
+            % save the project
+            project.save();
         end
         
         function project = LoadProject( projectPath )
@@ -224,7 +182,37 @@ classdef Project < handle
             
             project = ArumeCore.Project();
             ArumeCore.Project.UpdateFileStructure(projectPath);
-            project.initExisting( projectPath );
+            
+            
+            % Initializes a project loading from a folder
+            
+            [~, projectName] = fileparts(projectPath);
+            project.name               = projectName;
+            project.path               = projectPath;
+            project.sessions           = [];
+            
+            % find the session folders
+            sessionDirs = struct2table(dir(projectPath));
+            sessionDirs = sessionDirs(sessionDirs.isdir & ~strcmp(sessionDirs.name,'.') & ~strcmp(sessionDirs.name,'..'),:);
+            sessionDirs = sortrows(sessionDirs,'date');
+            
+            % load sessions
+            for i=1:length(sessionDirs.name)
+                sessionName = sessionDirs.name{i};
+                sessionPath = fullfile(projectPath, sessionName);
+                session = ArumeCore.Session.LoadSession( sessionPath );
+                if ( ~isempty(session) )
+                    project.addSession(session);
+                else
+                    disp(['WARNING: session ' sessionName ' could not be loaded. May be an old result of corruption.']);
+                end
+            end
+                        
+            try
+                project.sessionsTable = project.GetDataTable();
+            catch
+                disp('ERROR getting data table');
+            end
         end
         
         function project = LoadProjectBackup(file, parentPath)

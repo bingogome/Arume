@@ -282,8 +282,10 @@ classdef ExperimentDesign < handle
             % values. This is important to mantain past compatibility if
             % options are added in the future.
             optionsDlg = this.GetOptionsDialog( );
-            if ( ~isempty( optionsDlg ) )
+            if ( ~isempty( optionsDlg ) && ~isempty(setdiff(fieldnames(optionsDlg), fieldnames(this.ExperimentOptions))) )
+                
                 options = StructDlg(optionsDlg,'',[],[],'off');
+                
                 fields = fieldnames(options);
                 for i=1:length(fields)
                     if ( ~isfield(this.ExperimentOptions, fields{i}))
@@ -307,6 +309,7 @@ classdef ExperimentDesign < handle
             
             %-- init the parameters of this specific experiment
             this.initExperimentDesign( );
+            
         end
         
         function run(this)
