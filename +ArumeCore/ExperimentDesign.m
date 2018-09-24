@@ -144,7 +144,7 @@ classdef ExperimentDesign < handle
             optionsDlg = [];
         end
         
-        function [analysisResults, samplesDataTable, trialDataTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, options)
+        function [analysisResults, samplesDataTable, trialDataTable, sessionTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, sessionTable, options)
         end
         
         %% ImportSession

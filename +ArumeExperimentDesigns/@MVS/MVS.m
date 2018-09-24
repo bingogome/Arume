@@ -9,15 +9,21 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             optionsDlg = GetAnalysisOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
         end
         
-        function [analysisResults, samplesDataTable, trialDataTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, options)
+        function [analysisResults, samplesDataTable, trialDataTable, sessionTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable,sessionTable, options)
 
-            [analysisResults, samplesDataTable, trialDataTable] = RunDataAnalyses@ArumeExperimentDesigns.EyeTracking(this, analysisResults, samplesDataTable, trialDataTable, options);
+            [analysisResults, samplesDataTable, trialDataTable, sessionTable] = RunDataAnalyses@ArumeExperimentDesigns.EyeTracking(this, analysisResults, samplesDataTable, trialDataTable,sessionTable, options);
             
             analysisResults.SPV = table();
             
+            LRdataVars = {'X' 'Y' 'T'};
+            
+            for i=1:length(LRdataVars)
+                samplesDataTable.(LRdataVars{i}) = mean([samplesDataTable.(['Left' LRdataVars{i}]),samplesDataTable.(['Right' LRdataVars{i}])],2);
+            end
+            
             T = samplesDataTable.Properties.UserData.sampleRate;
             analysisResults.SPV.Time = samplesDataTable.Time(T/2:T:end);
-            fields = {'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
+            fields = {'X' 'Y' 'T' 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
             
             for j =1:length(fields)
                 x = samplesDataTable.(fields{j});
@@ -40,6 +46,61 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                 end
             end
             
+            sessionTable.BaselineStartSec = this.ExperimentOptions.Events.EnterMagnet*60 - 30;
+            sessionTable.BaselineStopSec = this.ExperimentOptions.Events.EnterMagnet*60 - 10;
+            
+            sessionTable.PeakStartSec = this.ExperimentOptions.Events.EnterMagnet*60 + 30;
+            sessionTable.PeakStopSec = this.ExperimentOptions.Events.EnterMagnet*60 + 50;
+            
+            sessionTable.PeakAfterEffectStartSec = this.ExperimentOptions.Events.ExitMagnet*60 + 50;
+            sessionTable.PeakAfterEffectStopSec = this.ExperimentOptions.Events.ExitMagnet*60 + 70;
+            
+            sessionTable.AfterEffectStartSec = this.ExperimentOptions.Events.ExitMagnet*60 + 50;
+            if ( this.ExperimentOptions.Events.Finish < 20)
+                sessionTable.AfterEffectStopSec = this.ExperimentOptions.Events.ExitMagnet*60 + 3*60;
+            sessionTable.BeforeExitStartSec = this.ExperimentOptions.Events.ExitMagnet*60 - 10;
+                sessionTable.BeforeExitStopSec = this.ExperimentOptions.Events.ExitMagnet*60;
+            else
+                sessionTable.AfterEffectStopSec = this.ExperimentOptions.Events.ExitMagnet*60 + 7*60;
+                sessionTable.BeforeExitStartSec = this.ExperimentOptions.Events.ExitMagnet*60 - 30;
+                sessionTable.BeforeExitStopSec = this.ExperimentOptions.Events.ExitMagnet*60;
+            end
+            
+            periods = {'Baseline', 'Peak', 'PeakAfterEffect' 'AfterEffect' 'BeforeExit'};
+                  
+            if ( isfield( this.ExperimentOptions.Events, 'LightsOn' ) )
+                sessionTable.AfterLightsONStartSec = this.ExperimentOptions.Events.LightsOn*60 + 20;
+                sessionTable.AfterLightsONStopSec = this.ExperimentOptions.Events.LightsOn*60 + 80;
+
+                sessionTable.BeforeLightsOFFStartSec = this.ExperimentOptions.Events.LightsOff*60 - 80;
+                sessionTable.BeforeLightsOFFStopSec = this.ExperimentOptions.Events.LightsOn*60 -20;
+                
+                periods = {periods{:} 'AfterLightsON' 'BeforeLightsOFF'};
+            end
+            
+            if ( isfield( this.ExperimentOptions.Events, 'StartHeadMov' ) )
+                
+                sessionTable.AfterStartHeadMovingStartSec = this.ExperimentOptions.Events.LightsOn*60 + 20;
+                sessionTable.AfterStartHeadMovingStopSec = this.ExperimentOptions.Events.LightsOn*60 + 80;
+
+                sessionTable.BeforeStopHeadMovingStartSec = this.ExperimentOptions.Events.LightsOff*60 - 80;
+                sessionTable.BeforeStopHeadMovingStopSec = this.ExperimentOptions.Events.LightsOn*60 -20;
+                
+                periods = {periods{:} 'AfterStartHeadMoving' 'BeforeStopHeadMoving'};
+            end
+            
+            
+            for j =1:length(fields)
+                x = analysisResults.SPV.(fields{j});
+                for i=1:length(periods)
+                    if ( ~isnan(sessionTable.([periods{i} 'StartSec'])))
+                        idx = sessionTable.([periods{i} 'StartSec']):sessionTable.([periods{i} 'StopSec']);
+                        sessionTable.(['SPV_' fields{j} '_' periods{i}]) = nanmedian(x(idx));
+                    else
+                        sessionTable.(['SPV_' fields{j} '_' periods{i}]) = nan;
+                    end
+                end
+            end
         end
         
     end
@@ -90,7 +151,7 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
         
         function Plot_MVS_SPVH_Trace(this)
             if ( ~isfield(this.Session.analysisResults, 'SPV' ) )
-                error( 'Need to run analysis SPV before ploting SPV');
+                error( ['Need to run analysis SPV before ploting SPV. Session: ' this.Session.name]);
             end
             
             t = this.Session.analysisResults.SPV.Time/60;
@@ -102,6 +163,7 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             figure('name', [this.Session.subjectCode '  ' this.Session.sessionCode]);
             grid
             plot(t,nanmean([vxl vxr],2),'o')
+            set(gca,'nextplot','add');
             % make the y axis symmetrical around 0 and a multiple of 10
             set(gca,'ylim',[-1 1]*10*ceil(max(abs(get(gca,'ylim')))/10));
             ylabel('Horizontal (deg/s)')
@@ -113,7 +175,16 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                 for i=1:length(events)
                     line([1 1]*events(i), get(gca,'ylim'),'linestyle','--','color',0.7*[1 1 1]);
                 end
+                
+                periods = {'Baseline', 'Peak', 'PeakAfterEffect' 'AfterEffect' 'BeforeExit' 'AfterLightsON' 'BeforeLightsOFF'};
+                
+                for i=1:length(periods)
+                    time = this.Session.sessionDataTable.([periods{i} 'StartSec']):this.Session.sessionDataTable.([periods{i} 'StopSec']);
+                    value = ones(size(time))*this.Session.sessionDataTable.(['SPV_' 'X' '_' periods{i}]);
+                    plot(time/60,value,'o','color','r','linewidth',2);
+                end
             end
+            
             
         end
         

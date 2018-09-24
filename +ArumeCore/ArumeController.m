@@ -222,13 +222,14 @@ classdef ArumeController < handle
         %
         
         function setCurrentSession( this, currentSelection )
-            % Updates the current session selection
             
+            % Updates the current session selection
             if  ~isempty( currentSelection )
-                this.selectedSessions = this.currentProject.sessions(currentSelection);
+                this.selectedSessions = this.currentProject.sessions(sort(currentSelection));
             else
                 this.selectedSessions = [];
             end
+            
         end
         
         function session = newSession( this, experiment, subjectCode, sessionCode, experimentOptions )

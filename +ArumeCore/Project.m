@@ -1,13 +1,19 @@
 classdef Project < handle
     %PROJECT Class handingling Arume projects
     %
+    %
+    %
     
-    properties( SetAccess = private)
+    properties( SetAccess = private )
         name            % Name of the project
         path            % Working path of the project
         
         sessions        % Sessions that belong to this project
-        sessionsTable    % table with information about the sessions
+        
+        sessionsTable   % Table with information about the sessions. It
+                        % corresponds with the concatenation of all the 
+                        % "sessionDataTable" for each session and it will 
+                        % be updated every time the project is saved.
     end
         
     methods(Access=public)
@@ -16,16 +22,17 @@ classdef Project < handle
         %
         function save( this )
             
-            for session = this.sessions
+            for i =1:length(this.sessions)
+                session = this.sessions(i);
                 if ( ~isempty(session) )
                     session.save();
                 end
             end
             
+            % sort the sessions and update the sessions table.
             this.sortSessions();
-            
             this.sessionsTable = this.GetDataTable();
-            
+             
             disp('======= ARUME PROJECT SAVED TO DISK REMEMBER TO BACKUP ==============================')
         end
         
@@ -37,7 +44,7 @@ classdef Project < handle
                     copyfile(file, [file '.aruback']);
                 end
                 
-                % compress project file and keep temp folder
+                % compress project files
                 zip(file , this.path);
             end
         end
@@ -50,11 +57,7 @@ classdef Project < handle
                 error( 'Arume: session already exists use a diferent name' );
             end
             
-            if ( isempty( this.sessions ) )
-                this.sessions = session;
-            else
-                this.sessions(end+1) = session;
-            end
+            this.sessions = horzcat(this.sessions, session);
         end
         
         function deleteSession( this, session )
@@ -164,7 +167,6 @@ classdef Project < handle
             % Initializes a new project
             project.name               = projectName;
             project.path               = fullfile(parentPath, projectName);
-            project.sessions           = [];
             
             % prepare folder structure
             mkdir( parentPath, projectName );
@@ -181,33 +183,32 @@ classdef Project < handle
             end
             
             project = ArumeCore.Project();
-            ArumeCore.Project.UpdateFileStructure(projectPath);
+            ArumeCore.Project.UpdateFileStructure(projectPath); % update old projects (.aruprj) to new structure
             
             
             % Initializes a project loading from a folder
             
-            [~, projectName] = fileparts(projectPath);
-            project.name               = projectName;
-            project.path               = projectPath;
-            project.sessions           = [];
+            [~, projectName]    = fileparts(projectPath);
+            project.name        = projectName;
+            project.path     	= projectPath;
             
             % find the session folders
-            sessionDirs = struct2table(dir(projectPath));
+            sessionDirs = sortrows(struct2table(dir(projectPath)),'date');
             sessionDirs = sessionDirs(sessionDirs.isdir & ~strcmp(sessionDirs.name,'.') & ~strcmp(sessionDirs.name,'..'),:);
-            sessionDirs = sortrows(sessionDirs,'date');
             
             % load sessions
             for i=1:length(sessionDirs.name)
                 sessionName = sessionDirs.name{i};
-                sessionPath = fullfile(projectPath, sessionName);
-                session = ArumeCore.Session.LoadSession( sessionPath );
+                session     = ArumeCore.Session.LoadSession( fullfile(projectPath, sessionName) );
                 if ( ~isempty(session) )
                     project.addSession(session);
                 else
                     disp(['WARNING: session ' sessionName ' could not be loaded. May be an old result of corruption.']);
                 end
             end
-                        
+                     
+            project.sortSessions();
+            
             try
                 project.sessionsTable = project.GetDataTable();
             catch
