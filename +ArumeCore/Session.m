@@ -6,12 +6,30 @@ classdef Session < ArumeCore.DataDB
     properties( SetAccess = private)
         experimentDesign            % Experiment design object associated with this session
         
-        subjectCode     = '000';    % Subject code for this session, for xample S01_BC
-        sessionCode     = 'Z';      % Session code
-        sessionIDNumber = 0;        % Internal arume sessionIDnumber. To link with the UI.
-        comment         = '';       % Comment about the session
+        subjectCode = '000';        % Subject code for this session. Good 
+                                    % practice is to combine a unique serial 
+                                    % number for a guiven project with initials 
+                                    % of subject (or coded initials). 
+                                    % For example: S03_JO
+        
+        sessionCode = 'Z';          % Session code. Good practice is to use 
+                                    % a letter to indicate order of sessions 
+                                    % and after an underscore some indication 
+                                    % of what the session is about.
+                                    % For example: A_LeftTilt
+        
+        sessionIDNumber = 0;        % Internal arume sessionIDnumber. To  
+                                    % link with the UI. It will not be 
+                                    % permanentely unique. Just while the 
+                                    % project is open. The IDs are given to
+                                    % sessions when the project starts.
+                                    
+        comment         = '';       % Comment about the session. All notes 
+                                    % related to the session. They can easily 
+                                    % be edited int he Arume UI.
         
         currentRun      = [];       % current data for this session
+        
         pastRuns        = [];       % data from every time experiment was started, resumed, or restarted
         
         dataPath        = [];       % path of the folder containing the session files
@@ -47,16 +65,10 @@ classdef Session < ArumeCore.DataDB
         rawDataTable
         
         % Single row data table that will be used to create a multisession
-        % table
+        % table within the project
         sessionDataTable
         
-        % DataTable with all the events data
-        % 
-        % Different experiments can load different columns.
-        % Each experiment has to take care of preparing the dataset
-        %
-        % Basic type of events will be Saccades, blinks, slow phases
-        %
+        % Struct with all the output of analyses
         analysisResults
         
     end
@@ -107,9 +119,6 @@ classdef Session < ArumeCore.DataDB
     
     %% Main Session methods
     methods
-        %
-        % INIT METHODS
-        %
         function init( this, projectPath, experimentName, subjectCode, sessionCode, experimentOptions )
             
             this.subjectCode        = subjectCode;
@@ -131,16 +140,21 @@ classdef Session < ArumeCore.DataDB
             newName = ArumeCore.Session.SessionPartsToName(this.experimentDesign.Name, newSubjectCode, newSessionCode);
             newPath = fullfile(projectPath, newName);
             
-            this.subjectCode        = newSubjectCode;
-            this.sessionCode        = newSessionCode;
-            
             % rename the folder
-            if ( ~strcmp(this.dataPath, newPath ))
+            if ( ~strcmpi(this.dataPath, newPath ))
+                this.subjectCode = newSubjectCode;
+                this.sessionCode = newSessionCode;
+                
+                % TODO: it is tricky to rename when only changing
+                % capitalization of names. Because for windows they are
+                % the same files and it does not alow. One option would be
+                % to do a double change. 
                 movefile(this.dataPath, newPath);
+                
+                this.dataPath  = newPath;
+                this.InitDB( this.dataPath );
             end
             
-            this.dataPath  = newPath;
-            this.InitDB( this.dataPath );
         end
         
         function deleteFolders( this )

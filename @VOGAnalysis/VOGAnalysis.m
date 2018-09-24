@@ -823,7 +823,7 @@ classdef VOGAnalysis < handle
                     % remove nearby peaks
                     % then, remove all peaks below threshold. TODO: go until a fixed
                     % rate of peaks then use cluster to separate.
-                    while(currpeak < length(peakidx) && (peakvel(currpeak) > vpth || peakvel(currpeak) < vnth || peakvel(currpeak) > vpth || peakvel(currpeak) < vnth))
+                    while(currpeak < length(peakidx) && (peakvel(currpeak) > vpth || peakvel(currpeak) < vnth) )
                         if ( rem(currpeak,50)==0)
                             if (~isempty(msg))
                                 fprintf(repmat('\b', 1, length(msg)));

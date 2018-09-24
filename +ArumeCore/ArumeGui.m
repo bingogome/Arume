@@ -5,7 +5,7 @@ classdef ArumeGui < matlab.apps.AppBase
     properties (Access = public)
         
         % main controller
-        arumeController     ArumeCore.ArumeController
+        arumeController     
         
         % figure handle
         figureHandle        matlab.ui.Figure
@@ -291,7 +291,6 @@ classdef ArumeGui < matlab.apps.AppBase
                     this.arumeController.currentProject.save();
                 end
                 delete(this.figureHandle)
-                Arume('clear');
             end
         end
         
