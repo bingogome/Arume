@@ -533,7 +533,7 @@ classdef Session < ArumeCore.DataDB
                 % less by looking at the current project. A bit messy but
                 % works.
                 number = 0;
-                a = Arume();
+                a = Arume('nogui');
                 if( ~isempty( a.currentProject ) )
                     for i=1:length(a.currentProject.sessions)
                         number = max(number, a.currentProject.sessions(i).sessionIDNumber);
