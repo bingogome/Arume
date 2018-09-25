@@ -1583,6 +1583,51 @@ classdef VOGAnalysis < handle
                 
             end
         end
+        
+        function [spv, positionFiltered] = GetSPV_Simple(timeSec, position)
+            % GET SPV SIMPLE Calculates slow phase velocity (SPV) from a
+            % position signal with a simple algorithm. No need to have
+            % detected the quickphases before.
+            % This function does a two pass median filter with thresholding
+            % to eliminate quick-phases. First pass eliminates very clear
+            % quick phases. Second pass (after correcting for a first
+            % estimate of the spv, eliminates much smaller quick-phases.
+            % Asumes slow-phases cannot go above 100 deg/s
+            %
+            %   [spv, positionFiltered] = GetSPV_Simple(timeSec, position)
+            %
+            %   Inputs:
+            %       - timeSec: timestamps of the data (column vector) in seconds.
+            %       - position: position data (must be same size as timeSec).
+            %
+            %   Outputs:
+            %       - spv: instantaneous slow phase velocity.
+            %       - positionFiltered: corresponding filtered position signal. 
+            
+            samplerate = round(mean(1./diff(timeSec)));
+            
+            % get the velocity
+            spv = diff(position)./diff(timeSec);
+            
+            % first past at finding quick phases (>100 deg/s)
+            qp = boxcar(abs(spv)>100 | isnan(spv), 30*samplerate/1000)>0;
+            spv(qp) = nan;
+            
+            % used the velocity without first past of quick phases
+            % to get a estimate of the spv and substract it from
+            % the velocity
+            v2 = spv-nanmedfilt(spv,samplerate*4,samplerate);
+            
+            % do a second pass for the quick phases (>10 deg/s)
+            qp2 = boxcar(abs(v2)>10, 30*samplerate/1000)>0;
+            spv(qp2) = nan;
+            
+            % get a filted and decimated version of the spv at 1
+            % sample per second only if one fifth of the samples
+            % are not nan for the 1 second window
+            spv = nanmedfilt(spv,samplerate,samplerate/2);
+            positionFiltered = nanmedfilt(position,samplerate,samplerate/2);
+        end
     end
     
     methods (Static) 

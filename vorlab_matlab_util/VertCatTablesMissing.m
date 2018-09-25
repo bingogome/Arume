@@ -19,14 +19,14 @@ for colname = t1colmissing
         t1colmissingCells(end+1) = colname;
     end
 end
-t1colmissing = setdiff(t1colmissing, t1colmissingCells);
+t1colmissing = setdiff(t1colmissing, t1colmissingCells,'stable');
 t2colmissingCells = {};
 for colname = t2colmissing
     if iscell(t1.(colname{1}))
         t2colmissingCells(end+1) = colname;
     end
 end
-t2colmissing = setdiff(t2colmissing, t2colmissingCells);
+t2colmissing = setdiff(t2colmissing, t2colmissingCells,'stable');
 
 for colname = t1colmissingCells
     t1.(colname{1}) = cell(height(t1), 1);
@@ -36,7 +36,7 @@ for colname = t2colmissingCells
 end
 
 
-t1andt2 = intersect(t1.Properties.VariableNames, t2.Properties.VariableNames, 'stable');
+t1andt2 = intersect(t2.Properties.VariableNames, t1.Properties.VariableNames, 'stable');
 
 % first concatenate the common columns
 t = [t1(:,t1andt2);t2(:,t1andt2)];

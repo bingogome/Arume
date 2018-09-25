@@ -11,86 +11,55 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
         end
         
         function [analysisResults, samplesDataTable, trialDataTable, sessionTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable,sessionTable, options)
-
+            
             [analysisResults, samplesDataTable, trialDataTable, sessionTable] = RunDataAnalyses@ArumeExperimentDesigns.EyeTracking(this, analysisResults, samplesDataTable, trialDataTable,sessionTable, options);
             
             if ( options.SPV )
                 analysisResults.SPV = table();
                 
-                                
-                T = samplesDataTable.Properties.UserData.sampleRate;
-                analysisResults.SPV.Time = samplesDataTable.Time(T/2:T:end);
-                fields = {'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
                 
+                T = samplesDataTable.Properties.UserData.sampleRate;
+                analysisResults.SPV.Time = samplesDataTable.Time(1:T:(end-T/2));
+                fields = {'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
+                t = samplesDataTable.Time;
+                
+                % monocular spv
                 for j =1:length(fields)
-                    x = samplesDataTable.(fields{j});
                     
-                    % get the velocity
-                    v = diff(x)./diff(samplesDataTable.Time);
+                    [vmed, xmed] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(fields{j}));
                     
-                    % first past at finding quick phases (>50 deg/s)
-                    qp = boxcar(abs(v)>50 | isnan(v), 30*T/1000)>0;
-                    v(qp) = nan;
-                    
-                    % used the velocity without first past of quick phases
-                    % to get a estimate of the spv and substract it from
-                    % the velocity
-                    v2 = v-nanmedfilt(v,T*4,T);
-                    
-                    % do a second pass for the quick phases (>10 deg/s)
-                    qp2 = boxcar(abs(v2)>10, 30*T/1000)>0;
-                    v(qp2) = nan;    
-                    
-                    % get a filted and decimated version of the spv at 1
-                    % sample per second only if one fifth of the samples
-                    % are not nan for the 1 second window
-                    vmed = nanmedfilt(v,T,T/2);
-                    xmed = nanmedfilt(x,T,T/2);
                     analysisResults.SPV.(fields{j}) = vmed(T/2:T:end);
                     analysisResults.SPV.([fields{j} 'Pos']) = xmed(T/2:T:end);
                 end
                 
+                % binocular spv
                 LRdataVars = {'X' 'Y' 'T'};
-                
                 for j =1:length(LRdataVars)
-                    xleft = samplesDataTable.(['Left' LRdataVars{j}]);
-                    xright = samplesDataTable.(['Right' LRdataVars{j}]);
                     
-                    % get the velocity
-                    vleft = diff(xleft)./diff(samplesDataTable.Time);
-                    vright = diff(xright)./diff(samplesDataTable.Time);
+                    [vleft, xleft] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(['Left' LRdataVars{j}]));
+                    [vright, xright] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(['Right' LRdataVars{j}]));
                     
-                    % first past at finding quick phases (>50 deg/s)
-                    qp = boxcar(abs(vleft)>50 | isnan(vright), 30*T/1000)>0;
-                    vleft(qp) = nan;
-                    qp = boxcar(abs(vright)>50 | isnan(vright), 30*T/1000)>0;
-                    vright(qp) = nan;
+                    vmed = nanmedfilt(nanmean([vleft, vright],2),T,T/2);
+                    xmed = nanmedfilt(nanmean([xleft, xright],2),T,T/2);
                     
-                    % used the velocity without first past of quick phases
-                    % to get a estimate of the spv and substract it from
-                    % the velocity
-                    v2left = vleft-nanmedfilt(vleft,T*4,T);
-                    v2right = vright-nanmedfilt(vright,T*4,T);
-                    
-                    % do a second pass for the quick phases (>10 deg/s)
-                    qp2 = boxcar(abs(v2left)>10, 30*T/1000)>0;
-                    vleft(qp2) = nan;    
-                    qp2 = boxcar(abs(v2right)>10, 30*T/1000)>0;
-                    vright(qp2) = nan;    
-                    
-                    % get a filted and decimated version of the spv at 1
-                    % sample per second only if one fifth of the samples
-                    % are not nan for the 1 second window
-                    vmed = nanmean([nanmedfilt(vleft,T,T/2), nanmedfilt(vright,T,T/2)],2);
-                    xmed = nanmean([nanmedfilt(xleft,T,T/2), nanmedfilt(xright,T,T/2)],2);
-                    vmed = nanmedfilt(vmed,T,T/2);
-                    xmed = nanmedfilt(xmed,T,T/2);
                     analysisResults.SPV.(LRdataVars{j}) = vmed(T/2:T:end);
                     analysisResults.SPV.([LRdataVars{j} 'Pos']) = xmed(T/2:T:end);
                 end
                 
-                
-                
+                %
+                % Get the SPV realigned for easier averaging across
+                % recordings. Necessary because not all of them have
+                % exactly the same time for entering and exiting the
+                % magnet.  
+                %
+                analysisResults.SPVRealigned = ArumeExperimentDesigns.MVS.RealignSPV(...
+                    analysisResults.SPV, ...
+                    sessionTable.Option_Duration, ...
+                    sessionTable.Option_Events.EnterMagnet, ...
+                    sessionTable.Option_Events.ExitMagnet);
+                %
+                % Get the SPV at different timepoints
+                %
                 sessionTable.BaselineStartSec = this.ExperimentOptions.Events.EnterMagnet*60 - 30;
                 sessionTable.BaselineStopSec = this.ExperimentOptions.Events.EnterMagnet*60 - 10;
                 
@@ -147,6 +116,8 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                         end
                     end
                 end
+                
+                
             end
         end
         
@@ -269,66 +240,126 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             end
         end
         
-%         function Plot_PlotPositionWithHead(this)
-%             VOG.PlotPositionWithHead(this.Session.samplesDataSet, this.Session.rawDataSet);
-%         end
-%         function Plot_PlotVelocityWithHead(this)
-%             VOG.PlotVelocityWithHead(this.Session.samplesDataSet, this.Session.rawDataSet);
-%         end
-%         
-%         function Plot_PlotSPVFeetAndHead(this)
-%             
-%             t1 = this.Session.analysisResults.SPV.Time;
-%             vxl = this.Session.analysisResults.SPV.LeftX;
-%             vxl2 = interp1(find(~isnan(vxl)),vxl(~isnan(vxl)),1:1:length(vxl));
-%             vxr = this.Session.analysisResults.SPV.RightX;
-%             vxr2 = interp1(find(~isnan(vxr)),vxr(~isnan(vxr)),1:1:length(vxr));
-%             vx1 = nanmean([vxl2;vxr2]);
-%             
-%             %$ TODO fix the finding session
-%             control = this.Project.findSession('MVSNystagmusSuppression',this.ExperimentOptions.AssociatedControl);
-%             
-%             t2 = control.analysisResults.SPV.Time;
-%             vxl = control.analysisResults.SPV.LeftX;
-%             vxl2 = interp1(find(~isnan(vxl)),vxl(~isnan(vxl)),1:1:length(vxl));
-%             vxr = control.analysisResults.SPV.RightX;
-%             vxr2 = interp1(find(~isnan(vxr)),vxr(~isnan(vxr)),1:1:length(vxr));
-%             vx2 = nanmean([vxl2;vxr2]);
-%             
-%             events =  fields(this.ExperimentOptions.Events);
-%             eventTimes = zeros(size(events));
-%             for i=1:length(events)
-%                 eventTimes(i) = this.ExperimentOptions.Events.(events{i});
-%             end
-%             
-%             if ( strfind(this.Session.sessionCode,'Head')>0)
-%                 if ( isfield( this.ExperimentOptions.Events, 'StartMoving' ) )
-%                     tstartMoving = this.ExperimentOptions.Events.StartMoving*60;
-%                     tstopMoving = this.ExperimentOptions.Events.StopMoving*60;
-%                 else
-%                     tstartMoving = this.ExperimentOptions.Events.LightsOn*60;
-%                     tstopMoving = this.ExperimentOptions.Events.LightsOff*60;
-%                 end
-%                 vx1(tstartMoving:tstopMoving) = nan;
-%             end
-%             
-%             figure
-%             plot(t1/60, vx1,'.');
-%             hold
-%             plot(t2/60, vx2,'.');
-%             title([this.Session.subjectCode ' ' this.Session.sessionCode])
-%             
-%             ylim = [-50 50];
-%             xlim = [0 max(eventTimes)];
-%             set(gca,'ylim',ylim,'xlim',xlim);
-%             
-%             for i=1:length(events)
-%                 line(eventTimes(i)*[1 1], ylim,'color',[0.5 0.5 0.5]);
-%                 text( eventTimes(i), ylim(2)-mod(i,2)*5-5, events{i});
-%             end
-%             line(xlim, [0 0],'color',[0.5 0.5 0.5])
-%         end
+        %         function Plot_PlotPositionWithHead(this)
+        %             VOG.PlotPositionWithHead(this.Session.samplesDataSet, this.Session.rawDataSet);
+        %         end
+        %         function Plot_PlotVelocityWithHead(this)
+        %             VOG.PlotVelocityWithHead(this.Session.samplesDataSet, this.Session.rawDataSet);
+        %         end
+        %
+        %         function Plot_PlotSPVFeetAndHead(this)
+        %
+        %             t1 = this.Session.analysisResults.SPV.Time;
+        %             vxl = this.Session.analysisResults.SPV.LeftX;
+        %             vxl2 = interp1(find(~isnan(vxl)),vxl(~isnan(vxl)),1:1:length(vxl));
+        %             vxr = this.Session.analysisResults.SPV.RightX;
+        %             vxr2 = interp1(find(~isnan(vxr)),vxr(~isnan(vxr)),1:1:length(vxr));
+        %             vx1 = nanmean([vxl2;vxr2]);
+        %
+        %             %$ TODO fix the finding session
+        %             control = this.Project.findSession('MVSNystagmusSuppression',this.ExperimentOptions.AssociatedControl);
+        %
+        %             t2 = control.analysisResults.SPV.Time;
+        %             vxl = control.analysisResults.SPV.LeftX;
+        %             vxl2 = interp1(find(~isnan(vxl)),vxl(~isnan(vxl)),1:1:length(vxl));
+        %             vxr = control.analysisResults.SPV.RightX;
+        %             vxr2 = interp1(find(~isnan(vxr)),vxr(~isnan(vxr)),1:1:length(vxr));
+        %             vx2 = nanmean([vxl2;vxr2]);
+        %
+        %             events =  fields(this.ExperimentOptions.Events);
+        %             eventTimes = zeros(size(events));
+        %             for i=1:length(events)
+        %                 eventTimes(i) = this.ExperimentOptions.Events.(events{i});
+        %             end
+        %
+        %             if ( strfind(this.Session.sessionCode,'Head')>0)
+        %                 if ( isfield( this.ExperimentOptions.Events, 'StartMoving' ) )
+        %                     tstartMoving = this.ExperimentOptions.Events.StartMoving*60;
+        %                     tstopMoving = this.ExperimentOptions.Events.StopMoving*60;
+        %                 else
+        %                     tstartMoving = this.ExperimentOptions.Events.LightsOn*60;
+        %                     tstopMoving = this.ExperimentOptions.Events.LightsOff*60;
+        %                 end
+        %                 vx1(tstartMoving:tstopMoving) = nan;
+        %             end
+        %
+        %             figure
+        %             plot(t1/60, vx1,'.');
+        %             hold
+        %             plot(t2/60, vx2,'.');
+        %             title([this.Session.subjectCode ' ' this.Session.sessionCode])
+        %
+        %             ylim = [-50 50];
+        %             xlim = [0 max(eventTimes)];
+        %             set(gca,'ylim',ylim,'xlim',xlim);
+        %
+        %             for i=1:length(events)
+        %                 line(eventTimes(i)*[1 1], ylim,'color',[0.5 0.5 0.5]);
+        %                 text( eventTimes(i), ylim(2)-mod(i,2)*5-5, events{i});
+        %             end
+        %             line(xlim, [0 0],'color',[0.5 0.5 0.5])
+        %         end
         
+        
+    end
+    
+    methods(Static =true)
+        
+        function [newSPV] = RealignSPV( spvTable, durationExpeirment, timeEnterMagnet, timeExitMagnet)
+            
+            switch(categorical(durationExpeirment))
+                case '5min'
+                    durationInsideMagnet = 5;
+                    durationUntilEnd = 11;
+                case '20min'
+                    durationInsideMagnet = 20;
+                    durationUntilEnd = 37;
+            end
+            
+            newSPV = table();
+            newSPV.Time = (0:1:durationUntilEnd*60)';
+            
+            fields = setdiff(spvTable.Properties.VariableNames,{'Time'},'stable');
+            for i=1:length(fields)
+                spvRealigned = nan(size(newSPV.Time));
+                spv = spvTable.(fields{i});
+                if ( sum(~isnan(spv))> 0 )
+                    spv = interp1(find(~isnan(spv)),spv(~isnan(spv)),1:1:length(spv));
+                    
+                    actualTimeEnter = round(timeEnterMagnet*60);
+                    actualTimeExit = round(timeExitMagnet*60);
+                    
+                    expectedTimeEnter = 2*60;
+                    expectedTimeExit = (durationInsideMagnet+2)*60;
+                    
+                    % From entering the magnet minus 2 min to duration until exist
+                    % minus one minute
+                    idxOriginPeriod1 = actualTimeEnter + ((-2*60)+1:((durationInsideMagnet-2)*60));
+                    idxDestinPreiod1 = expectedTimeEnter + ((-2*60)+1:((durationInsideMagnet-2)*60));
+                    remidx = find(idxOriginPeriod1<1 | idxOriginPeriod1>length(spv));
+                    idxOriginPeriod1(remidx) = [];
+                    idxDestinPreiod1(remidx) = [];
+                    spvRealigned(idxDestinPreiod1) = spv(idxOriginPeriod1);
+                    
+                    idxOriginPeriod2 = actualTimeExit + ((-3*60)+1:((durationUntilEnd-durationInsideMagnet-2)*60));
+                    idxDestinPreiod2 = expectedTimeExit + ((-3*60)+1:((durationUntilEnd-durationInsideMagnet-2)*60));
+                    remidx = find(idxOriginPeriod2<1 | idxOriginPeriod2>length(spv));
+                    idxOriginPeriod2(remidx) = [];
+                    idxDestinPreiod2(remidx) = [];
+                    spvRealigned(idxDestinPreiod2) = spv(idxOriginPeriod2);
+                    
+                    if(0)
+                        figure
+                        subplot(1,2,1)
+                        plot(spvTable.Time, spv);
+                        subplot(1,2,2)
+                        plot(spvRealigned);
+                    end
+                end
+                
+                newSPV.(fields{i}) = spvRealigned;
+            end
+        end
     end
     
 end
