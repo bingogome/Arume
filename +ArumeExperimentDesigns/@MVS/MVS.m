@@ -7,97 +7,144 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
         
         function optionsDlg = GetAnalysisOptionsDialog(this)
             optionsDlg = GetAnalysisOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
+            optionsDlg.SPV = { {'0' '{1}'} };
         end
         
         function [analysisResults, samplesDataTable, trialDataTable, sessionTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable,sessionTable, options)
 
             [analysisResults, samplesDataTable, trialDataTable, sessionTable] = RunDataAnalyses@ArumeExperimentDesigns.EyeTracking(this, analysisResults, samplesDataTable, trialDataTable,sessionTable, options);
             
-            analysisResults.SPV = table();
-            
-            LRdataVars = {'X' 'Y' 'T'};
-            
-            for i=1:length(LRdataVars)
-                samplesDataTable.(LRdataVars{i}) = mean([samplesDataTable.(['Left' LRdataVars{i}]),samplesDataTable.(['Right' LRdataVars{i}])],2);
-            end
-            
-            T = samplesDataTable.Properties.UserData.sampleRate;
-            analysisResults.SPV.Time = samplesDataTable.Time(T/2:T:end);
-            fields = {'X' 'Y' 'T' 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
-            
-            for j =1:length(fields)
-                x = samplesDataTable.(fields{j});
-                v = diff(x)*500;
-                v1 = diff(samplesDataTable.RightX)*500;
-                qp = boxcar(abs(v1)>50,10)>0;
-                v(qp) = nan;
-                analysisResults.SPV.(fields{j}) = nan(length(analysisResults.SPV.Time),1);
-                analysisResults.SPV.([fields{j} 'Pos']) = nan(length(analysisResults.SPV.Time),1);
-                for i=1:length(analysisResults.SPV.Time)
-                    idx = (1:T) + (i-1)*T-T/2;
-                    idx(idx>length(v) | idx<1) = [];
+            if ( options.SPV )
+                analysisResults.SPV = table();
+                
+                                
+                T = samplesDataTable.Properties.UserData.sampleRate;
+                analysisResults.SPV.Time = samplesDataTable.Time(T/2:T:end);
+                fields = {'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
+                
+                for j =1:length(fields)
+                    x = samplesDataTable.(fields{j});
                     
-                    vchunk = v(idx);
-                    xchunk = x(idx);
-                    if( nanstd(vchunk) < 20)
-                        analysisResults.SPV.(fields{j})(i) =  nanmedian(vchunk);
-                        analysisResults.SPV.([fields{j} 'Pos'])(i) =  nanmedian(xchunk);
-                    end
+                    % get the velocity
+                    v = diff(x)./diff(samplesDataTable.Time);
+                    
+                    % first past at finding quick phases (>50 deg/s)
+                    qp = boxcar(abs(v)>50 | isnan(v), 30*T/1000)>0;
+                    v(qp) = nan;
+                    
+                    % used the velocity without first past of quick phases
+                    % to get a estimate of the spv and substract it from
+                    % the velocity
+                    v2 = v-nanmedfilt(v,T*4,T);
+                    
+                    % do a second pass for the quick phases (>10 deg/s)
+                    qp2 = boxcar(abs(v2)>10, 30*T/1000)>0;
+                    v(qp2) = nan;    
+                    
+                    % get a filted and decimated version of the spv at 1
+                    % sample per second only if one fifth of the samples
+                    % are not nan for the 1 second window
+                    vmed = nanmedfilt(v,T,T/2);
+                    xmed = nanmedfilt(x,T,T/2);
+                    analysisResults.SPV.(fields{j}) = vmed(T/2:T:end);
+                    analysisResults.SPV.([fields{j} 'Pos']) = xmed(T/2:T:end);
                 end
-            end
-            
-            sessionTable.BaselineStartSec = this.ExperimentOptions.Events.EnterMagnet*60 - 30;
-            sessionTable.BaselineStopSec = this.ExperimentOptions.Events.EnterMagnet*60 - 10;
-            
-            sessionTable.PeakStartSec = this.ExperimentOptions.Events.EnterMagnet*60 + 30;
-            sessionTable.PeakStopSec = this.ExperimentOptions.Events.EnterMagnet*60 + 50;
-            
-            sessionTable.PeakAfterEffectStartSec = this.ExperimentOptions.Events.ExitMagnet*60 + 50;
-            sessionTable.PeakAfterEffectStopSec = this.ExperimentOptions.Events.ExitMagnet*60 + 70;
-            
-            sessionTable.AfterEffectStartSec = this.ExperimentOptions.Events.ExitMagnet*60 + 50;
-            if ( this.ExperimentOptions.Events.Finish < 20)
-                sessionTable.AfterEffectStopSec = this.ExperimentOptions.Events.ExitMagnet*60 + 3*60;
-            sessionTable.BeforeExitStartSec = this.ExperimentOptions.Events.ExitMagnet*60 - 10;
-                sessionTable.BeforeExitStopSec = this.ExperimentOptions.Events.ExitMagnet*60;
-            else
-                sessionTable.AfterEffectStopSec = this.ExperimentOptions.Events.ExitMagnet*60 + 7*60;
-                sessionTable.BeforeExitStartSec = this.ExperimentOptions.Events.ExitMagnet*60 - 30;
-                sessionTable.BeforeExitStopSec = this.ExperimentOptions.Events.ExitMagnet*60;
-            end
-            
-            periods = {'Baseline', 'Peak', 'PeakAfterEffect' 'AfterEffect' 'BeforeExit'};
-                  
-            if ( isfield( this.ExperimentOptions.Events, 'LightsOn' ) )
-                sessionTable.AfterLightsONStartSec = this.ExperimentOptions.Events.LightsOn*60 + 20;
-                sessionTable.AfterLightsONStopSec = this.ExperimentOptions.Events.LightsOn*60 + 80;
-
-                sessionTable.BeforeLightsOFFStartSec = this.ExperimentOptions.Events.LightsOff*60 - 80;
-                sessionTable.BeforeLightsOFFStopSec = this.ExperimentOptions.Events.LightsOn*60 -20;
                 
-                periods = {periods{:} 'AfterLightsON' 'BeforeLightsOFF'};
-            end
-            
-            if ( isfield( this.ExperimentOptions.Events, 'StartHeadMov' ) )
+                LRdataVars = {'X' 'Y' 'T'};
                 
-                sessionTable.AfterStartHeadMovingStartSec = this.ExperimentOptions.Events.LightsOn*60 + 20;
-                sessionTable.AfterStartHeadMovingStopSec = this.ExperimentOptions.Events.LightsOn*60 + 80;
-
-                sessionTable.BeforeStopHeadMovingStartSec = this.ExperimentOptions.Events.LightsOff*60 - 80;
-                sessionTable.BeforeStopHeadMovingStopSec = this.ExperimentOptions.Events.LightsOn*60 -20;
+                for j =1:length(LRdataVars)
+                    xleft = samplesDataTable.(['Left' LRdataVars{j}]);
+                    xright = samplesDataTable.(['Right' LRdataVars{j}]);
+                    
+                    % get the velocity
+                    vleft = diff(xleft)./diff(samplesDataTable.Time);
+                    vright = diff(xright)./diff(samplesDataTable.Time);
+                    
+                    % first past at finding quick phases (>50 deg/s)
+                    qp = boxcar(abs(vleft)>50 | isnan(vright), 30*T/1000)>0;
+                    vleft(qp) = nan;
+                    qp = boxcar(abs(vright)>50 | isnan(vright), 30*T/1000)>0;
+                    vright(qp) = nan;
+                    
+                    % used the velocity without first past of quick phases
+                    % to get a estimate of the spv and substract it from
+                    % the velocity
+                    v2left = vleft-nanmedfilt(vleft,T*4,T);
+                    v2right = vright-nanmedfilt(vright,T*4,T);
+                    
+                    % do a second pass for the quick phases (>10 deg/s)
+                    qp2 = boxcar(abs(v2left)>10, 30*T/1000)>0;
+                    vleft(qp2) = nan;    
+                    qp2 = boxcar(abs(v2right)>10, 30*T/1000)>0;
+                    vright(qp2) = nan;    
+                    
+                    % get a filted and decimated version of the spv at 1
+                    % sample per second only if one fifth of the samples
+                    % are not nan for the 1 second window
+                    vmed = nanmean([nanmedfilt(vleft,T,T/2), nanmedfilt(vright,T,T/2)],2);
+                    xmed = nanmean([nanmedfilt(xleft,T,T/2), nanmedfilt(xright,T,T/2)],2);
+                    vmed = nanmedfilt(vmed,T,T/2);
+                    xmed = nanmedfilt(xmed,T,T/2);
+                    analysisResults.SPV.(LRdataVars{j}) = vmed(T/2:T:end);
+                    analysisResults.SPV.([LRdataVars{j} 'Pos']) = xmed(T/2:T:end);
+                end
                 
-                periods = {periods{:} 'AfterStartHeadMoving' 'BeforeStopHeadMoving'};
-            end
-            
-            
-            for j =1:length(fields)
-                x = analysisResults.SPV.(fields{j});
-                for i=1:length(periods)
-                    if ( ~isnan(sessionTable.([periods{i} 'StartSec'])))
-                        idx = sessionTable.([periods{i} 'StartSec']):sessionTable.([periods{i} 'StopSec']);
-                        sessionTable.(['SPV_' fields{j} '_' periods{i}]) = nanmedian(x(idx));
-                    else
-                        sessionTable.(['SPV_' fields{j} '_' periods{i}]) = nan;
+                
+                
+                sessionTable.BaselineStartSec = this.ExperimentOptions.Events.EnterMagnet*60 - 30;
+                sessionTable.BaselineStopSec = this.ExperimentOptions.Events.EnterMagnet*60 - 10;
+                
+                sessionTable.PeakStartSec = this.ExperimentOptions.Events.EnterMagnet*60 + 30;
+                sessionTable.PeakStopSec = this.ExperimentOptions.Events.EnterMagnet*60 + 50;
+                
+                sessionTable.PeakAfterEffectStartSec = this.ExperimentOptions.Events.ExitMagnet*60 + 50;
+                sessionTable.PeakAfterEffectStopSec = this.ExperimentOptions.Events.ExitMagnet*60 + 70;
+                
+                sessionTable.AfterEffectStartSec = this.ExperimentOptions.Events.ExitMagnet*60 + 50;
+                if ( this.ExperimentOptions.Events.Finish < 20)
+                    sessionTable.AfterEffectStopSec = this.ExperimentOptions.Events.ExitMagnet*60 + 3*60;
+                    sessionTable.BeforeExitStartSec = this.ExperimentOptions.Events.ExitMagnet*60 - 10;
+                    sessionTable.BeforeExitStopSec = this.ExperimentOptions.Events.ExitMagnet*60;
+                else
+                    sessionTable.AfterEffectStopSec = this.ExperimentOptions.Events.ExitMagnet*60 + 7*60;
+                    sessionTable.BeforeExitStartSec = this.ExperimentOptions.Events.ExitMagnet*60 - 30;
+                    sessionTable.BeforeExitStopSec = this.ExperimentOptions.Events.ExitMagnet*60;
+                end
+                
+                periods = {'Baseline', 'Peak', 'PeakAfterEffect' 'AfterEffect' 'BeforeExit'};
+                
+                if ( isfield( this.ExperimentOptions.Events, 'LightsOn' ) )
+                    sessionTable.AfterLightsONStartSec = this.ExperimentOptions.Events.LightsOn*60 + 20;
+                    sessionTable.AfterLightsONStopSec = this.ExperimentOptions.Events.LightsOn*60 + 80;
+                    
+                    sessionTable.BeforeLightsOFFStartSec = this.ExperimentOptions.Events.LightsOff*60 - 80;
+                    sessionTable.BeforeLightsOFFStopSec = this.ExperimentOptions.Events.LightsOn*60 -20;
+                    
+                    periods = {periods{:} 'AfterLightsON' 'BeforeLightsOFF'};
+                end
+                
+                if ( isfield( this.ExperimentOptions.Events, 'StartHeadMov' ) )
+                    
+                    sessionTable.AfterStartHeadMovingStartSec = this.ExperimentOptions.Events.LightsOn*60 + 20;
+                    sessionTable.AfterStartHeadMovingStopSec = this.ExperimentOptions.Events.LightsOn*60 + 80;
+                    
+                    sessionTable.BeforeStopHeadMovingStartSec = this.ExperimentOptions.Events.LightsOff*60 - 80;
+                    sessionTable.BeforeStopHeadMovingStopSec = this.ExperimentOptions.Events.LightsOn*60 -20;
+                    
+                    periods = {periods{:} 'AfterStartHeadMoving' 'BeforeStopHeadMoving'};
+                end
+                
+                fields = {'X' 'Y' 'T' 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
+                
+                for j =1:length(fields)
+                    x = analysisResults.SPV.(fields{j});
+                    for i=1:length(periods)
+                        if ( ~isnan(sessionTable.([periods{i} 'StartSec'])))
+                            idx = sessionTable.([periods{i} 'StartSec']):sessionTable.([periods{i} 'StopSec']);
+                            sessionTable.(['SPV_' fields{j} '_' periods{i}]) = nanmedian(x(idx));
+                        else
+                            sessionTable.(['SPV_' fields{j} '_' periods{i}]) = nan;
+                        end
                     end
                 end
             end
@@ -155,14 +202,13 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             end
             
             t = this.Session.analysisResults.SPV.Time/60;
-            vxl = this.Session.analysisResults.SPV.LeftX;
-            vxr = this.Session.analysisResults.SPV.RightX;
+            v = this.Session.analysisResults.SPV.X;
             
             
             %%
             figure('name', [this.Session.subjectCode '  ' this.Session.sessionCode]);
             grid
-            plot(t,nanmean([vxl vxr],2),'o')
+            plot(t,v,'o')
             set(gca,'nextplot','add');
             % make the y axis symmetrical around 0 and a multiple of 10
             set(gca,'ylim',[-1 1]*10*ceil(max(abs(get(gca,'ylim')))/10));

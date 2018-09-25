@@ -1,16 +1,16 @@
 %%
-function y = nanmedfilt(x,w)
+function [y, notnan] = nanmedfilt(x,w,minSamples)
 
-y = nan(size(x));
-
-for i=1:length(x)
-    idx = i+(-w/2:w/2);
-    idx(idx<1) = [];
-    idx(idx>length(x)) = [];
-    
-    if( sum(~isnan(x(idx))) > 5 )
-        y(i) = nanmedian(x(idx));
-    end
+if ( ~exist('minSamples','var') )
+    minSamples = 0;
 end
 
+% get the median filtering
+y = medfilt1(x,w,'omitnan','truncate');
+
+% count how many non nan samples went into each sample
+notnan = boxcar(~isnan(x),w);
+
+% apply the minimum
+y(notnan<minSamples/w) = nan;
 

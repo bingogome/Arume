@@ -534,49 +534,85 @@ classdef VOGAnalysis < handle
                 if ( sum(strcmp('FrameNumber',calibratedData.Properties.VariableNames))>0)
                     calibratedData.FrameNumber = calibratedData.FrameNumber;
                 else
-                    f = cumsum(round(diff(calibratedData.Time)/median(diff(calibratedData.Time))));
-                    calibratedData.FrameNumber = [0;f];
+                    frameNumber = cumsum(round(diff(calibratedData.Time)/median(diff(calibratedData.Time))));
+                    calibratedData.FrameNumber = [0;frameNumber];
                 end
+                
+                % Make sure timestamps are in seconds from now on
                 switch(params.units)
                     case 'seconds'
                         calibratedData.Time = calibratedData.Time;
                     case 'miliseconds'
                         calibratedData.Time = calibratedData.Time/1000;
                 end
-                RawSampleRate = 1/median(diff(calibratedData.Time));
+                
+                % find what signals are present in the data
                 [eyes, eyeSignals, headSignals] = VOGAnalysis.GetEyesAndSignals(calibratedData);
-                cleanedData = table;    % cleaned data
-                resampledData = table;  % resampled data at 500Hz
                 
                 % ---------------------------------------------------------
                 % Interpolate missing samples
                 %----------------------------------------------------------
                 % Find missing samples and intorpolate them
                 % It is possible that some frames were dropped during the
-                % recording. We will interpolate them
-                rf = calibratedData.FrameNumber - calibratedData.FrameNumber(1)+1;
-                f = (1:max(rf))';
-                cleanedData.RawFrameNumber = nan(size(f));
-                cleanedData.RawFrameNumber(rf) = calibratedData.FrameNumber;
-                cleanedData.FrameNumber = f;
+                % recording. We will interpolate them. But only if they are
+                % just a few in a row. If there are many we will fill with
+                % NaNs. The fram numbers and the timestamps will be
+                % interpolated regardless. From now on frame numbers and
+                % timestamps cannot be NaN and they must follow a continued
+                % growing interval
                 
-                cleanedData.Time        = nan(size(f));
-                cleanedData.Time(rf)    = calibratedData.Time;
+                cleanedData = table;    % cleaned data
+                resampledData = table;  % resampled data at 500Hz
+                
+                % calcualte the samplerate
+                totalNumberOfFrames = max(calibratedData.FrameNumberRaw)-calibratedData.FrameNumberRaw(1);
+                totalTime = max(calibratedData.Time)-calibratedData.Time(1);
+                RawSampleRate = totalNumberOfFrames/totalTime;
+                
+                % find dropped and not dropped frames
+                notDroppedFrames = calibratedData.FrameNumber - calibratedData.FrameNumber(1) + 1;
+                droppedFrames = ones(max(notDroppedFrames),1);
+                droppedFrames(notDroppedFrames) = 0;
+                interpolableFrames = droppedFrames-imopen(droppedFrames,ones(3)); % 1 or 2 frames in a row, not more
+                
+                % create the new continuos FrameNumber and Time variables
+                % but also save the original raw frame numbers and time
+                % stamps with NaNs in the dropped frames.
+                cleanedData.FrameNumber     = (1:max(notDroppedFrames))';
+                cleanedData.Time            = cleanedData.FrameNumber/RawSampleRate;
+                cleanedData.RawFrameNumber  = nan(height(cleanedData), 1);
+                cleanedData.RawTime         = nan(height(cleanedData), 1);
+                cleanedData.RawFrameNumber(notDroppedFrames) = calibratedData.FrameNumberRaw;
+                cleanedData.RawTime(notDroppedFrames)        = calibratedData.Time; 
+                
+                % interpolate signals
+                signalsToInterpolate = {};
                 for i=1:length(eyes)
                     for j=1:length(eyeSignals)
-                        cleanedData.([eyes{i} eyeSignals{j}])       = nan(size(f));
-                        cleanedData.([eyes{i} eyeSignals{j}])(rf)   = calibratedData.([eyes{i} eyeSignals{j}]);
-                        cleanedData.([eyes{i} eyeSignals{j} 'Raw']) = cleanedData.([eyes{i} eyeSignals{j}]);
-                        cleanedData.([eyes{i} eyeSignals{j}])       = interp1(rf, cleanedData.([eyes{i} eyeSignals{j}])(rf),  f);
+                        signalsToInterpolate{end+1} = [eyes{i} eyeSignals{j}];
                     end
                 end
-                
                 for j=1:length(headSignals)
-                    cleanedData.(['Head' headSignals{j}]) = nan(size(f));
-                    cleanedData.(['Head' headSignals{j}])(rf) = calibratedData.(headSignals{j});
-                    cleanedData.(['Head' headSignals{j} 'Raw']) = cleanedData.(['Head' headSignals{j}]);
+                    signalsToInterpolate{end+1} = ['Head' headSignals{j}];
                 end
-                cprintf('blue',sprintf('Interpolated %d dropped frames...\n',length(f)-length(rf)));
+                        
+                for i=1:length(signalsToInterpolate)
+                    signalName = signalsToInterpolate{i};
+                    
+                    cleanedData.(signalName) = nan(height(cleanedData), 1);
+                    cleanedData.(signalName)(notDroppedFrames)  = calibratedData.(signalName);
+                    
+                    % save the non interpolated version
+                    cleanedData.([signalName 'Raw']) = cleanedData.(signalName);
+                    
+                    % interpolate missing frames but only if they are
+                    % 2 or less in a row. Otherwise put nans in there.
+                    datInterp = interp1(notDroppedFrames, cleanedData.(signalName)(notDroppedFrames),  cleanedData.FrameNumber );
+                    datInterp(droppedFrames & ~interpolableFrames) = nan;
+                    cleanedData.(signalName) = datInterp;
+                end
+            
+                cprintf('blue',sprintf('Interpolated %d dropped frames...\n',length(cleanedData.FrameNumber )-length(notDroppedFrames)));
                 
                 % ---------------------------------------------------------
                 % End interpolate missing samples
@@ -593,8 +629,24 @@ classdef VOGAnalysis < handle
                 tic
                 % Find bad samples
                 for i=1:length(eyes)
-                    badData = zeros(size(f));
-                    badPupil = nan(size(badData));
+                    
+                    % collect signals
+                    t = cleanedData.Time;
+                    dt = diff(t);
+                    x = cleanedData.([eyes{i} 'X']);
+                    y = cleanedData.([eyes{i} 'Y']);
+                    t = cleanedData.([eyes{i} 'T']);
+                    vx = [0;diff(x)./dt];
+                    vy = [0;diff(y)./dt];
+                    vt = [0;diff(t)./dt];
+                    accx = [0;diff(vx)./dt];
+                    accy = [0;diff(vy)./dt];
+                    acct = [0;diff(vt)./dt];
+                    acc = sqrt(accx.^2+accy.^2);
+                    
+                    
+                    badData = isnan(x) | isnan(y);
+                    badPupil        = nan(size(badData));
                     
                     % Calculate a smooth version of the pupil size to detect changes in
                     % pupil size that are not normal. Thus, must be blinks or errors in
@@ -602,7 +654,7 @@ classdef VOGAnalysis < handle
                     if ( ismember('Pupil', eyeSignals) )
                         pupil = cleanedData.([eyes{i} 'Pupil']);
                         pupilDecimated = pupil(1:25:end); %decimate the pupil signal
-                        if ( exist('smooth') )
+                        if ( exist('smooth','file') )
                             pupilSmooth = smooth(pupilDecimated,params.smoothRloessSpan*RawSampleRate/25/length(pupilDecimated),'rloess');
                         else
                             pupilSmooth = nanmedfilt(pupilDecimated,round(params.smoothRloessSpan*RawSampleRate/25));
@@ -620,16 +672,6 @@ classdef VOGAnalysis < handle
                     end
                     
                     % find blinks and other abnormal pupil sizes or eye movements
-                    x = cleanedData.([eyes{i} 'X']);
-                    y = cleanedData.([eyes{i} 'Y']);
-                    t = cleanedData.([eyes{i} 'T']);
-                    vx = [0;diff(x)*RawSampleRate];
-                    vy = [0;diff(y)*RawSampleRate];
-                    vt = [0;diff(t)*RawSampleRate];
-                    accx = [0;diff(vx)*RawSampleRate];
-                    accy = [0;diff(vy)*RawSampleRate];
-                    acct = [0;diff(vt)*RawSampleRate];
-                    acc = sqrt(accx.^2+accy.^2);
                     
                     badPosition = abs(x) > params.HMaxRange ...	% Horizontal eye position out of range
                         | abs(y) > params.VMaxRange;         	% Vertical eye position out of range
@@ -656,6 +698,8 @@ classdef VOGAnalysis < handle
                     bt = badData | abs(t) > params.TMaxRange | abs(vt) > params.TVelMax;
                     bt = imclose(bt,ones(10));
                     
+                    % but spikes of bad data in between good data can be
+                    % interpolated
                     % find spikes of bad data. Single bad samples surrounded by at least 2
                     % good samples to each side
                     b2 = boxcar(~badData,3)*3 >= 2;
@@ -707,24 +751,24 @@ classdef VOGAnalysis < handle
                 tic
                 t = cleanedData.Time;
                 
-                
                 rest = (0:0.002:max(t))';
                 resampledData.Time = rest;
                 resampledData.RawFrameNumber = interp1(t(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),cleanedData.RawFrameNumber(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),rest,'nearest');
                 resampledData.FrameNumber = interp1(t(~isnan(cleanedData.FrameNumber) & ~isnan(t)),cleanedData.FrameNumber(~isnan(cleanedData.FrameNumber) & ~isnan(t)),rest,'nearest');
                 for i=1:length(eyes)
                     for j=1:length(eyeSignals)
-                        x = cleanedData.([eyes{i} eyeSignals{j}]);
+                        signalName = [eyes{i} eyeSignals{j}];
+                        x = cleanedData.(signalName);
                         
-                        resampledData.([eyes{i} eyeSignals{j}]) = nan(size(rest));
+                        resampledData.(signalName) = nan(size(rest));
                         if ( sum(~isnan(x)) > 0 ) % if not everything is nan
                             % interpolate nans
                             xNoNan = interp1(find(~isnan(x)),x(~isnan(x)),1:length(x),'spline');
                             % upsample
-                            resampledData.([eyes{i} eyeSignals{j}]) = interp1(t(~isnan(t)),xNoNan(~isnan(t)),rest,'pchip');
+                            resampledData.(signalName) = interp1(t, xNoNan,rest,'pchip');
                             % set nans in the upsampled signal
-                            xnan = interp1(t(~isnan(t)),double(isnan(x(~isnan(t)))),rest);
-                            resampledData.([eyes{i} eyeSignals{j}])(xnan>0) = nan;
+                            xnan = interp1(t, double(isnan(x)),rest);
+                            resampledData.(signalName)(xnan>0) = nan;
                         end
                     end
                 end
