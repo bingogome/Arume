@@ -89,7 +89,7 @@ classdef VOGAnalysis < handle
                 calibrationTable{'LeftEye', 'RefX'} =          str2num(theStruct.Children(2).Children(2).Children(8).Children(6).Children(2).Children(2).Children.Data);
                 calibrationTable{'LeftEye', 'RefY'} =          str2num(theStruct.Children(2).Children(2).Children(8).Children(6).Children(2).Children(4).Children.Data);
                 calibrationTable{'LeftEye', 'SignX'} = -1;
-                calibrationTable{'LeftEye', 'SignY'} = 1;
+                calibrationTable{'LeftEye', 'SignY'} = -1;
                 
                 calibrationTable{'RightEye', 'GlobeX'} =       str2num(theStruct.Children(2).Children(4).Children(6).Children(2).Children(2).Children.Data);
                 calibrationTable{'RightEye', 'GlobeY'} =       str2num(theStruct.Children(2).Children(4).Children(6).Children(2).Children(4).Children.Data);
@@ -98,7 +98,7 @@ classdef VOGAnalysis < handle
                 calibrationTable{'RightEye', 'RefX'} =         str2num(theStruct.Children(2).Children(4).Children(8).Children(6).Children(2).Children(2).Children.Data);
                 calibrationTable{'RightEye', 'RefY'} =         str2num(theStruct.Children(2).Children(4).Children(8).Children(6).Children(2).Children(4).Children.Data);
                 calibrationTable{'RightEye', 'SignX'} = -1;
-                calibrationTable{'RightEye', 'SignY'} = 1;
+                calibrationTable{'RightEye', 'SignY'} = -1;
             else
                 % LEGACY
                 % loading calibrations for files recorded with the old
@@ -119,7 +119,7 @@ classdef VOGAnalysis < handle
                 calibrationTable{'LeftEye', 'RefX'} = dat(4);
                 calibrationTable{'LeftEye', 'RefY'} = dat(5);
                 calibrationTable{'LeftEye', 'SignX'} = -1;
-                calibrationTable{'LeftEye', 'SignY'} = 1;
+                calibrationTable{'LeftEye', 'SignY'} = -1;
                 
                 calibrationTable{'RightEye',:} = missing;
                 calibrationTable{'RightEye', 'GlobeX'} = dat(6);
@@ -129,7 +129,7 @@ classdef VOGAnalysis < handle
                 calibrationTable{'RightEye', 'RefX'} = dat(9);
                 calibrationTable{'RightEye', 'RefY'} = dat(10);
                 calibrationTable{'RightEye', 'SignX'} = -1;
-                calibrationTable{'RightEye', 'SignY'} = 1;
+                calibrationTable{'RightEye', 'SignY'} = -1;
             end
         end
         
@@ -148,8 +148,8 @@ classdef VOGAnalysis < handle
             calibrationTable{'LeftEye', 'GlobeY'} = bLeftY(1);
             calibrationTable{'LeftEye', 'GlobeRadiusX'} = abs(60*bLeftX(2));
             calibrationTable{'LeftEye', 'GlobeRadiusY'} = abs(60*bLeftY(2));
-            calibrationTable{'LeftEye', 'SignX'} = -1;
-            calibrationTable{'LeftEye', 'SignY'} = 1;
+            calibrationTable{'LeftEye', 'SignX'} = sign(bLeftX(2));
+            calibrationTable{'LeftEye', 'SignY'} = sign(bLeftY(2));
             calibrationTable{'LeftEye', 'RefX'} = bLeftX(1);
             calibrationTable{'LeftEye', 'RefY'} = bLeftY(1);
             
@@ -157,8 +157,8 @@ classdef VOGAnalysis < handle
             calibrationTable{'RightEye', 'GlobeY'} = bRightY(1);
             calibrationTable{'RightEye', 'GlobeRadiusX'} = abs(60*bRightX(2));
             calibrationTable{'RightEye', 'GlobeRadiusY'} = abs(60*bRightY(2));
-            calibrationTable{'RightEye', 'SignX'} = -1;
-            calibrationTable{'RightEye', 'SignY'} = 1;
+            calibrationTable{'RightEye', 'SignX'} = sign(bRightX(2));
+            calibrationTable{'RightEye', 'SignY'} = sign(bRightY(2));
             calibrationTable{'RightEye', 'RefX'} = bRightX(1);
             calibrationTable{'RightEye', 'RefY'} = bRightY(1);
             
@@ -241,7 +241,7 @@ classdef VOGAnalysis < handle
                 calibrationTable{'LeftEye', 'GlobeRadiusX'} = 85*2;
                 calibrationTable{'LeftEye', 'GlobeRadiusY'} = 85*2;
                 calibrationTable{'LeftEye', 'SignX'} = -1;
-                calibrationTable{'LeftEye', 'SignY'} = 1;
+                calibrationTable{'LeftEye', 'SignY'} = -1;
             end
             if ( calibrationTable{'RightEye', 'GlobeX'} == 0 )
                 disp( ' WARNING GLOBE NOT SET' )
@@ -250,7 +250,7 @@ classdef VOGAnalysis < handle
                 calibrationTable{'RightEye', 'GlobeRadiusX'} = 85*2;
                 calibrationTable{'RightEye', 'GlobeRadiusY'} = 85*2;
                 calibrationTable{'RightEye', 'SignX'} = -1;
-                calibrationTable{'RightEye', 'SignY'} = 1;
+                calibrationTable{'RightEye', 'SignY'} = -1;
             end
             
             
@@ -318,7 +318,7 @@ classdef VOGAnalysis < handle
                 calibrationTable{'LeftEye', 'GlobeRadiusX'} = 85*2;
                 calibrationTable{'LeftEye', 'GlobeRadiusY'} = 85*2;
                 calibrationTable{'LeftEye', 'SignX'} = -1;
-                calibrationTable{'LeftEye', 'SignY'} = 1;
+                calibrationTable{'LeftEye', 'SignY'} = -1;
             end
             if ( calibrationTable{'RightEye', 'GlobeX'} == 0 )
                 disp( ' WARNING GLOBE NOT SET' )
@@ -327,7 +327,7 @@ classdef VOGAnalysis < handle
                 calibrationTable{'RightEye', 'GlobeRadiusX'} = 85*2;
                 calibrationTable{'RightEye', 'GlobeRadiusY'} = 85*2;
                 calibrationTable{'RightEye', 'SignX'} = -1;
-                calibrationTable{'RightEye', 'SignY'} = 1;
+                calibrationTable{'RightEye', 'SignY'} = -1;
             end
             
             % TODO: deal with corneal reflections...
