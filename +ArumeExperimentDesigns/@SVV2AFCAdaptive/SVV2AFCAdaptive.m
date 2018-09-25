@@ -398,7 +398,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             for i=1:length(sessions)
                 s.Subject{i} = sessions(i).subjectCode;
                 s.SessionCode{i} = sessions(i).sessionCode ;
-                if ( strfind(sessions(i).sessionCode, 'Sham') )
+                if ( ~isempty(strfind(sessions(i).sessionCode, 'Sham')) || ~isempty(strfind(sessions(i).sessionCode, 'sham')) )
                     s.TMS{i} = 'Sham';
                 elseif ( strfind(sessions(i).sessionCode, 'TMS') )
                     s.TMS{i} = 'TMS';
