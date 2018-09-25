@@ -144,7 +144,7 @@ classdef ExperimentDesign < handle
             optionsDlg = [];
         end
         
-        function [analysisResults, samplesDataTable, trialDataTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, options)
+        function [analysisResults, samplesDataTable, trialDataTable, sessionTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, sessionTable, options)
         end
         
         %% ImportSession
@@ -282,8 +282,10 @@ classdef ExperimentDesign < handle
             % values. This is important to mantain past compatibility if
             % options are added in the future.
             optionsDlg = this.GetOptionsDialog( );
-            if ( ~isempty( optionsDlg ) )
+            if ( ~isempty( optionsDlg ) && ~isempty(setdiff(fieldnames(optionsDlg), fieldnames(this.ExperimentOptions))) )
+                
                 options = StructDlg(optionsDlg,'',[],[],'off');
+                
                 fields = fieldnames(options);
                 for i=1:length(fields)
                     if ( ~isfield(this.ExperimentOptions, fields{i}))
@@ -307,6 +309,7 @@ classdef ExperimentDesign < handle
             
             %-- init the parameters of this specific experiment
             this.initExperimentDesign( );
+            
         end
         
         function run(this)
@@ -768,12 +771,15 @@ classdef ExperimentDesign < handle
         function experimentList = GetExperimentList()
             experimentList = {};
             
-            expPackage = meta.package.fromName('ArumeExperimentDesigns');
+            % It is important to not navigate the expPackage object in the
+            % loop. It is vry slow. Keep the objects in their own variables
+            % and used them like that.
+            classList = meta.package.fromName('ArumeExperimentDesigns').ClassList;
             disp('Setting up experiments...')
-            for i=1:length(expPackage.ClassList)
-                if (~expPackage.ClassList(i).Abstract)
-                    experimentList{end+1} = strrep( expPackage.ClassList(i).Name, 'ArumeExperimentDesigns.','');
-                    disp(experimentList{end});
+            for i=1:length(classList)
+                c = classList(i);
+                if (~c.Abstract)
+                    experimentList{end+1} = strrep( c.Name, 'ArumeExperimentDesigns.','');
                 end
             end
         end

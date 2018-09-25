@@ -165,8 +165,7 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 rawDataFile         = VOGAnalysis.LoadVOGdata(dataFilePath);
                 calibrationTable    = VOGAnalysis.ReadCalibration(calibrationFilePath);
                 calibratedData      = VOGAnalysis.CalibrateData(rawDataFile, calibrationTable);
-                params =  VOGAnalysis.GetParameters();
-                params.timescale = 1000; % TODO: fix this so it always works ...
+                params              = VOGAnalysis.GetParameters();
                 fileSamplesDataSet  = VOGAnalysis.ResampleAndCleanData(calibratedData,params);
                                 
                 % add a column to indicate which file the samples came from
@@ -207,14 +206,21 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                         s.TrialNumber(idx) = trialDataTable.TrialNumber(i);
                     end
                     
+                    LRdataVars = {'X' 'Y' 'T'};
+                    
+                    for i=1:length(LRdataVars)
+                        s.(LRdataVars{i}) = mean([s.(['Left' LRdataVars{i}]),s.(['Right' LRdataVars{i}])],2);
+                    end
+                    dataVars = { 'X' 'Y' 'T' 'LeftX' 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
+                    
                     st = grpstats(...
                         s(~isnan(s.TrialNumber),:), ...     % Selected rows of data
                         'TrialNumber', ...                  % GROUP VARIABLE
                         {'median' 'mean' 'std'}, ...        % Stats to calculate
-                        'DataVars', {'TrialNumber', 'LeftX' 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'});
+                        'DataVars', dataVars );             % Vars to do stats on
                     st.Properties.VariableNames{'GroupCount'} = 'count_GoodSamples';
                     st.TrialNumber = [];
-                    
+                                        
                     if ( height(trialDataTable) == height(st))
                         trialDataTable = [trialDataTable st];
                     end
@@ -226,7 +232,7 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             optionsDlg.Detect_Quik_and_Slow_Phases =  { {'{0}','1'} };
         end
         
-        function [analysisResults, samplesDataTable, trialDataTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, options)
+        function [analysisResults, samplesDataTable, trialDataTable, sessionTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, sessionTable, options)
             analysisResults = [];
             params = VOGAnalysis.GetParameters();
             

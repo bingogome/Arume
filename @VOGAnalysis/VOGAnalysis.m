@@ -40,6 +40,28 @@ classdef VOGAnalysis < handle
                 data.RightY = data.RightPupilY;
                 data.RightTorsionAngle = data.RightTorsion;
             end
+            
+            % fix the timestamps in case they are not always growing
+            % (did happen in some old files because of a bug in the eye
+            % tracking software).
+            timestampVars = {'LeftSeconds' 'RightSeconds' 'Seconds' 'TimeStamp' 'timestamp' 'Time'};
+            for i=1:length(timestampVars)
+                if ( sum(strcmp(timestampVars{i},data.Properties.VariableNames))>0)
+                    disp(['WARNING: fixing some timestamps that were not always growing: ' timestampVars{i}]);
+                    t = data.(timestampVars{i});
+                    dt = diff(t);
+                    if ( min(dt) < 0 )
+                        % replace the samples with negative time change
+                        % with the typical (median) time between samples.
+                        dt(dt<=0) = nanmedian(dt(dt>0));
+                        % go back from diff to real time starting on the
+                        % first timestamp.
+                        t = cumsum([t(1);dt]);
+                    end
+                    data.(['UNCOCRRECTED_' timestampVars{i}]) = data.(timestampVars{i}) ;
+                    data.(timestampVars{i}) = t;
+                end
+            end
         end
         
         function [calibrationTable] = ReadCalibration(file)
@@ -311,7 +333,7 @@ classdef VOGAnalysis < handle
             % TODO: deal with corneal reflections...
                 
             if ( ~geomCorrected )
-                t = (rawData.LeftSeconds-rawData.LeftSeconds(1))*1000;
+                t = (rawData.LeftSeconds-rawData.LeftSeconds(1));
                 lx = calibrationTable{'LeftEye', 'SignX'}*(rawData.LeftX - calibrationTable{'LeftEye', 'RefX'})/calibrationTable{'LeftEye', 'GlobeRadiusX'}*60;
                 ly = calibrationTable{'LeftEye', 'SignY'}*(rawData.LeftY - calibrationTable{'LeftEye', 'RefY'})/calibrationTable{'LeftEye', 'GlobeRadiusY'}*60;
                 rx = calibrationTable{'RightEye', 'SignX'}*(rawData.RightX - calibrationTable{'RightEye', 'RefX'})/calibrationTable{'RightEye', 'GlobeRadiusX'}*60;
@@ -338,7 +360,7 @@ classdef VOGAnalysis < handle
                 
             else
                 
-                t = (rawData.LeftSeconds-rawData.LeftSeconds(1))*1000;
+                t = (rawData.LeftSeconds-rawData.LeftSeconds(1));
                 
                 referenceXDeg = asin((calibrationTable{'LeftEye', 'RefX'} - calibrationTable{'LeftEye', 'GlobeX'}) / calibrationTable{'LeftEye', 'GlobeRadiusX'}) * 180 / pi;
                 referenceYDeg = asin((calibrationTable{'LeftEye', 'RefY'} - calibrationTable{'LeftEye', 'GlobeY'}) / calibrationTable{'LeftEye', 'GlobeRadiusY'}) * 180 / pi;
@@ -451,7 +473,7 @@ classdef VOGAnalysis < handle
             params.VFAC = 4; % saccade detection threshold factor
             params.HFAC = 4;
             params.InterPeakMinInterval = 50; % ms
-            params.timescale = 1;
+            params.units = 'seconds'; % could also be miliseconds
         end
         
         function [eyes, eyeSignals, headSignals] = GetEyesAndSignals(calibratedData)
@@ -512,44 +534,85 @@ classdef VOGAnalysis < handle
                 if ( sum(strcmp('FrameNumber',calibratedData.Properties.VariableNames))>0)
                     calibratedData.FrameNumber = calibratedData.FrameNumber;
                 else
-                    f = cumsum(round(diff(calibratedData.Time)/median(diff(calibratedData.Time))));
-                    calibratedData.FrameNumber = [0;f];
+                    frameNumber = cumsum(round(diff(calibratedData.Time)/median(diff(calibratedData.Time))));
+                    calibratedData.FrameNumber = [0;frameNumber];
                 end
-                calibratedData.Time = calibratedData.Time/params.timescale/1000;
-                RawSampleRate = 1/median(diff(calibratedData.Time));
+                
+                % Make sure timestamps are in seconds from now on
+                switch(params.units)
+                    case 'seconds'
+                        calibratedData.Time = calibratedData.Time;
+                    case 'miliseconds'
+                        calibratedData.Time = calibratedData.Time/1000;
+                end
+                
+                % find what signals are present in the data
                 [eyes, eyeSignals, headSignals] = VOGAnalysis.GetEyesAndSignals(calibratedData);
-                cleanedData = table;    % cleaned data
-                resampledData = table;  % resampled data at 500Hz
                 
                 % ---------------------------------------------------------
                 % Interpolate missing samples
                 %----------------------------------------------------------
                 % Find missing samples and intorpolate them
                 % It is possible that some frames were dropped during the
-                % recording. We will interpolate them
-                rf = calibratedData.FrameNumber - calibratedData.FrameNumber(1)+1;
-                f = (1:max(rf))';
-                cleanedData.RawFrameNumber = nan(size(f));
-                cleanedData.RawFrameNumber(rf) = calibratedData.FrameNumber;
-                cleanedData.FrameNumber = f;
+                % recording. We will interpolate them. But only if they are
+                % just a few in a row. If there are many we will fill with
+                % NaNs. The fram numbers and the timestamps will be
+                % interpolated regardless. From now on frame numbers and
+                % timestamps cannot be NaN and they must follow a continued
+                % growing interval
                 
-                cleanedData.Time        = nan(size(f));
-                cleanedData.Time(rf)    = calibratedData.Time;
+                cleanedData = table;    % cleaned data
+                resampledData = table;  % resampled data at 500Hz
+                
+                % calcualte the samplerate
+                totalNumberOfFrames = max(calibratedData.FrameNumberRaw)-calibratedData.FrameNumberRaw(1);
+                totalTime = max(calibratedData.Time)-calibratedData.Time(1);
+                RawSampleRate = totalNumberOfFrames/totalTime;
+                
+                % find dropped and not dropped frames
+                notDroppedFrames = calibratedData.FrameNumber - calibratedData.FrameNumber(1) + 1;
+                droppedFrames = ones(max(notDroppedFrames),1);
+                droppedFrames(notDroppedFrames) = 0;
+                interpolableFrames = droppedFrames-imopen(droppedFrames,ones(3)); % 1 or 2 frames in a row, not more
+                
+                % create the new continuos FrameNumber and Time variables
+                % but also save the original raw frame numbers and time
+                % stamps with NaNs in the dropped frames.
+                cleanedData.FrameNumber     = (1:max(notDroppedFrames))';
+                cleanedData.Time            = cleanedData.FrameNumber/RawSampleRate;
+                cleanedData.RawFrameNumber  = nan(height(cleanedData), 1);
+                cleanedData.RawTime         = nan(height(cleanedData), 1);
+                cleanedData.RawFrameNumber(notDroppedFrames) = calibratedData.FrameNumberRaw;
+                cleanedData.RawTime(notDroppedFrames)        = calibratedData.Time; 
+                
+                % interpolate signals
+                signalsToInterpolate = {};
                 for i=1:length(eyes)
                     for j=1:length(eyeSignals)
-                        cleanedData.([eyes{i} eyeSignals{j}])       = nan(size(f));
-                        cleanedData.([eyes{i} eyeSignals{j}])(rf)   = calibratedData.([eyes{i} eyeSignals{j}]);
-                        cleanedData.([eyes{i} eyeSignals{j} 'Raw']) = cleanedData.([eyes{i} eyeSignals{j}]);
-                        cleanedData.([eyes{i} eyeSignals{j}])       = interp1(rf, cleanedData.([eyes{i} eyeSignals{j}])(rf),  f);
+                        signalsToInterpolate{end+1} = [eyes{i} eyeSignals{j}];
                     end
                 end
-                
                 for j=1:length(headSignals)
-                    cleanedData.(['Head' headSignals{j}]) = nan(size(f));
-                    cleanedData.(['Head' headSignals{j}])(rf) = calibratedData.(headSignals{j});
-                    cleanedData.(['Head' headSignals{j} 'Raw']) = cleanedData.(['Head' headSignals{j}]);
+                    signalsToInterpolate{end+1} = ['Head' headSignals{j}];
                 end
-                cprintf('blue',sprintf('Interpolated %d dropped frames...\n',length(f)-length(rf)));
+                        
+                for i=1:length(signalsToInterpolate)
+                    signalName = signalsToInterpolate{i};
+                    
+                    cleanedData.(signalName) = nan(height(cleanedData), 1);
+                    cleanedData.(signalName)(notDroppedFrames)  = calibratedData.(signalName);
+                    
+                    % save the non interpolated version
+                    cleanedData.([signalName 'Raw']) = cleanedData.(signalName);
+                    
+                    % interpolate missing frames but only if they are
+                    % 2 or less in a row. Otherwise put nans in there.
+                    datInterp = interp1(notDroppedFrames, cleanedData.(signalName)(notDroppedFrames),  cleanedData.FrameNumber );
+                    datInterp(droppedFrames & ~interpolableFrames) = nan;
+                    cleanedData.(signalName) = datInterp;
+                end
+            
+                cprintf('blue',sprintf('Interpolated %d dropped frames...\n',length(cleanedData.FrameNumber )-length(notDroppedFrames)));
                 
                 % ---------------------------------------------------------
                 % End interpolate missing samples
@@ -566,8 +629,24 @@ classdef VOGAnalysis < handle
                 tic
                 % Find bad samples
                 for i=1:length(eyes)
-                    badData = zeros(size(f));
-                    badPupil = nan(size(badData));
+                    
+                    % collect signals
+                    t = cleanedData.Time;
+                    dt = diff(t);
+                    x = cleanedData.([eyes{i} 'X']);
+                    y = cleanedData.([eyes{i} 'Y']);
+                    t = cleanedData.([eyes{i} 'T']);
+                    vx = [0;diff(x)./dt];
+                    vy = [0;diff(y)./dt];
+                    vt = [0;diff(t)./dt];
+                    accx = [0;diff(vx)./dt];
+                    accy = [0;diff(vy)./dt];
+                    acct = [0;diff(vt)./dt];
+                    acc = sqrt(accx.^2+accy.^2);
+                    
+                    
+                    badData = isnan(x) | isnan(y);
+                    badPupil        = nan(size(badData));
                     
                     % Calculate a smooth version of the pupil size to detect changes in
                     % pupil size that are not normal. Thus, must be blinks or errors in
@@ -575,7 +654,7 @@ classdef VOGAnalysis < handle
                     if ( ismember('Pupil', eyeSignals) )
                         pupil = cleanedData.([eyes{i} 'Pupil']);
                         pupilDecimated = pupil(1:25:end); %decimate the pupil signal
-                        if ( exist('smooth') )
+                        if ( exist('smooth','file') )
                             pupilSmooth = smooth(pupilDecimated,params.smoothRloessSpan*RawSampleRate/25/length(pupilDecimated),'rloess');
                         else
                             pupilSmooth = nanmedfilt(pupilDecimated,round(params.smoothRloessSpan*RawSampleRate/25));
@@ -593,16 +672,6 @@ classdef VOGAnalysis < handle
                     end
                     
                     % find blinks and other abnormal pupil sizes or eye movements
-                    x = cleanedData.([eyes{i} 'X']);
-                    y = cleanedData.([eyes{i} 'Y']);
-                    t = cleanedData.([eyes{i} 'T']);
-                    vx = [0;diff(x)*RawSampleRate];
-                    vy = [0;diff(y)*RawSampleRate];
-                    vt = [0;diff(t)*RawSampleRate];
-                    accx = [0;diff(vx)*RawSampleRate];
-                    accy = [0;diff(vy)*RawSampleRate];
-                    acct = [0;diff(vt)*RawSampleRate];
-                    acc = sqrt(accx.^2+accy.^2);
                     
                     badPosition = abs(x) > params.HMaxRange ...	% Horizontal eye position out of range
                         | abs(y) > params.VMaxRange;         	% Vertical eye position out of range
@@ -629,6 +698,8 @@ classdef VOGAnalysis < handle
                     bt = badData | abs(t) > params.TMaxRange | abs(vt) > params.TVelMax;
                     bt = imclose(bt,ones(10));
                     
+                    % but spikes of bad data in between good data can be
+                    % interpolated
                     % find spikes of bad data. Single bad samples surrounded by at least 2
                     % good samples to each side
                     b2 = boxcar(~badData,3)*3 >= 2;
@@ -639,7 +710,7 @@ classdef VOGAnalysis < handle
                     % TODO: maybe better than blink span find the first N samples
                     % around the blink that are wihtin a more stringent criteria
                     blinks = boxcar( badData & ~spikes, round(params.blinkSpan/1000*RawSampleRate))>0;
-                    blinkst = boxcar( bt & ~spikes, round(params.blinkSpan/1000*RawSampleRate))>0;
+                    blinkst = boxcar( bt & ~spikest, round(params.blinkSpan/1000*RawSampleRate))>0;
                     
                     cleanedData.([eyes{i} 'Spikes']) = spikes;
                     cleanedData.([eyes{i} 'Blinks']) = blinks;
@@ -679,32 +750,25 @@ classdef VOGAnalysis < handle
                 %% Upsample to 500Hz
                 tic
                 t = cleanedData.Time;
-                % fix the timestamps in case they are not always growing
-                % (did happn in some old files because of a bug
-                if ( min(diff(t)) < 0 )
-                    dt = diff(t);
-                    dt(dt<=0) = min(dt(dt>0));
-                    t = cumsum([t(1);dt]);
-                end
-                
                 
                 rest = (0:0.002:max(t))';
                 resampledData.Time = rest;
-                resampledData.FrameNumber = interp1(t(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),cleanedData.RawFrameNumber(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),rest,'nearest');
-                resampledData.RawFrameNumber = interp1(t(~isnan(cleanedData.FrameNumber) & ~isnan(t)),cleanedData.FrameNumber(~isnan(cleanedData.FrameNumber) & ~isnan(t)),rest,'nearest');
+                resampledData.RawFrameNumber = interp1(t(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),cleanedData.RawFrameNumber(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),rest,'nearest');
+                resampledData.FrameNumber = interp1(t(~isnan(cleanedData.FrameNumber) & ~isnan(t)),cleanedData.FrameNumber(~isnan(cleanedData.FrameNumber) & ~isnan(t)),rest,'nearest');
                 for i=1:length(eyes)
                     for j=1:length(eyeSignals)
-                        x = cleanedData.([eyes{i} eyeSignals{j}]);
+                        signalName = [eyes{i} eyeSignals{j}];
+                        x = cleanedData.(signalName);
                         
-                        resampledData.([eyes{i} eyeSignals{j}]) = nan(size(rest));
+                        resampledData.(signalName) = nan(size(rest));
                         if ( sum(~isnan(x)) > 0 ) % if not everything is nan
                             % interpolate nans
                             xNoNan = interp1(find(~isnan(x)),x(~isnan(x)),1:length(x),'spline');
                             % upsample
-                            resampledData.([eyes{i} eyeSignals{j}]) = interp1(t(~isnan(t)),xNoNan(~isnan(t)),rest,'pchip');
+                            resampledData.(signalName) = interp1(t, xNoNan,rest,'pchip');
                             % set nans in the upsampled signal
-                            xnan = interp1(t(~isnan(t)),double(isnan(x(~isnan(t)))),rest);
-                            resampledData.([eyes{i} eyeSignals{j}])(xnan>0) = nan;
+                            xnan = interp1(t, double(isnan(x)),rest);
+                            resampledData.(signalName)(xnan>0) = nan;
                         end
                     end
                 end
@@ -803,7 +867,7 @@ classdef VOGAnalysis < handle
                     % remove nearby peaks
                     % then, remove all peaks below threshold. TODO: go until a fixed
                     % rate of peaks then use cluster to separate.
-                    while(currpeak < length(peakidx) && (peakvel(currpeak) > vpth || peakvel(currpeak) < vnth || peakvel(currpeak) > vpth || peakvel(currpeak) < vnth))
+                    while(currpeak < length(peakidx) && (peakvel(currpeak) > vpth || peakvel(currpeak) < vnth) )
                         if ( rem(currpeak,50)==0)
                             if (~isempty(msg))
                                 fprintf(repmat('\b', 1, length(msg)));
@@ -1519,45 +1583,6 @@ classdef VOGAnalysis < handle
                 
             end
         end
-                
-        function PlotMainsequence(QucikPhaseProps)
-            
-             figure
-             subplot(1,3,1,'nextplot','add') 
-             plot(QucikPhaseProps.Left_X_Displacement,abs(QucikPhaseProps.Left_X_PeakVelocity),'o')
-             plot(QucikPhaseProps.Right_X_Displacement,abs(QucikPhaseProps.Right_X_PeakVelocity),'o')
-             line([0 0],[0 500])
-             xlabel('H displacement (deg)');
-             ylabel('H peak vel. (deg/s)');
-             subplot(1,3,2,'nextplot','add') 
-             plot(QucikPhaseProps.Left_Y_Displacement,abs(QucikPhaseProps.Left_Y_PeakVelocity),'o')
-             plot(QucikPhaseProps.Right_Y_Displacement,abs(QucikPhaseProps.Right_Y_PeakVelocity),'o')
-             line([0 0],[0 500])
-             xlabel('V displacement (deg)');
-             ylabel('V peak vel. (deg/s)');
-             subplot(1,3,3,'nextplot','add') 
-             plot(QucikPhaseProps.Left_T_Displacement,abs(QucikPhaseProps.Left_T_PeakVelocity),'o')
-             plot(QucikPhaseProps.Right_T_Displacement,abs(QucikPhaseProps.Right_T_PeakVelocity),'o')
-             line([0 0],[0 500])
-             xlabel('T displacement (deg)');
-             ylabel('T peak vel. (deg/s)');
-             
-             set(get(gcf,'children'),'xlim',[-30 30],'ylim',[0 300])
-
-             
-             figure
-             subplot(1,3,1,'nextplot','add') 
-             plot(QucikPhaseProps.Left_X_PeakVelocity,abs(QucikPhaseProps.Left_Y_PeakVelocity),'o')
-             plot(QucikPhaseProps.Right_X_PeakVelocity,abs(QucikPhaseProps.Right_Y_PeakVelocity),'o')
-             subplot(1,3,2,'nextplot','add') 
-             plot(QucikPhaseProps.Left_X_PeakVelocity,abs(QucikPhaseProps.Left_T_PeakVelocity),'o')
-             plot(QucikPhaseProps.Right_X_PeakVelocity,abs(QucikPhaseProps.Right_T_PeakVelocity),'o')
-             subplot(1,3,3,'nextplot','add') 
-             plot(QucikPhaseProps.Left_Y_PeakVelocity,abs(QucikPhaseProps.Left_T_PeakVelocity),'o')
-             plot(QucikPhaseProps.Right_Y_PeakVelocity,abs(QucikPhaseProps.Right_T_PeakVelocity),'o')
-             
-             set(get(gcf,'children'),'xlim',[-300 300],'ylim',[0 300])
-        end
     end
     
     methods (Static) 
@@ -1941,6 +1966,45 @@ classdef VOGAnalysis < handle
             set(get(gcf,'children'), 'ylim',[-400 400], 'fontsize',14);
             set(h,'ylim',[-2 2])
             set(h1,'ylim',[-20 20])
+        end
+                
+        function PlotMainsequence(QucikPhaseProps)
+            
+             figure
+             subplot(1,3,1,'nextplot','add') 
+             plot(QucikPhaseProps.Left_X_Displacement,abs(QucikPhaseProps.Left_X_PeakVelocity),'o')
+             plot(QucikPhaseProps.Right_X_Displacement,abs(QucikPhaseProps.Right_X_PeakVelocity),'o')
+             line([0 0],[0 500])
+             xlabel('H displacement (deg)');
+             ylabel('H peak vel. (deg/s)');
+             subplot(1,3,2,'nextplot','add') 
+             plot(QucikPhaseProps.Left_Y_Displacement,abs(QucikPhaseProps.Left_Y_PeakVelocity),'o')
+             plot(QucikPhaseProps.Right_Y_Displacement,abs(QucikPhaseProps.Right_Y_PeakVelocity),'o')
+             line([0 0],[0 500])
+             xlabel('V displacement (deg)');
+             ylabel('V peak vel. (deg/s)');
+             subplot(1,3,3,'nextplot','add') 
+             plot(QucikPhaseProps.Left_T_Displacement,abs(QucikPhaseProps.Left_T_PeakVelocity),'o')
+             plot(QucikPhaseProps.Right_T_Displacement,abs(QucikPhaseProps.Right_T_PeakVelocity),'o')
+             line([0 0],[0 500])
+             xlabel('T displacement (deg)');
+             ylabel('T peak vel. (deg/s)');
+             
+             set(get(gcf,'children'),'xlim',[-30 30],'ylim',[0 300])
+
+             
+             figure
+             subplot(1,3,1,'nextplot','add') 
+             plot(QucikPhaseProps.Left_X_PeakVelocity,abs(QucikPhaseProps.Left_Y_PeakVelocity),'o')
+             plot(QucikPhaseProps.Right_X_PeakVelocity,abs(QucikPhaseProps.Right_Y_PeakVelocity),'o')
+             subplot(1,3,2,'nextplot','add') 
+             plot(QucikPhaseProps.Left_X_PeakVelocity,abs(QucikPhaseProps.Left_T_PeakVelocity),'o')
+             plot(QucikPhaseProps.Right_X_PeakVelocity,abs(QucikPhaseProps.Right_T_PeakVelocity),'o')
+             subplot(1,3,3,'nextplot','add') 
+             plot(QucikPhaseProps.Left_Y_PeakVelocity,abs(QucikPhaseProps.Left_T_PeakVelocity),'o')
+             plot(QucikPhaseProps.Right_Y_PeakVelocity,abs(QucikPhaseProps.Right_T_PeakVelocity),'o')
+             
+             set(get(gcf,'children'),'xlim',[-300 300],'ylim',[0 300])
         end
     end
 end

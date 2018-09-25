@@ -5,7 +5,7 @@ classdef ArumeGui < matlab.apps.AppBase
     properties (Access = public)
         
         % main controller
-        arumeController     ArumeCore.ArumeController
+        arumeController     
         
         % figure handle
         figureHandle        matlab.ui.Figure
@@ -83,7 +83,6 @@ classdef ArumeGui < matlab.apps.AppBase
             this.figureHandle.Name              = 'Arume';
             this.figureHandle.Position          =  [left bottom w h];
             this.figureHandle.Tag               = 'Arume';
-            this.figureHandle.Visible           = 'off';
             this.figureHandle.CloseRequestFcn   = @this.figureCloseRequest;
             this.figureHandle.AutoResizeChildren = 'off';
             this.figureHandle.SizeChangedFcn    = @this.figureResizeFcn;
@@ -146,10 +145,8 @@ classdef ArumeGui < matlab.apps.AppBase
             % This is to avoid a close all closing the GUI
             set(this.figureHandle, 'handlevisibility', 'off');
             
-            % Make the GUI visible.
-            set(this.figureHandle,'Visible','on');
-            
             this.updateGui();
+            
             
             % Register the app with App Designer
             registerApp(this, this.figureHandle)
@@ -294,7 +291,6 @@ classdef ArumeGui < matlab.apps.AppBase
                     this.arumeController.currentProject.save();
                 end
                 delete(this.figureHandle)
-                Arume('clear');
             end
         end
         
@@ -581,21 +577,18 @@ classdef ArumeGui < matlab.apps.AppBase
             
             sessions = this.arumeController.selectedSessions;
             
-            
-            newSubjectCodes = {};
-            newSessionCodes = {};
-            for session=sessions
-                newSubjectCodes{end+1} = session.subjectCode;
-                newSessionCodes{end+1} = session.sessionCode;
+            newSubjectCodes = cell(length(sessions),1);
+            newSessionCodes = cell(length(sessions),1); 
+            for i=1:length(sessions)
+                newSubjectCodes{i} = sessions(i).subjectCode;
+                newSessionCodes{i} = sessions(i).sessionCode;
             end
-            
             
             while(1)
                 newNamesDlg = [];
                 for i=1:length(sessions)
-                    session = sessions(i);
-                    newNamesDlg.([session.name '_New_Subject_Code' ]) = newSubjectCodes{i};
-                    newNamesDlg.([session.name '_New_Session_Code' ]) = newSessionCodes{i};
+                    newNamesDlg.([sessions(i).name '_New_Subject_Code' ]) = newSubjectCodes{i};
+                    newNamesDlg.([sessions(i).name '_New_Session_Code' ]) = newSessionCodes{i};
                 end
                 
                 P = StructDlg(newNamesDlg);
@@ -605,27 +598,24 @@ classdef ArumeGui < matlab.apps.AppBase
                     return
                 end
                 
-                newSubjectCodes = {};
-                newSessionCodes = {};
-                for session=sessions
-                    newSubjectCodes{end+1} = P.([session.name '_New_Subject_Code' ]);
-                    newSessionCodes{end+1} = P.([session.name '_New_Session_Code' ]);
+                newSubjectCodes = cell(length(sessions),1);
+                newSessionCodes = cell(length(sessions),1);
+                for i=1:length(sessions)
+                    newSubjectCodes{i} = P.([sessions(i).name '_New_Subject_Code' ]);
+                    newSessionCodes{i} = P.([sessions(i).name '_New_Session_Code' ]);
                 end
                 
                 allgood = 1;
                 for i=1:length(sessions)
-                    for session = this.arumeController.currentProject.sessions
-                        if ( ~ArumeCore.Session.IsValidSubjectCode(newSubjectCodes{i}) || ~ArumeCore.Session.IsValidSessionCode(newSessionCodes{i}) )
-                            allgood = 0;
-                            break;
-                        end
-                        if ( strcmp(session.subjectCode, newSubjectCodes{i}) &&  strcmp(session.sessionCode, newSessionCodes{i}) )
-                            uiwait(msgbox(['One of the names is repeated ' newSubjectCodes{i} '-' newSessionCodes{i} '.'], 'Error', 'Modal'));
-                            allgood = 0;
-                            break;
-                        end
+                    
+                    if ( ~ArumeCore.Session.IsValidSubjectCode(newSubjectCodes{i}) || ~ArumeCore.Session.IsValidSessionCode(newSessionCodes{i}) )
+                        allgood = 0;
+                        break;
                     end
-                    if ( allgood == 0)
+                    
+                    if ( ~isempty( this.arumeController.currentProject.findSession(newSubjectCodes{i}, newSessionCodes{i})) )
+                        allgood = 0;
+                        uiwait(msgbox(['One of the names is repeated ' newSubjectCodes{i} '-' newSessionCodes{i} '.'], 'Error', 'Modal'));
                         break;
                     end
                 end
@@ -702,11 +692,12 @@ classdef ArumeGui < matlab.apps.AppBase
                 TrialDataTable = this.arumeController.currentSession.trialDataTable;
                 SamplesDataTable = this.arumeController.currentSession.samplesDataTable;
                 ProjectDataTable = this.arumeController.currentProject.GetDataTable();
-                EventDataTables = this.arumeController.currentSession.eventDataTables;
+                analysisResults = this.arumeController.currentSession.analysisResults;
                 
                 assignin('base','TrialDataTable',TrialDataTable);
                 assignin('base','SamplesDataTable',SamplesDataTable);
-                assignin('base','EventDataTables',EventDataTables);
+                assignin('base','AnalysisResults',analysisResults);
+                assignin('base','ProjectDataTable',ProjectDataTable);
             end
         end
         
@@ -884,6 +875,179 @@ classdef ArumeGui < matlab.apps.AppBase
     end
     
     methods(Access=public)
+        
+        function updateSessionTree(this)
+            % update session listbox
+            if ( ~isempty( this.arumeController.currentProject ) && ~isempty(this.arumeController.currentProject.sessions) )
+                
+                % delete sessions that do not exist anymore and updte text
+                % of existing ones
+                for iSubj = length(this.sessionTree.Children):-1:1
+                    subjNode = this.sessionTree.Children(iSubj);
+                    for iSess = length(subjNode.Children):-1:1
+                        sessNode = subjNode.Children(iSess);
+                        session = this.arumeController.currentProject.findSessionByIDNumber( sessNode.NodeData );
+                        if ( isempty( session ) )
+                            delete(sessNode);
+                        else
+                            sessNode.Text = session.sessionCode;
+                        end
+                    end
+                    
+                    % if the subject does not have children (sessions) delete it too
+                    if ( isempty(subjNode.Children) )
+                        delete(subjNode);
+                    end
+                end
+                
+                % add nodes for new sessions. Add subject node if necessary
+                for i=1:length(this.arumeController.currentProject.sessions)
+                    foundSession = 0;
+                    foundSubject = 0;
+                    session = this.arumeController.currentProject.sessions(i);
+                    for iSubj = length(this.sessionTree.Children):-1:1
+                        subjNode = this.sessionTree.Children(iSubj);
+                        if ( strcmp(subjNode.Text, session.subjectCode ) )
+                            foundSubject = iSubj;
+                            for iSess = length(subjNode.Children):-1:1
+                                sessNode = subjNode.Children(iSess);
+                                if (sessNode.NodeData == session.sessionIDNumber)
+                                    foundSession = 1;
+                                    break;
+                                end
+                            end
+                            break;
+                        end
+                    end
+                    
+                    if ( ~foundSession )
+                        if ( foundSubject > 0 )
+                            newSubjNode = this.sessionTree.Children(foundSubject);
+                        else
+                            newSubjNode = uitreenode(this.sessionTree);
+                            newSubjNode.Text = session.subjectCode;
+                            
+                            % move to keep alphabetical sorting
+                            for iSubj = 1:length(this.sessionTree.Children)
+                                subjNode = this.sessionTree.Children(iSubj);
+                                [~,j] = sort(upper({subjNode.Text, newSubjNode.Text}));
+                                if ( j(1) > 1 )
+                                    move(newSubjNode, subjNode, 'before');
+                                    break;
+                                end
+                            end
+                        end
+                        
+                        newSessNode = uitreenode(newSubjNode);
+                        newSessNode.Text = session.sessionCode;
+                        newSessNode.NodeData = session.sessionIDNumber;
+                        
+                        % move to keep alphabetical sorting
+                        for iSess = 1:length(newSubjNode.Children)
+                            sessNode = newSubjNode.Children(iSess);
+                            [~,j] = sort(upper({sessNode.Text, newSessNode.Text}) );
+                            if ( j(1) > 1 )
+                                move(newSessNode, sessNode, 'before');
+                                break;
+                            end
+                        end
+                    end
+                end
+                
+                % find the nodes corresponding with the selected sessions
+                nodes = [];
+                for i=1:length(this.arumeController.selectedSessions)
+                    session = this.arumeController.selectedSessions(i);
+                    for iSubj = length(this.sessionTree.Children):-1:1
+                        subjNode = this.sessionTree.Children(iSubj);
+                        if ( strcmp(subjNode.Text, session.subjectCode ) )
+                            for iSess = length(subjNode.Children):-1:1
+                                sessNode = subjNode.Children(iSess);
+                                if (sessNode.NodeData == session.sessionIDNumber)
+                                    nodes = cat(1,nodes, sessNode);
+                                end
+                                expand(subjNode);
+                            end
+                        end
+                    end
+                end
+                this.sessionTree.SelectedNodes = nodes;
+            else
+                delete(this.sessionTree.Children);
+                this.sessionTree.SelectedNodes = [];
+            end
+        end
+        
+        function row = GetInfoRow(this, varName, dataItm)
+            optionClass = class(dataItm);
+            switch(optionClass)
+                case 'double'
+                    if ( isscalar(dataItm))
+                        row = sprintf('%-25s: %s\n', varName, num2str(dataItm));
+                    end
+                case 'char'
+                    if ( length(dataItm) <= 50 )
+                        row = sprintf('%-25s: %s\n', varName, dataItm);
+                    else
+                        row = sprintf('%-25s: %s\n', varName, [dataItm(1:20) ' [...] ' dataItm(end-30:end)]);
+                    end
+                case 'string'
+                    fieldText = char(dataItm);
+                    if ( length(fieldText) > 50 )
+                        fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
+                    end
+                    row = sprintf('%-25s: %s\n', varName, fieldText);
+                case 'categorical'
+                    row = sprintf('%-25s: %s\n', varName, string(dataItm));
+                case 'cell'
+                    row = '';
+                    if ( length(size(dataItm))<=2 && min(size(dataItm))==1 && ischar(dataItm{1}) && ~isempty(dataItm) )
+                        for j=1:length(dataItm)
+                            row = [row this.GetInfoRow([varName num2str(j)], dataItm{j})];
+                        end
+                    else
+                        row = sprintf('%-25s: %s\n', varName, 'CELL');
+                    end
+                case 'struct'
+                    row = '';
+                    fields = fieldnames(dataItm);
+                    for i=1:length(fields)
+                        row = [row this.GetInfoRow([ varName '.' fields{i}], dataItm.(fields{i}))];
+                    end
+                otherwise
+                    row = sprintf('%-25s: %s\n', varName, '-');
+            end
+        end
+        
+        function updateInfoBox(this)
+            if ( ~isempty( this.arumeController.currentSession ) && length(this.arumeController.selectedSessions)==1 )
+                s = '';
+                if ( ~isempty(this.arumeController.currentSession.sessionDataTable) )
+                    dataTable = this.arumeController.currentSession.sessionDataTable;
+                else
+                    dataTable = this.arumeController.currentSession.GetBasicSessionDataTable();
+                end
+                
+                for i=1:length(dataTable.Properties.VariableNames)
+                    s = [s this.GetInfoRow(dataTable.Properties.VariableNames{i}, dataTable{1,i})];
+                end
+                
+                
+                this.infoBox.Value = s;
+            elseif ( length(this.arumeController.selectedSessions) > 1 )
+                sessions = this.arumeController.selectedSessions;
+                sessionNames = cell(length(sessions),1);
+                for i=1:length(sessions)
+                    sessionNames{i} = [sessions(i).subjectCode ' __ ' sessions(i).sessionCode];
+                end
+                sessionNames = strcat(sessionNames,'\n');
+                sessionNames = horzcat(sessionNames{:});
+                this.infoBox.Value = sprintf(['\nSelected sessions: \n\n' sessionNames]);
+            else
+                this.infoBox.Value = '';
+            end
+        end
+        
         function updateGui( this, fastOption )
             if ( ~exist('fastOption','var') )
                 fastOption = 0;
@@ -901,169 +1065,11 @@ classdef ArumeGui < matlab.apps.AppBase
             end
             
             if ( ~fastOption )
-                % update session listbox
-                if ( ~isempty( this.arumeController.currentProject ) && ~isempty(this.arumeController.currentProject.sessions) )
-                    
-                    % delete sessions that do not exist anymore and updte text
-                    % of existing ones
-                    for iSubj = length(this.sessionTree.Children):-1:1
-                        subjNode = this.sessionTree.Children(iSubj);
-                        for iSess = length(subjNode.Children):-1:1
-                            sessNode = subjNode.Children(iSess);
-                            session = this.arumeController.currentProject.findSessionByIDNumber( sessNode.NodeData );
-                            if ( isempty( session ) )
-                                delete(sessNode);
-                            else
-                                sessNode.Text = session.sessionCode;
-                            end
-                        end
-                        
-                        % if the subject does not have children (sessions) delete it too
-                        if ( isempty(subjNode.Children) )
-                            delete(subjNode);
-                        end
-                    end
-                    
-                    % add nodes for new sessions. Add subject node if necessary
-                    for i=1:length(this.arumeController.currentProject.sessions)
-                        foundSession = 0;
-                        foundSubject = 0;
-                        session = this.arumeController.currentProject.sessions(i);
-                        for iSubj = length(this.sessionTree.Children):-1:1
-                            subjNode = this.sessionTree.Children(iSubj);
-                            if ( strcmp(subjNode.Text, session.subjectCode ) )
-                                foundSubject = iSubj;
-                                for iSess = length(subjNode.Children):-1:1
-                                    sessNode = subjNode.Children(iSess);
-                                    if (sessNode.NodeData == session.sessionIDNumber)
-                                        foundSession = 1;
-                                        break;
-                                    end
-                                end
-                                break;
-                            end
-                        end
-                        
-                        if ( ~foundSession )
-                            if ( foundSubject > 0 )
-                                newSubjNode = this.sessionTree.Children(foundSubject);
-                            else
-                                newSubjNode = uitreenode(this.sessionTree);
-                                newSubjNode.Text = session.subjectCode;
-                                
-                                % move to keep alphabetical sorting
-                                for iSubj = 1:length(this.sessionTree.Children)
-                                    subjNode = this.sessionTree.Children(iSubj);
-                                    [~,j] = sort(upper({subjNode.Text, newSubjNode.Text}));
-                                    if ( j(1) > 1 )
-                                        move(newSubjNode, subjNode, 'before');
-                                        break;
-                                    end
-                                end
-                            end
-                            
-                            newSessNode = uitreenode(newSubjNode);
-                            newSessNode.Text = session.sessionCode;
-                            newSessNode.NodeData = session.sessionIDNumber;
-                            
-                            % move to keep alphabetical sorting
-                            for iSess = 1:length(newSubjNode.Children)
-                                sessNode = newSubjNode.Children(iSess);
-                                [~,j] = sort(upper({sessNode.Text, newSessNode.Text}) );
-                                if ( j(1) > 1 )
-                                    move(newSessNode, sessNode, 'before');
-                                    break;
-                                end
-                            end
-                        end
-                    end
-                    
-                    % find the nodes corresponding with the selected sessions
-                    nodes = [];
-                    for i=1:length(this.arumeController.selectedSessions)
-                        session = this.arumeController.selectedSessions(i);
-                        for iSubj = length(this.sessionTree.Children):-1:1
-                            subjNode = this.sessionTree.Children(iSubj);
-                            if ( strcmp(subjNode.Text, session.subjectCode ) )
-                                for iSess = length(subjNode.Children):-1:1
-                                    sessNode = subjNode.Children(iSess);
-                                    if (sessNode.NodeData == session.sessionIDNumber)
-                                        nodes = cat(1,nodes, sessNode);
-                                    end
-                                    expand(subjNode);
-                                end
-                            end
-                        end
-                    end
-                    this.sessionTree.SelectedNodes = nodes;
-                else
-                    delete(this.sessionTree.Children);
-                    this.sessionTree.SelectedNodes = [];
-                end
+                this.updateSessionTree();
             end
             
             % update info box
-            if ( ~isempty( this.arumeController.currentSession ) && length(this.arumeController.selectedSessions)==1 )
-                s = '';
-                if ( ~isempty(this.arumeController.currentSession.sessionDataTable) )
-                    dataTable = this.arumeController.currentSession.sessionDataTable;
-                else
-                    dataTable = this.arumeController.currentSession.GetBasicSessionDataTable();
-                end
-                for i=1:length(dataTable.Properties.VariableNames)
-                    optionClass = class(dataTable{1,i});
-                    row = '';
-                    switch(optionClass)
-                        case 'double'
-                            if ( isscalar(dataTable{1,i}))
-                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, num2str(dataTable{1,i}));
-                            end
-                        case 'char'
-                            fieldText = dataTable{1,i};
-                            if ( length(fieldText) > 50 )
-                                fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
-                            end
-                            row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, fieldText);
-                        case 'string'
-                            fieldText = char(dataTable{1,i});
-                            if ( length(fieldText) > 50 )
-                                fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
-                            end
-                            row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, fieldText);
-                        case 'categorical'
-                            row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, string(dataTable{1,i}));
-                        case 'cell'
-                            if ( length(size(dataTable{1,i}))<=2 && min(size(dataTable{1,i}))==1 && ischar(dataTable{1,i}{1}) && ~isempty(dataTable{1,i}) )
-                                for j=1:length(dataTable{1,i})
-                                    fieldText = char(dataTable{1,i}{j});
-                                    if ( length(fieldText) > 50 )
-                                        fieldText = [fieldText(1:20) ' [...] ' fieldText(end-30:end)];
-                                    end
-                                    row = [row sprintf('%-25s: %s\n', [dataTable.Properties.VariableNames{i} num2str(j)], fieldText)];
-                                end
-                            else
-                                row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, 'CELL');
-                            end
-                        otherwise
-                            row = sprintf('%-25s: %s\n', dataTable.Properties.VariableNames{i}, '-');
-                    end
-                    s = [s row];
-                end
-                
-                
-                this.infoBox.Value = s;
-            elseif ( length(this.arumeController.selectedSessions) > 1 )
-                sessions = this.arumeController.selectedSessions;
-                sessionNames = cell(length(sessions),1);
-                for i=1:length(sessions)
-                    sessionNames{i} = [sessions(i).subjectCode ' __ ' sessions(i).sessionCode];
-                end
-                sessionNames = strcat(sessionNames,'\n');
-                sessionNames = horzcat(sessionNames{:});
-                this.infoBox.Value = sprintf(['\nSelected sessions: \n\n' sessionNames]);
-            else
-                this.infoBox.Value = '';
-            end
+            this.updateInfoBox();
             
             % update comments text box
             if ( ~isempty( this.arumeController.currentSession ) )

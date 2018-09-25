@@ -4,17 +4,35 @@ classdef Session < ArumeCore.DataDB
     %  data obtained when running the experiment or analyzing it.
     
     properties( SetAccess = private)
-        experimentDesign        % Experiment design object associated with this session
+        experimentDesign            % Experiment design object associated with this session
         
-        subjectCode = '000';    % Subject code for this session, for xample S01_BC
-        sessionCode = 'Z';      % Session code
-        sessionIDNumber = 0;    % Internal arume sessionIDnumber. To link with the UI.
-        comment  	= '';       % Comment about the session
+        subjectCode = '000';        % Subject code for this session. Good 
+                                    % practice is to combine a unique serial 
+                                    % number for a guiven project with initials 
+                                    % of subject (or coded initials). 
+                                    % For example: S03_JO
         
-        currentRun  = [];       % current data for this session
-        pastRuns    = [];       % data from every time experiment was started, resumed, or restarted
+        sessionCode = 'Z';          % Session code. Good practice is to use 
+                                    % a letter to indicate order of sessions 
+                                    % and after an underscore some indication 
+                                    % of what the session is about.
+                                    % For example: A_LeftTilt
         
-        dataPath    = [];       % path of the folder containing the session files
+        sessionIDNumber = 0;        % Internal arume sessionIDnumber. To  
+                                    % link with the UI. It will not be 
+                                    % permanentely unique. Just while the 
+                                    % project is open. The IDs are given to
+                                    % sessions when the project starts.
+                                    
+        comment         = '';       % Comment about the session. All notes 
+                                    % related to the session. They can easily 
+                                    % be edited int he Arume UI.
+        
+        currentRun      = [];       % current data for this session
+        
+        pastRuns        = [];       % data from every time experiment was started, resumed, or restarted
+        
+        dataPath        = [];       % path of the folder containing the session files
     end
     
     %% dependent properties... see the related get.property method
@@ -47,16 +65,10 @@ classdef Session < ArumeCore.DataDB
         rawDataTable
         
         % Single row data table that will be used to create a multisession
-        % table
+        % table within the project
         sessionDataTable
         
-        % DataTable with all the events data
-        % 
-        % Different experiments can load different columns.
-        % Each experiment has to take care of preparing the dataset
-        %
-        % Basic type of events will be Saccades, blinks, slow phases
-        %
+        % Struct with all the output of analyses
         analysisResults
         
     end
@@ -94,7 +106,7 @@ classdef Session < ArumeCore.DataDB
         end
         
         function analysisResults = get.analysisResults(this)
-            d = struct2table(dir(fullfile(this.dataPath,'AnalysisResults_*')));
+            d = struct2table(dir(fullfile(this.dataPath,'AnalysisResults_*')),'asarray',1);
             analysisResults = [];
             for i=1:height(d)
                 res = regexp(d.name{i},'^AnalysisResults_(?<name>[_a-zA-Z0-9]+)\.mat$','names');
@@ -107,9 +119,6 @@ classdef Session < ArumeCore.DataDB
     
     %% Main Session methods
     methods
-        %
-        % INIT METHODS
-        %
         function init( this, projectPath, experimentName, subjectCode, sessionCode, experimentOptions )
             
             this.subjectCode        = subjectCode;
@@ -125,49 +134,27 @@ classdef Session < ArumeCore.DataDB
                 this.InitDB( this.dataPath );
             end
         end
-        
-        function initExisting( this, sessionPath )
-             
-            [projectPath,sessionName] = fileparts(sessionPath);    
-            
-            [newExperimentName, newSubjectCode, newSessionCode] = ArumeCore.Session.SessionNameToParts(sessionName);
-            filename = fullfile( sessionPath, 'ArumeSession.mat');
-            
-            sessionData = load( filename, 'sessionData' );
-            data = sessionData.sessionData;  
-            this.init( projectPath, newExperimentName, newSubjectCode, newSessionCode, data.experimentOptions );
-            
-            if (isfield(data, 'currentRun') && ~isempty( data.currentRun ))
-                this.currentRun  = ArumeCore.ExperimentRun.LoadRunData( data.currentRun );
-            else
-                this.currentRun = [];
-            end
-            
-            if (isfield(data, 'pastRuns') && ~isempty( data.pastRuns ))
-                this.pastRuns  = ArumeCore.ExperimentRun.LoadRunDataArray( data.pastRuns );
-            else
-                this.pastRuns = [];
-            end
-            
-            if (isfield(data, 'comment') && ~isempty( data.comment ))
-                this.comment  = data.comment;
-            else
-                this.comment  = '';
-            end
-        end
-        
+                
         function rename( this, newSubjectCode, newSessionCode)
             projectPath = fileparts(this.dataPath);    
             newName = ArumeCore.Session.SessionPartsToName(this.experimentDesign.Name, newSubjectCode, newSessionCode);
             newPath = fullfile(projectPath, newName);
             
             % rename the folder
-            if ( ~strcmp(this.dataPath, newPath ))
+            if ( ~strcmpi(this.dataPath, newPath ))
+                this.subjectCode = newSubjectCode;
+                this.sessionCode = newSessionCode;
+                
+                % TODO: it is tricky to rename when only changing
+                % capitalization of names. Because for windows they are
+                % the same files and it does not alow. One option would be
+                % to do a double change. 
                 movefile(this.dataPath, newPath);
+                
+                this.dataPath  = newPath;
+                this.InitDB( this.dataPath );
             end
             
-            % reload the session from the new folder
-            this.initExisting(newPath);
         end
         
         function deleteFolders( this )
@@ -179,15 +166,14 @@ classdef Session < ArumeCore.DataDB
         function sessionData = save( this )
             sessionData = [];
             
-            sessionData.comment            = this.comment;
-            sessionData.experimentOptions  = this.experimentDesign.ExperimentOptions;
+            sessionData.comment             = this.comment;
+            sessionData.experimentOptions   = this.experimentDesign.ExperimentOptions;
+            sessionData.currentRun          = [];
+            sessionData.pastRuns            = [];
             
             if (~isempty( this.currentRun ))
                 sessionData.currentRun = ArumeCore.ExperimentRun.SaveRunData(this.currentRun);
                 sessionData.pastRuns = ArumeCore.ExperimentRun.SaveRunDataArray(this.pastRuns);
-            else
-                sessionData.currentRun = [];
-                sessionData.pastRuns = [];
             end
             
             filename = fullfile( this.dataPath, 'ArumeSession.mat');
@@ -196,23 +182,13 @@ classdef Session < ArumeCore.DataDB
         
         function session = copy( this, newSubjectCode, newSessionCode)
             projectFolder = fileparts(this.dataPath);
-            newSessionName = ArumeCore.Session.SessionPartsToName(this.experimentDesign.Name, newSubjectCode, newSessionCode);
-            newSessionDataPath = fullfile(projectFolder, newSessionName);
-            if ( exist( newSessionDataPath, 'dir') )
-                error( 'There is already a session in the current project with the same name.');
-            end
-            
-            sessionData = [];
-            sessionData.experimentOptions = this.experimentDesign.ExperimentOptions;
-            sessionData.currentRun = [];
-            sessionData.pastRuns = [];
-            
-            mkdir(newSessionDataPath);
-            filename = fullfile( newSessionDataPath, 'ArumeSession.mat');
-            save( filename, 'sessionData' );
-            
-            session = ArumeCore.Session();
-            session.initExisting( newSessionDataPath );
+
+            session = ArumeCore.Session.NewSession( ...
+                projectFolder, ...
+                this.experimentDesign.Name, ...
+                newSubjectCode, ...
+                newSessionCode, ...
+                this.experimentDesign.ExperimentOptions );
         end
         
         function updateComment( this, comment)
@@ -242,13 +218,14 @@ classdef Session < ArumeCore.DataDB
                 if ~iscell(this.currentRun.LinkedFiles.(fileTag))
                     this.currentRun.LinkedFiles.(fileTag) = {this.currentRun.LinkedFiles.(fileTag)};
                 end
-                this.currentRun.LinkedFiles.(fileTag) = cat(1, this.currentRun.LinkedFiles.(fileTag), [fileName ext] );
+                this.currentRun.LinkedFiles.(fileTag) = vertcat( this.currentRun.LinkedFiles.(fileTag), [fileName ext] );
             end               
         end
         
         function importSession(this)
             this.experimentDesign.ImportSession();
         end
+        
         function importCurrentRun(this, newRun)
             this.currentRun = newRun;
         end
@@ -386,7 +363,8 @@ classdef Session < ArumeCore.DataDB
             results = [];
             samplesIn = this.samplesDataTable;
             trialsIn = this.trialDataTable;
-            [results, samples, trials]  = this.experimentDesign.RunDataAnalyses(results, samplesIn, trialsIn, options);
+            sessionTableIn = this.sessionDataTable;
+            [results, samples, trials, sessionTable]  = this.experimentDesign.RunDataAnalyses(results, samplesIn, trialsIn, sessionTableIn, options);
         
             if ( ~isempty(results) )
                 if ( isstruct(results))
@@ -399,18 +377,17 @@ classdef Session < ArumeCore.DataDB
                     this.WriteVariable(results,'AnalysisResults');
                 end
             end
+            
             if ( ~isempty(samples) )
                 this.WriteVariable(samples,'samplesDataTable');
             end
+            
             if ( ~isempty(trials) )
                 this.WriteVariable(trials,'trialDataTable');
             end
             
-            %% 2) Prepare session dataTable
-            newSessionDataTable = this.GetBasicSessionDataTable();
-            newSessionDataTable = this.experimentDesign.PrepareSessionDataTable(newSessionDataTable);
-            if ( ~isempty(newSessionDataTable) )
-                this.WriteVariable(newSessionDataTable,'sessionDataTable');
+            if ( ~isempty(sessionTable) )
+                this.WriteVariable(sessionTable,'sessionDataTable');
             end
         end
                 
@@ -501,11 +478,28 @@ classdef Session < ArumeCore.DataDB
                 return 
             end
             
+            [projectPath,sessionName] = fileparts(sessionPath);    
+            [newExperimentName, newSubjectCode, newSessionCode] = ArumeCore.Session.SessionNameToParts(sessionName);
+            filename = fullfile( sessionPath, 'ArumeSession.mat');
+            
+            sessionData = load( filename, 'sessionData' );
+            data = sessionData.sessionData;  
+            
             session = ArumeCore.Session();
-            session.initExisting( sessionPath );
-            disp(['Loaded session ' session.name]);
+            session.init( projectPath, newExperimentName, newSubjectCode, newSessionCode, data.experimentOptions );
+            
+            if (isfield(data, 'currentRun') && ~isempty( data.currentRun ))
+                session.currentRun = ArumeCore.ExperimentRun.LoadRunData( data.currentRun );
+            end
+            
+            if (isfield(data, 'pastRuns') && ~isempty( data.pastRuns ))
+                session.pastRuns = ArumeCore.ExperimentRun.LoadRunDataArray( data.pastRuns );
+            end
+            
+            if (isfield(data, 'comment') && ~isempty( data.comment ))
+                session.comment = data.comment;
+            end
         end
-        
         
         %
         % Other methods
@@ -534,14 +528,19 @@ classdef Session < ArumeCore.DataDB
         function newNumber = GetNewSessionNumber()
             persistent number;
             if isempty(number)
+                % all this is just in case clear all was called. In that
+                % case number will be empty but we can recover it more or
+                % less by looking at the current project. A bit messy but
+                % works.
                 number = 0;
-                a = Arume();
+                a = Arume('nogui');
                 if( ~isempty( a.currentProject ) )
                     for i=1:length(a.currentProject.sessions)
                         number = max(number, a.currentProject.sessions(i).sessionIDNumber);
                     end
                 end
             end
+            
             number = number+1;
             
             newNumber = number;

@@ -49,18 +49,22 @@ classdef DataDB < handle
             var = [];
             
             try
+                d = dir( fullfile( this.folder, [variableName '.mat'] ) );
+                if isempty(d)
+                    return
+                end
+                
                 % if variable is in cache
-                if ( isfield( this.cache, variableName ) )
+                if ( isfield( this.cache, variableName ) ...
+                        && isfield(this.cache, 'TIMESTAMPS') ...
+                        && isfield(this.cache.TIMESTAMPS, variableName) ...
+                        && d.datenum <= this.cache.TIMESTAMPS.(variableName))
                     % return variable from cache
                     var = this.cache.(variableName);
                     return
                 else
                     % if variable is not in cache
                     try
-                        d = dir( fullfile( this.folder, [variableName '.mat'] ) );
-                        if isempty(d)
-                            return
-                        end
                         % read variable
                         dat = load(fullfile( this.folder, d(1).name));
                     catch me
@@ -78,8 +82,10 @@ classdef DataDB < handle
                     var = dat.(variableName); % TODO, change!!
                     
                     if ( this.USECACHE )
+                        
                         % add variable to cache
                         this.cache.(variableName) = var;
+                        this.cache.TIMESTAMPS.(variableName) = d.datenum;
                     end
                 end
             catch me
@@ -94,10 +100,6 @@ classdef DataDB < handle
                     eval([variableName ' =  variable ;']);
                     
                     save(fullfile(this.folder , fullname), variableName);
-                    
-                    if ( isfield( this.cache, variableName ) )
-                        this.cache.(variableName) = variable;
-                    end
                 catch me
                     rethrow(me);
                 end
