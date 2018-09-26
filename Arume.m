@@ -212,11 +212,7 @@ classdef Arume < handle
             end
             
             this.currentProject = ArumeCore.Project.LoadProject( folder );
-            if ~isempty(this.currentProject.sessions)
-                this.selectedSessions = this.currentProject.sessions(1);
-            else
-                this.selectedSessions = [];
-            end
+            this.selectedSessions = [];
             
             this.updateRecentProjects(this.currentProject.path)
         end

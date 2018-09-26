@@ -323,7 +323,7 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             for i=1:length(fields)
                 spvRealigned = nan(size(newSPV.Time));
                 spv = spvTable.(fields{i});
-                if ( sum(~isnan(spv))> 0 )
+                if ( sum(~isnan(spv))> 3 )
                     spv = interp1(find(~isnan(spv)),spv(~isnan(spv)),1:1:length(spv));
                     
                     actualTimeEnter = round(timeEnterMagnet*60);
