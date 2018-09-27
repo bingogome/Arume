@@ -47,7 +47,9 @@ classdef VOGAnalysis < handle
             timestampVars = {'LeftSeconds' 'RightSeconds' 'Seconds' 'TimeStamp' 'timestamp' 'Time'};
             for i=1:length(timestampVars)
                 if ( sum(strcmp(timestampVars{i},data.Properties.VariableNames))>0)
-                    disp(['WARNING: fixing some timestamps that were not always growing: ' timestampVars{i}]);
+                    
+                    cprintf('Yellow', sprintf('VOGAnalysis :: LoadVOGdata :: fixing some timestamps that were not always growing in %s\n', timestampVars{i}));
+                    
                     t = data.(timestampVars{i});
                     dt = diff(t);
                     if ( min(dt) < 0 )
@@ -77,28 +79,45 @@ classdef VOGAnalysis < handle
             %       - calibrationTable: table with all the parameters
             %       necessary to calibrate the data
             
-            theStruct = parseXML(file);
+            theStruct = [];
+            
+            % check if the file is an xml file
+            f = fopen(file);
+            S = fscanf(f,'%s');
+            fclose(f);
+            if ( strcmpi(S(1:5),'<?xml') )
+                theStruct = parseXML(file);
+            end
             
             calibrationTable = table();
+            calibrationTable{'LeftEye', 'GlobeX'} = nan;
+            calibrationTable{'LeftEye', 'GlobeY'} = nan;
+            calibrationTable{'LeftEye', 'GlobeRadiusX'} = nan;
+            calibrationTable{'LeftEye', 'GlobeRadiusY'} = nan;
+            calibrationTable{'LeftEye', 'RefX'} = nan;
+            calibrationTable{'LeftEye', 'RefY'} = nan;
+            calibrationTable{'LeftEye', 'SignX'} = -1;
+            calibrationTable{'LeftEye', 'SignY'} = -1;
+            
+            calibrationTable{'RightEye',:} = missing;
+            calibrationTable{'RightEye', 'SignX'} = -1;
+            calibrationTable{'RightEye', 'SignY'} = -1;
             
             if ~(isempty(theStruct) )
-                calibrationTable{'LeftEye', 'GlobeX'} =        str2num(theStruct.Children(2).Children(2).Children(6).Children(2).Children(2).Children.Data);
-                calibrationTable{'LeftEye', 'GlobeY'} =        str2num(theStruct.Children(2).Children(2).Children(6).Children(2).Children(4).Children.Data);
-                calibrationTable{'LeftEye', 'GlobeRadiusX'} =   str2num(theStruct.Children(2).Children(2).Children(6).Children(4).Children.Data);
-                calibrationTable{'LeftEye', 'GlobeRadiusY'} =   str2num(theStruct.Children(2).Children(2).Children(6).Children(4).Children.Data);
-                calibrationTable{'LeftEye', 'RefX'} =          str2num(theStruct.Children(2).Children(2).Children(8).Children(6).Children(2).Children(2).Children.Data);
-                calibrationTable{'LeftEye', 'RefY'} =          str2num(theStruct.Children(2).Children(2).Children(8).Children(6).Children(2).Children(4).Children.Data);
-                calibrationTable{'LeftEye', 'SignX'} = -1;
-                calibrationTable{'LeftEye', 'SignY'} = -1;
+                calibrationTable{'LeftEye', 'GlobeX'}       = str2double(theStruct.Children(2).Children(2).Children(6).Children(2).Children(2).Children.Data);
+                calibrationTable{'LeftEye', 'GlobeY'}       = str2double(theStruct.Children(2).Children(2).Children(6).Children(2).Children(4).Children.Data);
+                calibrationTable{'LeftEye', 'GlobeRadiusX'} = str2double(theStruct.Children(2).Children(2).Children(6).Children(4).Children.Data);
+                calibrationTable{'LeftEye', 'GlobeRadiusY'} = str2double(theStruct.Children(2).Children(2).Children(6).Children(4).Children.Data);
+                calibrationTable{'LeftEye', 'RefX'}         = str2double(theStruct.Children(2).Children(2).Children(8).Children(6).Children(2).Children(2).Children.Data);
+                calibrationTable{'LeftEye', 'RefY'}         = str2double(theStruct.Children(2).Children(2).Children(8).Children(6).Children(2).Children(4).Children.Data);
                 
-                calibrationTable{'RightEye', 'GlobeX'} =       str2num(theStruct.Children(2).Children(4).Children(6).Children(2).Children(2).Children.Data);
-                calibrationTable{'RightEye', 'GlobeY'} =       str2num(theStruct.Children(2).Children(4).Children(6).Children(2).Children(4).Children.Data);
-                calibrationTable{'RightEye', 'GlobeRadiusX'} =  str2num(theStruct.Children(2).Children(4).Children(6).Children(4).Children.Data);
-                calibrationTable{'RightEye', 'GlobeRadiusY'} =  str2num(theStruct.Children(2).Children(4).Children(6).Children(4).Children.Data);
-                calibrationTable{'RightEye', 'RefX'} =         str2num(theStruct.Children(2).Children(4).Children(8).Children(6).Children(2).Children(2).Children.Data);
-                calibrationTable{'RightEye', 'RefY'} =         str2num(theStruct.Children(2).Children(4).Children(8).Children(6).Children(2).Children(4).Children.Data);
-                calibrationTable{'RightEye', 'SignX'} = -1;
-                calibrationTable{'RightEye', 'SignY'} = -1;
+                calibrationTable{'RightEye', 'GlobeX'}    	= str2double(theStruct.Children(2).Children(4).Children(6).Children(2).Children(2).Children.Data);
+                calibrationTable{'RightEye', 'GlobeY'}     	= str2double(theStruct.Children(2).Children(4).Children(6).Children(2).Children(4).Children.Data);
+                calibrationTable{'RightEye', 'GlobeRadiusX'}= str2double(theStruct.Children(2).Children(4).Children(6).Children(4).Children.Data);
+                calibrationTable{'RightEye', 'GlobeRadiusY'}= str2double(theStruct.Children(2).Children(4).Children(6).Children(4).Children.Data);
+                calibrationTable{'RightEye', 'RefX'}        = str2double(theStruct.Children(2).Children(4).Children(8).Children(6).Children(2).Children(2).Children.Data);
+                calibrationTable{'RightEye', 'RefY'}        = str2double(theStruct.Children(2).Children(4).Children(8).Children(6).Children(2).Children(4).Children.Data);
+                
             else
                 % LEGACY
                 % loading calibrations for files recorded with the old
@@ -118,18 +137,29 @@ classdef VOGAnalysis < handle
                 calibrationTable{'LeftEye', 'GlobeRadiusY'} = dat(3);
                 calibrationTable{'LeftEye', 'RefX'} = dat(4);
                 calibrationTable{'LeftEye', 'RefY'} = dat(5);
-                calibrationTable{'LeftEye', 'SignX'} = -1;
-                calibrationTable{'LeftEye', 'SignY'} = -1;
                 
-                calibrationTable{'RightEye',:} = missing;
                 calibrationTable{'RightEye', 'GlobeX'} = dat(6);
                 calibrationTable{'RightEye', 'GlobeY'} = dat(7);
                 calibrationTable{'RightEye', 'GlobeRadiusX'} = dat(8);
                 calibrationTable{'RightEye', 'GlobeRadiusY'} = dat(8);
                 calibrationTable{'RightEye', 'RefX'} = dat(9);
                 calibrationTable{'RightEye', 'RefY'} = dat(10);
-                calibrationTable{'RightEye', 'SignX'} = -1;
-                calibrationTable{'RightEye', 'SignY'} = -1;
+            end
+            
+            DEFAULT_RADIUS = 85*2;
+            if ( calibrationTable{'LeftEye', 'GlobeX'} == 0 )
+                disp( ' WARNING LEFT GLOBE NOT SET' )
+                calibrationTable{'LeftEye', 'GlobeX'} = calibrationTable{'LeftEye', 'RefX'};
+                calibrationTable{'LeftEye', 'GlobeY'} = calibrationTable{'LeftEye', 'RefY'};
+                calibrationTable{'LeftEye', 'GlobeRadiusX'} = DEFAULT_RADIUS;
+                calibrationTable{'LeftEye', 'GlobeRadiusY'} = DEFAULT_RADIUS;
+            end
+            if ( calibrationTable{'RightEye', 'GlobeX'} == 0 )
+                disp( ' WARNING RIGHT GLOBE NOT SET' )
+                calibrationTable{'RightEye', 'GlobeX'} = calibrationTable{'RightEye', 'RefX'};
+                calibrationTable{'RightEye', 'GlobeY'} = calibrationTable{'RightEye', 'RefY'};
+                calibrationTable{'RightEye', 'GlobeRadiusX'} = DEFAULT_RADIUS;
+                calibrationTable{'RightEye', 'GlobeRadiusY'} = DEFAULT_RADIUS;
             end
         end
         
@@ -310,25 +340,6 @@ classdef VOGAnalysis < handle
             %       - calibratedData: calibrated data
             
             geomCorrected = 0;
-            
-            if ( calibrationTable{'LeftEye', 'GlobeX'} == 0 )
-                disp( ' WARNING GLOBE NOT SET' )
-                calibrationTable{'LeftEye', 'GlobeX'} = calibrationTable{'LeftEye', 'RefX'};
-                calibrationTable{'LeftEye', 'GlobeY'} = calibrationTable{'LeftEye', 'RefY'};
-                calibrationTable{'LeftEye', 'GlobeRadiusX'} = 85*2;
-                calibrationTable{'LeftEye', 'GlobeRadiusY'} = 85*2;
-                calibrationTable{'LeftEye', 'SignX'} = -1;
-                calibrationTable{'LeftEye', 'SignY'} = -1;
-            end
-            if ( calibrationTable{'RightEye', 'GlobeX'} == 0 )
-                disp( ' WARNING GLOBE NOT SET' )
-                calibrationTable{'RightEye', 'GlobeX'} = calibrationTable{'RightEye', 'RefX'};
-                calibrationTable{'RightEye', 'GlobeY'} = calibrationTable{'RightEye', 'RefY'};
-                calibrationTable{'RightEye', 'GlobeRadiusX'} = 85*2;
-                calibrationTable{'RightEye', 'GlobeRadiusY'} = 85*2;
-                calibrationTable{'RightEye', 'SignX'} = -1;
-                calibrationTable{'RightEye', 'SignY'} = -1;
-            end
             
             % TODO: deal with corneal reflections...
                 
@@ -526,9 +537,8 @@ classdef VOGAnalysis < handle
             %   Outputs:
             %       - resampledData: 500Hz resampled and clean data
             
-            try
-                
-                cprintf('blue','Cleaning data...\n');
+            try          
+                tic
                 
                 % Create frame number if not available
                 if ( sum(strcmp('FrameNumber',calibratedData.Properties.VariableNames))>0)
@@ -550,9 +560,9 @@ classdef VOGAnalysis < handle
                 [eyes, eyeSignals, headSignals] = VOGAnalysis.GetEyesAndSignals(calibratedData);
                 
                 % ---------------------------------------------------------
-                % Interpolate missing samples
+                % Interpolate missing frames
                 %----------------------------------------------------------
-                % Find missing samples and intorpolate them
+                % Find missing frames and intorpolate them
                 % It is possible that some frames were dropped during the
                 % recording. We will interpolate them. But only if they are
                 % just a few in a row. If there are many we will fill with
@@ -565,9 +575,9 @@ classdef VOGAnalysis < handle
                 resampledData = table;  % resampled data at 500Hz
                 
                 % calcualte the samplerate
-                totalNumberOfFrames = max(calibratedData.FrameNumberRaw)-calibratedData.FrameNumberRaw(1);
-                totalTime = max(calibratedData.Time)-calibratedData.Time(1);
-                RawSampleRate = totalNumberOfFrames/totalTime;
+                totalNumberOfFrames = calibratedData.FrameNumberRaw(end) - calibratedData.FrameNumberRaw(1);
+                totalTime           = calibratedData.Time(end) - calibratedData.Time(1);
+                rawSampleRate       = (totalNumberOfFrames-1)/totalTime;
                 
                 % find dropped and not dropped frames
                 notDroppedFrames = calibratedData.FrameNumber - calibratedData.FrameNumber(1) + 1;
@@ -579,11 +589,12 @@ classdef VOGAnalysis < handle
                 % but also save the original raw frame numbers and time
                 % stamps with NaNs in the dropped frames.
                 cleanedData.FrameNumber     = (1:max(notDroppedFrames))';
-                cleanedData.Time            = cleanedData.FrameNumber/RawSampleRate;
+                cleanedData.Time            = (cleanedData.FrameNumber-1)/rawSampleRate;
                 cleanedData.RawFrameNumber  = nan(height(cleanedData), 1);
                 cleanedData.RawTime         = nan(height(cleanedData), 1);
                 cleanedData.RawFrameNumber(notDroppedFrames) = calibratedData.FrameNumberRaw;
                 cleanedData.RawTime(notDroppedFrames)        = calibratedData.Time; 
+                cleanedData.DroppedFrame    = droppedFrames;
                 
                 % interpolate signals
                 signalsToInterpolate = {};
@@ -599,20 +610,20 @@ classdef VOGAnalysis < handle
                 for i=1:length(signalsToInterpolate)
                     signalName = signalsToInterpolate{i};
                     
-                    cleanedData.(signalName) = nan(height(cleanedData), 1);
-                    cleanedData.(signalName)(notDroppedFrames)  = calibratedData.(signalName);
+                    cleanedData.(signalName)            = nan(height(cleanedData), 1); % signal that will be cleaned
+                    cleanedData.([signalName 'Raw'])    = nan(height(cleanedData), 1); % raw signal with nans in dropped frames
+                    cleanedData.([signalName 'RawInt']) = nan(height(cleanedData), 1); % almost raw signal with some interpolated dropped frames
                     
-                    % save the non interpolated version
-                    cleanedData.([signalName 'Raw']) = cleanedData.(signalName);
+                    cleanedData.([signalName 'Raw'])(notDroppedFrames)  = calibratedData.(signalName);
                     
                     % interpolate missing frames but only if they are
                     % 2 or less in a row. Otherwise put nans in there.
-                    datInterp = interp1(notDroppedFrames, cleanedData.(signalName)(notDroppedFrames),  cleanedData.FrameNumber );
+                    datInterp = interp1(notDroppedFrames, cleanedData.([signalName 'Raw'])(notDroppedFrames),  cleanedData.FrameNumber );
                     datInterp(droppedFrames & ~interpolableFrames) = nan;
+                    cleanedData.([signalName 'RawInt']) = datInterp;
+                    
                     cleanedData.(signalName) = datInterp;
                 end
-            
-                cprintf('blue',sprintf('Interpolated %d dropped frames...\n',length(cleanedData.FrameNumber )-length(notDroppedFrames)));
                 
                 % ---------------------------------------------------------
                 % End interpolate missing samples
@@ -626,7 +637,6 @@ classdef VOGAnalysis < handle
                 % data that may not be good. Then we will interpolate short
                 % spikes of bad data while removing everything else bad
                 % plus some padding around
-                tic
                 % Find bad samples
                 for i=1:length(eyes)
                     
@@ -646,7 +656,7 @@ classdef VOGAnalysis < handle
                     
                     
                     badData = isnan(x) | isnan(y);
-                    badPupil        = nan(size(badData));
+                    badPupil = nan(size(badData));
                     
                     % Calculate a smooth version of the pupil size to detect changes in
                     % pupil size that are not normal. Thus, must be blinks or errors in
@@ -655,9 +665,9 @@ classdef VOGAnalysis < handle
                         pupil = cleanedData.([eyes{i} 'Pupil']);
                         pupilDecimated = pupil(1:25:end); %decimate the pupil signal
                         if ( exist('smooth','file') )
-                            pupilSmooth = smooth(pupilDecimated,params.smoothRloessSpan*RawSampleRate/25/length(pupilDecimated),'rloess');
+                            pupilSmooth = smooth(pupilDecimated,params.smoothRloessSpan*rawSampleRate/25/length(pupilDecimated),'rloess');
                         else
-                            pupilSmooth = nanmedfilt(pupilDecimated,round(params.smoothRloessSpan*RawSampleRate/25));
+                            pupilSmooth = nanmedfilt(pupilDecimated,round(params.smoothRloessSpan*rawSampleRate/25));
                         end
                         pupilSmooth = interp1((1:25:length(pupil))',pupilSmooth,(1:length(pupil))');
                         
@@ -666,7 +676,7 @@ classdef VOGAnalysis < handle
                         % find blinks and other abnormal pupil sizes or eye movements
                         pth = nanmean(pupilSmooth)*params.pupilSizeTh/100;
                         badPupil = abs(pupilSmooth-pupil) > pth ...                 % pupil size far from smooth pupil size
-                            | abs([0;diff(pupil)*RawSampleRate]) > params.pupilSizeChangeTh;        % pupil size changes too suddenly from sample to sample
+                            | abs([0;diff(pupil)*rawSampleRate]) > params.pupilSizeChangeTh;        % pupil size changes too suddenly from sample to sample
                         
                         badData = badData | badPupil;
                     end
@@ -687,71 +697,68 @@ classdef VOGAnalysis < handle
                     if ( params.DETECT_FLAT_PERIODS )
                         % if three consecutive samples are the same value this main they
                         % are interpolated
-                        badFlatPeriods =  boxcar([0;abs(diff(x))],2) == 0 ...
-                            | boxcar([0;abs(diff(y))],2) == 0;
+                        badFlatPeriods =  boxcar([nan;abs(diff(x))],2) == 0 ...
+                            | boxcar([nan;abs(diff(y))],2) == 0;
                         
                         badData = badData | badFlatPeriods;
                     end
                     
                     % spikes of good data in between bad data are probably bad
                     badData = imclose(badData,ones(10));
-                    bt = badData | abs(t) > params.TMaxRange | abs(vt) > params.TVelMax;
-                    bt = imclose(bt,ones(10));
+                    badDataT = badData | abs(t) > params.TMaxRange | abs(vt) > params.TVelMax;
+                    badDataT = imclose(badDataT,ones(10));
                     
                     % but spikes of bad data in between good data can be
                     % interpolated
                     % find spikes of bad data. Single bad samples surrounded by at least 2
                     % good samples to each side
-                    b2 = boxcar(~badData,3)*3 >= 2;
-                    bt2 = boxcar(~bt,3)*3 >= 2;
-                    spikes = badData & b2;
-                    spikest = bt & bt2;
+                    spikes  = badData   & ( boxcar(~badData, 3)*3 >= 2 );
+                    spikest = badDataT  & ( boxcar(~badDataT,3)*3 >= 2 );
                     
                     % TODO: maybe better than blink span find the first N samples
                     % around the blink that are wihtin a more stringent criteria
-                    blinks = boxcar( badData & ~spikes, round(params.blinkSpan/1000*RawSampleRate))>0;
-                    blinkst = boxcar( bt & ~spikest, round(params.blinkSpan/1000*RawSampleRate))>0;
+                    badData  = boxcar( badData  & ~spikes,  round(params.blinkSpan/1000*rawSampleRate))>0;
+                    badDataT = boxcar( badDataT & ~spikest, round(params.blinkSpan/1000*rawSampleRate))>0;
                     
                     cleanedData.([eyes{i} 'Spikes']) = spikes;
-                    cleanedData.([eyes{i} 'Blinks']) = blinks;
+                    cleanedData.([eyes{i} 'BadData']) = badData;
                     cleanedData.([eyes{i} 'SpikesT']) = spikest;
-                    cleanedData.([eyes{i} 'BlinksT']) = blinkst;
+                    cleanedData.([eyes{i} 'BadDataT']) = badDataT;
                     
-                    cleanedData.([eyes{i} 'badPupil'])          = badPupil;
-                    cleanedData.([eyes{i} 'badPosition'])       = badPosition;
-                    cleanedData.([eyes{i} 'badVelocity'])       = badVelocity;
-                    cleanedData.([eyes{i} 'badAcceleration'])   = badAcceleration;
-                    cleanedData.([eyes{i} 'badFlatPeriods'])    = badFlatPeriods;
+                    cleanedData.([eyes{i} 'BadPupil'])          = badPupil;
+                    cleanedData.([eyes{i} 'BadPosition'])       = badPosition;
+                    cleanedData.([eyes{i} 'BadVelocity'])       = badVelocity;
+                    cleanedData.([eyes{i} 'BadAcceleration'])   = badAcceleration;
+                    cleanedData.([eyes{i} 'BadFlatPeriods'])    = badFlatPeriods;
                     
                     % Clean up data
                     for j=1:length(eyeSignals)
                         if ( ~strcmp(eyeSignals{j},'T') )
-                            blinks = cleanedData.([eyes{i} 'Blinks']);
+                            badData = cleanedData.([eyes{i} 'BadData']);
                             spikes = cleanedData.([eyes{i} 'Spikes']);
-                            cleanedData.([eyes{i} eyeSignals{j}]) = cleanedData.([eyes{i} eyeSignals{j} 'Raw']);
+                            
                             % put nan on bad samples of data (blinks)
-                            cleanedData.([eyes{i} eyeSignals{j}])(blinks) = nan;
+                            cleanedData.([eyes{i} eyeSignals{j}])(badData) = nan;
                             % interpolate single spikes of bad data
                             cleanedData.([eyes{i} eyeSignals{j}])(spikes)  = interp1(find(~spikes),cleanedData.([eyes{i} eyeSignals{j}])(~spikes),  find(spikes));
                         else
-                            blinks = cleanedData.([eyes{i} 'BlinksT']);
-                            spikes = cleanedData.([eyes{i} 'SpikesT']);
-                            cleanedData.([eyes{i} eyeSignals{j}]) = cleanedData.([eyes{i} eyeSignals{j} 'Raw']);
+                            badDataT = cleanedData.([eyes{i} 'BadDataT']);
+                            spikest = cleanedData.([eyes{i} 'SpikesT']);
+                            
                             % put nan on bad samples of data (blinks)
-                            cleanedData.([eyes{i} eyeSignals{j}])(blinkst) = nan;
+                            cleanedData.([eyes{i} eyeSignals{j}])(badDataT) = nan;
                             % interpolate single spikes of bad data
                             cleanedData.([eyes{i} eyeSignals{j}])(spikest)  = interp1(find(~spikest),cleanedData.([eyes{i} eyeSignals{j}])(~spikest),  find(spikest));
                         end
                     end
                     
-                    toc
                 end
                 
                 %% Upsample to 500Hz
-                tic
+                resampleRate = 500;
                 t = cleanedData.Time;
                 
-                rest = (0:0.002:max(t))';
+                rest = (0:1/resampleRate:max(t))';
                 resampledData.Time = rest;
                 resampledData.RawFrameNumber = interp1(t(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),cleanedData.RawFrameNumber(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),rest,'nearest');
                 resampledData.FrameNumber = interp1(t(~isnan(cleanedData.FrameNumber) & ~isnan(t)),cleanedData.FrameNumber(~isnan(cleanedData.FrameNumber) & ~isnan(t)),rest,'nearest');
@@ -761,8 +768,9 @@ classdef VOGAnalysis < handle
                         x = cleanedData.(signalName);
                         
                         resampledData.(signalName) = nan(size(rest));
-                        if ( sum(~isnan(x)) > 0 ) % if not everything is nan
-                            % interpolate nans
+                        if ( sum(~isnan(x)) > 100 ) % if not everything is nan
+                            % interpolate nans so the resampling does not
+                            % propagate nans
                             xNoNan = interp1(find(~isnan(x)),x(~isnan(x)),1:length(x),'spline');
                             % upsample
                             resampledData.(signalName) = interp1(t, xNoNan,rest,'pchip');
@@ -772,12 +780,20 @@ classdef VOGAnalysis < handle
                         end
                     end
                 end
-                toc
                 
-                resampledData.Properties.UserData.sampleRate = 500;
+                
+                resampledData.Properties.UserData.sampleRate = resampleRate;
                 resampledData.Properties.UserData.params = params;
-                resampledData.Properties.UserData.cleandData = cleanedData;
-                resampledData.Properties.UserData.calibratedData = calibratedData;
+                if (1) % TODO: this may need to be optional eventually for memory issues
+                    resampledData.Properties.UserData.cleandData = cleanedData;
+                    resampledData.Properties.UserData.calibratedData = calibratedData;
+                end
+                
+                timeCleaning = toc;
+                cprintf('blue', sprintf('VOGAnalysis :: ResampleAndCleanData :: Data has %d dropped frames, %d were interpolated.\n', ...
+                        sum(cleanedData.DroppedFrame), sum(interpolableFrames)) );
+                cprintf('blue', sprintf('VOGAnalysis :: ResampleAndCleanData :: Data cleaned in %0.1f s: LXY %d%%%% RXY %d%%%% LT %d%%%% RT %d%%%% is good data.\n', ...
+                        timeCleaning, round(mean(~cleanedData.LeftBadData)*100), round(mean(~cleanedData.RightBadData)*100), round(mean(~cleanedData.LeftBadDataT)*100), round(mean(~cleanedData.RightBadDataT)*100) ));
                 
             catch ex
                 getReport(ex)

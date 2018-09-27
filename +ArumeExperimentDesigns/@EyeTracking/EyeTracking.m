@@ -154,7 +154,7 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             
             for i=1:length(dataFiles)
                 dataFile = dataFiles{i};
-                cprintf('blue','Reading data File %s\n',dataFile);
+                cprintf('blue','ARUME :: PrepareSamplesDataTable::Reading data File %s ...\n',dataFile);
                 calibrationFile = calibrationFiles{i};
                 
                 dataFilePath = fullfile(this.Session.dataPath, dataFile);

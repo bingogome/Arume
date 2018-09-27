@@ -73,7 +73,6 @@ classdef Arume < handle
                 recentProjects = '';
             end
         end
-        
     end
     
     methods( Access=public )
@@ -134,7 +133,7 @@ classdef Arume < handle
             end
             
             if ( useGui )
-                if ( isempty(arumeSingleton.gui) )
+                if ( isempty(arumeSingleton.gui) || ~arumeSingleton.gui.isvalid)
                     % Load the GUI
                     arumeSingleton.gui = ArumeCore.ArumeGui( arumeSingleton );
                 end
