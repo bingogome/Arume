@@ -8,6 +8,7 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
         function optionsDlg = GetAnalysisOptionsDialog(this)
             optionsDlg = GetAnalysisOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
             optionsDlg.SPV = { {'0' '{1}'} };
+            optionsDlg.SPV_Periods = { {'0' '{1}'} };
         end
         
         function [analysisResults, samplesDataTable, trialDataTable, sessionTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable,sessionTable, options)
@@ -17,12 +18,11 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             if ( options.SPV )
                 analysisResults.SPV = table();
                 
-                
                 T = samplesDataTable.Properties.UserData.sampleRate;
                 analysisResults.SPV.Time = samplesDataTable.Time(1:T:(end-T/2));
                 fields = {'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
-                t = samplesDataTable.Time;
                 
+                t = samplesDataTable.Time;
                 % monocular spv
                 for j =1:length(fields)
                     
@@ -39,8 +39,8 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                     [vleft, xleft] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(['Left' LRdataVars{j}]));
                     [vright, xright] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(['Right' LRdataVars{j}]));
                     
-                    vmed = nanmedfilt(nanmean([vleft, vright],2),T,T/2);
-                    xmed = nanmedfilt(nanmean([xleft, xright],2),T,T/2);
+                    vmed = nanmedfilt(nanmean([vleft, vright],2),T,1/2);
+                    xmed = nanmedfilt(nanmean([xleft, xright],2),T,1/2);
                     
                     analysisResults.SPV.(LRdataVars{j}) = vmed(T/2:T:end);
                     analysisResults.SPV.([LRdataVars{j} 'Pos']) = xmed(T/2:T:end);
@@ -57,62 +57,105 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                     sessionTable.Option_Duration, ...
                     sessionTable.Option_Events.EnterMagnet, ...
                     sessionTable.Option_Events.ExitMagnet);
+                
+                
+                % normalize data acording to the peak of the control
+                
+                arume = Arume('nogui');
+                controlSession = arume.currentProject.findSession(this.Session.subjectCode, this.Session.experimentDesign.ExperimentOptions.ControlSession);
+                
+                % process the control just in case (redundant but
+                % necessary)
+                if ( controlSession ~= this.Session )
+                    opt = arume.getDefaultAnalysisOptions(controlSession);
+                    opt.SPV = 1;
+                    opt.SPV_Periods = 0;
+                    controlSession.runAnalysis(opt);
+                    controlSession.save();
+                    spvControl = analysisResults.SPVRealigned;
+                else
+                    spvControl = controlSession.analysisResults.SPVRealigned;
+                end
+                
+                analysisResults.SPVNormalized = ArumeExperimentDesigns.MVS.NormalizeSPV( analysisResults.SPVRealigned, spvControl, [1 300] );
+                
+            end
+            
+            if ( options.SPV_Periods )
+                
                 %
                 % Get the SPV at different timepoints
                 %
-                sessionTable.BaselineStartSec = this.ExperimentOptions.Events.EnterMagnet*60 - 30;
-                sessionTable.BaselineStopSec = this.ExperimentOptions.Events.EnterMagnet*60 - 10;
-                
-                sessionTable.PeakStartSec = this.ExperimentOptions.Events.EnterMagnet*60 + 30;
-                sessionTable.PeakStopSec = this.ExperimentOptions.Events.EnterMagnet*60 + 50;
-                
-                sessionTable.PeakAfterEffectStartSec = this.ExperimentOptions.Events.ExitMagnet*60 + 50;
-                sessionTable.PeakAfterEffectStopSec = this.ExperimentOptions.Events.ExitMagnet*60 + 70;
-                
-                sessionTable.AfterEffectStartSec = this.ExperimentOptions.Events.ExitMagnet*60 + 50;
-                if ( this.ExperimentOptions.Events.Finish < 20)
-                    sessionTable.AfterEffectStopSec = this.ExperimentOptions.Events.ExitMagnet*60 + 3*60;
-                    sessionTable.BeforeExitStartSec = this.ExperimentOptions.Events.ExitMagnet*60 - 10;
-                    sessionTable.BeforeExitStopSec = this.ExperimentOptions.Events.ExitMagnet*60;
-                else
-                    sessionTable.AfterEffectStopSec = this.ExperimentOptions.Events.ExitMagnet*60 + 7*60;
-                    sessionTable.BeforeExitStartSec = this.ExperimentOptions.Events.ExitMagnet*60 - 30;
-                    sessionTable.BeforeExitStopSec = this.ExperimentOptions.Events.ExitMagnet*60;
+                switch(categorical(sessionTable.Option_Duration))
+                    case '5min'
+                        timeExitMagnet = 7; % min
+                        durationAfterEffect = 3; % min
+                    case '20min'
+                        timeExitMagnet = 22; % min
+                        durationAfterEffect = 7; % min
+                    case '60min'
+                        timeExitMagnet = 62; % min
+                        durationAfterEffect = 7; % min
                 end
                 
-                periods = {'Baseline', 'Peak', 'PeakAfterEffect' 'AfterEffect' 'BeforeExit'};
-                
+                periods.Baseline        = 2 + [-1.5     -0.2];
+                periods.Peak            = 2 + [ 0.5   	 0.8];
+                periods.PeakAfterEffect = timeExitMagnet + [ 0.8    1.2];
+                periods.AfterEffect     = timeExitMagnet + [ 0.8    durationAfterEffect];
+                periods.BeforeExit      = timeExitMagnet + [-0.2    0.2];
+
                 if ( isfield( this.ExperimentOptions.Events, 'LightsOn' ) )
-                    sessionTable.AfterLightsONStartSec = this.ExperimentOptions.Events.LightsOn*60 + 20;
-                    sessionTable.AfterLightsONStopSec = this.ExperimentOptions.Events.LightsOn*60 + 80;
+                    switch(categorical(sessionTable.Option_Duration))
+                        case '5min'
+                            lightsON = 3; % min
+                            lightsOFF = 6.7; % min
+                        case '20min'
+                            lightsON = 3; % min
+                            lightsOFF = 21.5; % min
+                        case '60min'
+                            lightsON = 3; % min
+                            lightsOFF = 61.5; % min
+                    end
                     
-                    sessionTable.BeforeLightsOFFStartSec = this.ExperimentOptions.Events.LightsOff*60 - 80;
-                    sessionTable.BeforeLightsOFFStopSec = this.ExperimentOptions.Events.LightsOn*60 -20;
+                    periods.AfterLightsON      = lightsON   + [0.3 1.3];
+                    periods.BeforeLightsOFF    = lightsOFF  + [-1.3 -0.3];
                     
-                    periods = {periods{:} 'AfterLightsON' 'BeforeLightsOFF'};
                 end
                 
                 if ( isfield( this.ExperimentOptions.Events, 'StartHeadMov' ) )
+                    switch(categorical(sessionTable.Option_Duration))
+                        case '5min'
+                            startHeadMoving = 3; % min
+                            stopHeadMoving = 6.7; % min
+                        case '20min'
+                            startHeadMoving = 3; % min
+                            stopHeadMoving = 21.5; % min
+                        case '60min'
+                            startHeadMoving = 3; % min
+                            stopHeadMoving = 61.5; % min
+                    end
                     
-                    sessionTable.AfterStartHeadMovingStartSec = this.ExperimentOptions.Events.LightsOn*60 + 20;
-                    sessionTable.AfterStartHeadMovingStopSec = this.ExperimentOptions.Events.LightsOn*60 + 80;
+                    periods.AfterStartHeadMoving	= startHeadMoving   + [0.3 1.3];
+                    periods.BeforeStopHeadMoving	= stopHeadMoving  + [-1.3 -0.3];
                     
-                    sessionTable.BeforeStopHeadMovingStartSec = this.ExperimentOptions.Events.LightsOff*60 - 80;
-                    sessionTable.BeforeStopHeadMovingStopSec = this.ExperimentOptions.Events.LightsOn*60 -20;
-                    
-                    periods = {periods{:} 'AfterStartHeadMoving' 'BeforeStopHeadMoving'};
                 end
                 
-                fields = {'X' 'Y' 'T' 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
+                field  s = {'X' 'Y' 'T' 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
+                periodNames = fieldnames(periods);
                 
                 for j =1:length(fields)
-                    x = analysisResults.SPV.(fields{j});
-                    for i=1:length(periods)
-                        if ( ~isnan(sessionTable.([periods{i} 'StartSec'])))
-                            idx = sessionTable.([periods{i} 'StartSec']):sessionTable.([periods{i} 'StopSec']);
-                            sessionTable.(['SPV_' fields{j} '_' periods{i}]) = nanmedian(x(idx));
+                    for k = 1:length(periodNames)
+                        periodName = periodNames{k};
+                        periodMin = periods.(periodName);
+                        sessionTable.([periodName 'StartMin']) = periodMin(1);
+                        sessionTable.([periodName 'StopMin']) = periodMin(2);
+                        
+                        x = analysisResults.SPVRealigned.(fields{j});
+                        if ( ~isnan(sessionTable.([periodName 'StartMin'])))
+                            idx = sessionTable.([periodName 'StartMin']):sessionTable.([periodName 'StopMin']);
+                            sessionTable.(['SPV_' fields{j} '_' periodName]) = nanmedian(x(idx));
                         else
-                            sessionTable.(['SPV_' fields{j} '_' periods{i}]) = nan;
+                            sessionTable.(['SPV_' fields{j} '_' periodName]) = nan;
                         end
                     end
                 end
@@ -196,9 +239,9 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                 periods = {'Baseline', 'Peak', 'PeakAfterEffect' 'AfterEffect' 'BeforeExit' 'AfterLightsON' 'BeforeLightsOFF'};
                 
                 for i=1:length(periods)
-                    time = this.Session.sessionDataTable.([periods{i} 'StartSec']):this.Session.sessionDataTable.([periods{i} 'StopSec']);
+                    time = this.Session.sessionDataTable.([periods{i} 'StartMin']):this.Session.sessionDataTable.([periods{i} 'StopMin']);
                     value = ones(size(time))*this.Session.sessionDataTable.(['SPV_' 'X' '_' periods{i}]);
-                    plot(time/60,value,'o','color','r','linewidth',2);
+                    plot(time,value,'o','color','r','linewidth',2);
                 end
             end
             
@@ -314,6 +357,9 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                 case '20min'
                     durationInsideMagnet = 20;
                     durationUntilEnd = 37;
+                case '60min'
+                    durationInsideMagnet = 60;
+                    durationUntilEnd = 82;
             end
             
             newSPV = table();
@@ -358,6 +404,18 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                 end
                 
                 newSPV.(fields{i}) = spvRealigned;
+            end
+        end
+        
+        function newSPV = NormalizeSPV( spvTable, spvControlTable, peakInterval )
+            
+            newSPV = spvTable;
+            
+            fields = setdiff(spvTable.Properties.VariableNames,{'Time'},'stable');
+            for i=1:length(fields)
+                spvField = spvControlTable.(fields{i});
+                peak = max(abs(spvField(peakInterval(1):peakInterval(2))));
+                newSPV.(fields{i}) = spvTable.(fields{i}) / peak;
             end
         end
     end

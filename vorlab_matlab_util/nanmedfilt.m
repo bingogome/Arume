@@ -1,8 +1,10 @@
 %%
-function [y, notnan] = nanmedfilt(x,w,minSamples)
+function [y, notnan] = nanmedfilt(x,w,minSamplesFraction)
 
-if ( ~exist('minSamples','var') )
+if ( ~exist('minSamplesFraction','var') )
     minSamples = 0;
+else
+    minSamples = w*minSamplesFraction;
 end
 
 % get the median filtering

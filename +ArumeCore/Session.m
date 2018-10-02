@@ -197,14 +197,9 @@ classdef Session < ArumeCore.DataDB
         
         function updateExperimentOptions( this, newExperimentOptions)
             
-            if ( ~this.isStarted )
-               % re initialize the experiment with the new options 
-                this.experimentDesign = ArumeCore.ExperimentDesign.Create( this.experimentDesign.Name );
-                this.experimentDesign.init(this, newExperimentOptions);
-            else
-                error('This is session is already started, cannot change settings.');
-            end
-            
+            % re initialize the experiment with the new options 
+            this.experimentDesign = ArumeCore.ExperimentDesign.Create( this.experimentDesign.Name );
+            this.experimentDesign.init(this, newExperimentOptions);
         end
         
         function addFile(this, fileTag, filePath)

@@ -474,8 +474,8 @@ classdef VOGAnalysis < handle
             params.blinkSpan = 200; % ms
             params.pupilSizeTh = 10; % in percent of smooth pupil size
             params.pupilSizeChangeTh = 10000;
-            params.HMaxRange = 60;
-            params.VMaxRange = 60;
+            params.HMaxRange = 1000; %60;
+            params.VMaxRange = 1000; %60;
             params.TMaxRange = 20;
             params.HVelMax = 500;
             params.VVelMax = 500;
@@ -1620,29 +1620,40 @@ classdef VOGAnalysis < handle
             %       - spv: instantaneous slow phase velocity.
             %       - positionFiltered: corresponding filtered position signal. 
             
+            firstPassVThrehold              = 100;  %deg/s
+            firstPassMedfiltWindow          = 4;    %s
+            firstPassMedfiltNanFraction     = 0.25;   %
+            firstPassPadding                = 30;   %ms
+            
+            secondPassVThrehold             = 10;   %deg/s
+            secondPassMedfiltWindow         = 1;    %s
+            secondPassMedfiltNanFraction    = 0.5;   %
+            secondPassPadding               = 30;   %ms
+            
+            
             samplerate = round(mean(1./diff(timeSec)));
             
             % get the velocity
             spv = diff(position)./diff(timeSec);
             
             % first past at finding quick phases (>100 deg/s)
-            qp = boxcar(abs(spv)>100 | isnan(spv), 30*samplerate/1000)>0;
+            qp = boxcar(abs(spv)>firstPassVThrehold | isnan(spv), firstPassPadding*samplerate/1000)>0;
             spv(qp) = nan;
             
             % used the velocity without first past of quick phases
             % to get a estimate of the spv and substract it from
             % the velocity
-            v2 = spv-nanmedfilt(spv,samplerate*4,samplerate);
+            v2 = spv-nanmedfilt(spv,samplerate*firstPassMedfiltWindow,firstPassMedfiltNanFraction);
             
             % do a second pass for the quick phases (>10 deg/s)
-            qp2 = boxcar(abs(v2)>10, 30*samplerate/1000)>0;
+            qp2 = boxcar(abs(v2)>secondPassVThrehold, secondPassPadding*samplerate/1000)>0;
             spv(qp2) = nan;
             
             % get a filted and decimated version of the spv at 1
             % sample per second only if one fifth of the samples
             % are not nan for the 1 second window
-            spv = nanmedfilt(spv,samplerate,samplerate/2);
-            positionFiltered = nanmedfilt(position,samplerate,samplerate/2);
+            spv = nanmedfilt(spv,samplerate*secondPassMedfiltWindow,secondPassMedfiltNanFraction);
+            positionFiltered = nanmedfilt(position,samplerate,secondPassMedfiltNanFraction);
         end
     end
     

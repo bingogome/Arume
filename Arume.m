@@ -20,23 +20,11 @@ classdef Arume < handle
     % have runs of one individual paradigm.
     %
     % The projects can be managed with the GUI but also with command line.
-    
-    properties( Constant=true )
-        AnalysisMethodPrefix = 'Analysis_';
-        PlotsMethodPrefix = 'Plot_';
-        PlotsAggregateMethodPrefix = 'PlotAggregate_';
-    end
-    
-    properties( Access=private )
+        
+    properties( SetAccess=private )
         configuration       % Configuration options saved into a mat file in the Arume folder
-    end
-    
-    properties
         gui                 % Current gui associated with the controller
         possibleExperiments % List of possible experiments
-    end
-    
-    properties( SetAccess=private )
         currentProject      % Current working project
         selectedSessions    % Current selected sessions (if multiple selected enabled)
     end
@@ -91,9 +79,10 @@ classdef Arume < handle
             
             if ( isempty( arumeSingleton ) )
                 % The persistent variable gets deleted with clear all. However,
-                % variables within the UI do not until UI is closed. So, we can search
-                % for the handle of the UI window and get the controller from there.
-                % This way we avoid problems if clear all is called with the UI open
+                % variables within the UI do not and stay until UI is
+                % closed. So, we can search for the handle of the UI window
+                % and get the controller from there. This way we avoid
+                % problems if clear all is called with the UI open 
                 % and then Arume is called again.
                 h = findall(0,'tag','Arume');
                 if ( ~isempty(h) )
@@ -459,6 +448,12 @@ classdef Arume < handle
             end
         end
         
+        function options = getDefaultExperimentOptions(this, experiment)
+            experiment = ArumeCore.ExperimentDesign.Create(experiment);
+            optionsDlg = experiment.GetExperimentOptionsDialog( );
+            options = StructDlg(optionsDlg,'',[],[],'off');
+        end
+        
         function dlg = getAnalysisOptions(this, sessions)
             
             if ( ~exist('sessions','var') )
@@ -543,8 +538,8 @@ classdef Arume < handle
             plotList = {};
             methodList = meta.class.fromName(class(this.currentSession.experimentDesign)).MethodList;
             for i=1:length(methodList)
-                if ( strfind( methodList(i).Name, this.PlotsMethodPrefix) )
-                    plotList{end+1} = strrep(methodList(i).Name, this.PlotsMethodPrefix ,'');
+                if ( strfind( methodList(i).Name, 'Plot_') )
+                    plotList{end+1} = strrep(methodList(i).Name, 'Plot_' ,'');
                 end
             end
         end
@@ -553,8 +548,8 @@ classdef Arume < handle
             plotList = {};
             methodList = meta.class.fromName(class(this.currentSession.experimentDesign)).MethodList;
             for i=1:length(methodList)
-                if ( strfind( methodList(i).Name, this.PlotsAggregateMethodPrefix) )
-                    plotList{end+1} = strrep(methodList(i).Name, this.PlotsAggregateMethodPrefix ,'');
+                if ( strfind( methodList(i).Name, 'PlotAggregate_') )
+                    plotList{end+1} = strrep(methodList(i).Name, 'PlotAggregate_' ,'');
                 end
             end
         end
@@ -566,12 +561,12 @@ classdef Arume < handle
             
             if ( ~isempty( selection ) )
                 for i=1:length(selection)
-                    if ( ismethod( this.currentSession.experimentDesign, [this.PlotsMethodPrefix plots{selection(i)}] ) )
-                        try
+                    try
+                        if ( ismethod( this.currentSession.experimentDesign, ['Plot_' plots{selection(i)}] ) )
                             if ( ~COMBINE_SESSIONS)
                                 % Single sessions plot
                                 for session = this.selectedSessions
-                                    session.experimentDesign.([this.PlotsMethodPrefix plots{selection(i)}])();
+                                    session.experimentDesign.(['Plot_' plots{selection(i)}])();
                                 end
                             else
                                 
@@ -587,7 +582,7 @@ classdef Arume < handle
                                 for session = this.selectedSessions
                                     iSession = iSession+1;
                                     handles = get(0,'children');
-                                    session.experimentDesign.([this.PlotsMethodPrefix plots{selection(i)}])();
+                                    session.experimentDesign.(['Plot_' plots{selection(i)}])();
                                     
                                     newhandles = get(0,'children');
                                     for iplot =1:(length(newhandles)-length(handles))
@@ -612,23 +607,23 @@ classdef Arume < handle
                                     close(setdiff( newhandles,handles))
                                 end
                             end
-                        catch err
-                            beep
-                            cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
-                            cprintf('red', '!!!!!!!!!!!!! ARUME PLOT ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
-                            cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
-                            cprintf('red', '\n')
-                            cprintf('red', 'Error ploting, try preparing the session first!\n')
-                            cprintf('red', '\n')
-                            disp(err.getReport);
-                            cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
-                            cprintf('red', '!!!!!!!!!!!!! END PLOT ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
-                            cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                            
+                        elseif ( ismethod( this.currentSession.experimentDesign, ['PlotAggregate_' plots{selection(i)}] ) )
+                            % Aggregate session plots
+                            this.currentSession.experimentDesign.(['PlotAggregate_' plots{selection(i)}])( this.selectedSessions );
                         end
-                        
-                    elseif ( ismethod( this.currentSession.experimentDesign, [this.PlotsAggregateMethodPrefix plots{selection(i)}] ) )
-                        % Aggregate session plots
-                        this.currentSession.experimentDesign.([this.PlotsAggregateMethodPrefix plots{selection(i)}])( this.selectedSessions );
+                    catch err
+                        beep
+                        cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                        cprintf('red', '!!!!!!!!!!!!! ARUME PLOT ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                        cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                        cprintf('red', '\n')
+                        cprintf('red', 'Error ploting, try preparing the session first!\n')
+                        cprintf('red', '\n')
+                        disp(err.getReport);
+                        cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                        cprintf('red', '!!!!!!!!!!!!! END PLOT ARUME ERROR: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+                        cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
                     end
                 end
             end
