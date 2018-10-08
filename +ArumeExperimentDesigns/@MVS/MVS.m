@@ -23,7 +23,10 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                 fields = {'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
                 
                 t = samplesDataTable.Time;
-                % monocular spv
+                
+                %
+                % calculate monocular spv
+                %
                 for j =1:length(fields)
                     
                     [vmed, xmed] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(fields{j}));
@@ -32,7 +35,9 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                     analysisResults.SPV.([fields{j} 'Pos']) = xmed(T/2:T:end);
                 end
                 
-                % binocular spv
+                %
+                % calculate binocular spv
+                %
                 LRdataVars = {'X' 'Y' 'T'};
                 for j =1:length(LRdataVars)
                     
@@ -47,6 +52,8 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                 end
                 
                 %
+                % Realign SPV
+                %
                 % Get the SPV realigned for easier averaging across
                 % recordings. Necessary because not all of them have
                 % exactly the same time for entering and exiting the
@@ -58,8 +65,9 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                     sessionTable.Option_Events.EnterMagnet, ...
                     sessionTable.Option_Events.ExitMagnet);
                 
-                
-                % normalize data acording to the peak of the control
+                %
+                % Nnormalize data acording to the peak of the control
+                %
                 
                 arume = Arume('nogui');
                 controlSession = arume.currentProject.findSession(this.Session.subjectCode, this.Session.experimentDesign.ExperimentOptions.ControlSession);
@@ -72,13 +80,12 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                     opt.SPV_Periods = 0;
                     controlSession.runAnalysis(opt);
                     controlSession.save();
-                    spvControl = analysisResults.SPVRealigned;
-                else
                     spvControl = controlSession.analysisResults.SPVRealigned;
+                else
+                    spvControl = analysisResults.SPVRealigned;
                 end
                 
                 analysisResults.SPVNormalized = ArumeExperimentDesigns.MVS.NormalizeSPV( analysisResults.SPVRealigned, spvControl, [1 300] );
-                
             end
             
             if ( options.SPV_Periods )
@@ -99,11 +106,11 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                 end
                 
                 periods.Baseline        = 2 + [-1.5     -0.2];
-                periods.Peak            = 2 + [ 0.5   	 0.8];
-                periods.PeakAfterEffect = timeExitMagnet + [ 0.8    1.2];
-                periods.AfterEffect     = timeExitMagnet + [ 0.8    durationAfterEffect];
-                periods.BeforeExit      = timeExitMagnet + [-0.2    0.2];
+                periods.MainEffect      = 2 + [ 0.2   1.5];
+                periods.AfterEffect     = timeExitMagnet + [ 0.2    durationAfterEffect];
+                periods.BeforeExit      = timeExitMagnet + [-0.1    0.1];
 
+                % add periods for light conditions
                 if ( isfield( this.ExperimentOptions.Events, 'LightsOn' ) )
                     switch(categorical(sessionTable.Option_Duration))
                         case '5min'
@@ -122,6 +129,7 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                     
                 end
                 
+                % add periods for head moving conditions
                 if ( isfield( this.ExperimentOptions.Events, 'StartHeadMov' ) )
                     switch(categorical(sessionTable.Option_Duration))
                         case '5min'
@@ -140,7 +148,7 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                     
                 end
                 
-                field  s = {'X' 'Y' 'T' 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
+                fields = {'X' 'Y' 'T' 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
                 periodNames = fieldnames(periods);
                 
                 for j =1:length(fields)
@@ -151,11 +159,25 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                         sessionTable.([periodName 'StopMin']) = periodMin(2);
                         
                         x = analysisResults.SPVRealigned.(fields{j});
+                        t = analysisResults.SPVRealigned.Time;
+                        xNorm = analysisResults.SPVNormalized.(fields{j});
                         if ( ~isnan(sessionTable.([periodName 'StartMin'])))
-                            idx = sessionTable.([periodName 'StartMin']):sessionTable.([periodName 'StopMin']);
+                            idx = sessionTable.([periodName 'StartMin'])*60:sessionTable.([periodName 'StopMin'])*60;
                             sessionTable.(['SPV_' fields{j} '_' periodName]) = nanmedian(x(idx));
+                            sessionTable.(['SPVNorm_' fields{j} '_' periodName]) = nanmedian(xNorm(idx));
+                            
+                            [~,maxIdx] = max(abs(x(idx)));
+                            sessionTable.(['SPV_' fields{j} '_' periodName '_Peak']) = x(idx(maxIdx));
+                            sessionTable.(['SPV_' fields{j} '_' periodName '_PeakTime']) = t(idx(maxIdx));
+                            sessionTable.(['SPVNorm_' fields{j} '_' periodName '_Peak']) = xNorm(idx(maxIdx));
+                            sessionTable.(['SPVNorm_' fields{j} '_' periodName '_PeakTime']) = t(idx(maxIdx));
                         else
                             sessionTable.(['SPV_' fields{j} '_' periodName]) = nan;
+                            sessionTable.(['SPVNorm_' fields{j} '_' periodName]) = nan;
+                            sessionTable.(['SPV_' fields{j} '_' periodName '_Peak']) = nan;
+                            sessionTable.(['SPV_' fields{j} '_' periodName '_PeakTime']) = nan;
+                            sessionTable.(['SPVNorm_' fields{j} '_' periodName '_Peak']) = nan;
+                            sessionTable.(['SPVNorm_' fields{j} '_' periodName '_PeakTime']) = nan;
                         end
                     end
                 end
@@ -185,18 +207,31 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             vtr = this.Session.analysisResults.SPV.RightT;
             
             %%
-            figure
+            figure('name', [this.Session.subjectCode '  ' this.Session.sessionCode]);
             subplot(3,1,1,'nextplot','add')
             grid
             plot(t,vxl,'o')
             plot(t,vxr,'o')
             ylabel('Horizontal (deg/s)')
+            events = struct2array(this.Session.experimentDesign.ExperimentOptions.Events);
+            for i=1:length(events)
+                line([1 1]*events(i)*60, get(gca,'ylim'),'linestyle','--','color',0.7*[1 1 1]);
+            end
+            
+            
             subplot(3,1,2,'nextplot','add')
             grid
             set(gca,'ylim',[-20 20])
             plot(t,vyl,'o')
             plot(t,vyr,'o')
             ylabel('Vertical (deg/s)')
+            
+            events = struct2array(this.Session.experimentDesign.ExperimentOptions.Events);
+            for i=1:length(events)
+                line([1 1]*events(i)*60, get(gca,'ylim'),'linestyle','--','color',0.7*[1 1 1]);
+            end
+            
+            
             subplot(3,1,3,'nextplot','add')
             set(gca,'ylim',[-20 20])
             plot(t,vtl,'o')
@@ -217,12 +252,16 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             
             t = this.Session.analysisResults.SPV.Time/60;
             v = this.Session.analysisResults.SPV.X;
+            tr = this.Session.analysisResults.SPVRealigned.Time/60;
+            vr = this.Session.analysisResults.SPVRealigned.X;
             
             
             %%
             figure('name', [this.Session.subjectCode '  ' this.Session.sessionCode]);
             grid
-            plot(t,v,'o')
+            plot(tr,vr,'o')
+            hold
+            plot(t,v)
             set(gca,'nextplot','add');
             % make the y axis symmetrical around 0 and a multiple of 10
             set(gca,'ylim',[-1 1]*10*ceil(max(abs(get(gca,'ylim')))/10));
@@ -236,12 +275,15 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                     line([1 1]*events(i), get(gca,'ylim'),'linestyle','--','color',0.7*[1 1 1]);
                 end
                 
-                periods = {'Baseline', 'Peak', 'PeakAfterEffect' 'AfterEffect' 'BeforeExit' 'AfterLightsON' 'BeforeLightsOFF'};
+                periods = {'Baseline', 'MainEffect', 'BeforeExit', 'AfterEffect','AfterLightsON' 'BeforeLightsOFF' 'AfterStartHeadMoving' 'BeforeStopHeadMoving'};
                 
                 for i=1:length(periods)
-                    time = this.Session.sessionDataTable.([periods{i} 'StartMin']):this.Session.sessionDataTable.([periods{i} 'StopMin']);
+                    time = this.Session.sessionDataTable.([periods{i} 'StartMin'])*60:this.Session.sessionDataTable.([periods{i} 'StopMin'])*60;
                     value = ones(size(time))*this.Session.sessionDataTable.(['SPV_' 'X' '_' periods{i}]);
-                    plot(time,value,'o','color','r','linewidth',2);
+                    plot(time/60,value,'o','color','r','linewidth',1);
+                    
+                   
+                    plot(this.Session.sessionDataTable.(['SPV_' 'X' '_' periods{i} '_PeakTime'])/60,this.Session.sessionDataTable.(['SPV_' 'X' '_' periods{i} '_Peak']),'^','color','r','linewidth',2);
                 end
             end
             

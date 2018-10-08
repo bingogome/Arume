@@ -107,6 +107,18 @@ classdef DataDB < handle
                 disp('ClusterDetection.DataDB: cannot write to the database, it is set as read only');
             end
         end
+        
+        function RemoveVariable( this, variableName )
+            if ( ~this.READONLY )
+                try
+                    delete(fullfile(this.folder , [variableName '.mat']));
+                catch me
+                    rethrow(me);
+                end
+            else
+                disp('ClusterDetection.DataDB: cannot write to the database, it is set as read only');
+            end
+        end
 
         function ClearCache( this )
             this.cache = struct();

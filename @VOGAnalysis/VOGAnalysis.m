@@ -873,7 +873,7 @@ classdef VOGAnalysis < handle
                     [pv, peakSortIdx] = sort(abs(peakvelNotSorted),'descend');
                     peakidx = peakidxNotSorted(peakSortIdx);
                     peakvel = vhp(peakidx);
-                    peakRemove = zeros(size(peakidx));
+                    peakRemove = zeros(size(peakidx));  
                     peakStarts = zeros(size(peakidx));
                     peakEnds = zeros(size(peakidx));
                     currpeak = 1;

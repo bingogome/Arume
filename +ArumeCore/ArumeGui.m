@@ -52,6 +52,10 @@ classdef ArumeGui < matlab.apps.AppBase
         menuAnalyze
         menuAnalyzePrepare
         menuAnalyzeRunAnalyses
+        menuAnalyzePrepareAndRunAnalysis
+        menuAnalyzeClearAnalyses
+        menuAnalyzeClearAll
+        
         
         menuPlot
         menuPlotGeneratePlots
@@ -253,6 +257,18 @@ classdef ArumeGui < matlab.apps.AppBase
             this.menuAnalyzeRunAnalyses = uimenu(this.menuAnalyze);
             this.menuAnalyzeRunAnalyses.Text = 'Run data analyses ...';
             this.menuAnalyzeRunAnalyses.Callback = @this.RunDataAnalyses;
+            
+            this.menuAnalyzePrepareAndRunAnalysis = uimenu(this.menuAnalyze);
+            this.menuAnalyzePrepareAndRunAnalysis.Text = 'Prepare and run data analyses ...';
+            this.menuAnalyzePrepareAndRunAnalysis.Callback = @this.PrepareAndRunDataAnalyses;
+            
+            this.menuAnalyzeClearAnalyses = uimenu(this.menuAnalyze);
+            this.menuAnalyzeClearAnalyses.Text = 'Clear analyses results';
+            this.menuAnalyzeClearAnalyses.Callback = @this.ClearAnalyses;
+            
+            this.menuAnalyzeClearAll = uimenu(this.menuAnalyze);
+            this.menuAnalyzeClearAll.Text = 'Clear all data';
+            this.menuAnalyzeClearAll.Callback = @this.ClearAllPrepareAndAnalyses;
             
             
             this.menuPlot = uimenu(this.figureHandle);
@@ -758,6 +774,32 @@ classdef ArumeGui < matlab.apps.AppBase
             this.updateGui();
         end
         
+        function PrepareAndRunDataAnalyses( this, source, eventdata )
+            optionsDlg = this.arumeController.getAnalysisOptions( );
+            if ( ~isempty( optionsDlg) )
+                options = StructDlg(optionsDlg, 'Edit analysis options');
+                if ( isempty( options ) )
+                    return;
+                end
+            else
+                options = [];
+            end
+            
+            this.arumeController.prepareAnalysis();
+            this.arumeController.runDataAnalyses(options);
+            this.updateGui();
+        end
+        
+        function ClearAnalyses( this, source, eventdata )
+            this.arumeController.clearAnalyses(this.arumeController.selectedSessions);
+            this.updateGui();
+        end
+        
+        function ClearAllPrepareAndAnalyses( this, source, eventdata )
+            this.arumeController.clearAllPrepareAndAnalyses(this.arumeController.selectedSessions);
+            this.updateGui();
+        end
+            
         function Plot( this, source, eventdata )
             
             delete(get(this.menuPlotGeneratePlots,'children'));

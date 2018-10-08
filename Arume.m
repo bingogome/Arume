@@ -533,6 +533,18 @@ classdef Arume < handle
             end
         end
         
+        function clearAnalyses(this, sessions)
+            for i =1:length(sessions)
+                sessions(i).clearAnalysisResults();
+            end
+        end
+        
+        function clearAllPrepareAndAnalyses(this, sessions)
+            for i =1:length(sessions)
+                sessions(i).clearAnalysisResults();
+                sessions(i).clearDataTables();
+            end
+        end
         
         function plotList = GetPlotList( this )
             plotList = {};

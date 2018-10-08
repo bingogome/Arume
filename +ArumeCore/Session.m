@@ -315,7 +315,7 @@ classdef Session < ArumeCore.DataDB
             trials = this.currentRun.pastTrialTable;
             % remove errors and aborts for analysis
             if (~isempty(trials))
-                    % just in case for old data
+                % just in case for old data
                 if ( ~iscategorical(trials.TrialResult) )
                     trials.TrialResult = Enum.trialResult.PossibleResults(trials.TrialResult+1);
                 end
@@ -355,7 +355,7 @@ classdef Session < ArumeCore.DataDB
         function runAnalysis(this, options)
             
             %% 1) Prepare events datasets
-            results = [];
+            results = this.analysisResults;
             samplesIn = this.samplesDataTable;
             trialsIn = this.trialDataTable;
             sessionTableIn = this.sessionDataTable;
@@ -444,6 +444,21 @@ classdef Session < ArumeCore.DataDB
                 end
             catch ex
                 ex.getReport
+            end
+        end
+        
+        function clearDataTables(this)
+            this.RemoveVariable('trialDataTable');
+            this.RemoveVariable('samplesDataTable');
+            this.RemoveVariable('rawDataTable');
+            this.RemoveVariable('sessionDataTable');
+        end
+        
+        function clearAnalysisResults(this)
+            d = struct2table(dir(fullfile(this.dataPath,'AnalysisResults_*')),'asarray',1);
+            for i=1:height(d)
+                f = fullfile(d.folder{i}, d.name{i});
+                delete(f);
             end
         end
     end
