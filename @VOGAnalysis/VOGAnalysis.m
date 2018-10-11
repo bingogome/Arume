@@ -744,8 +744,7 @@ classdef VOGAnalysis < handle
                             end
                             if ( params.Interpolate_Spikes_of_Bad_Data )
                                 % interpolate single spikes of bad data
-                                cleanedData.([eyes{i} eyeSignals{j}])(spikes)  = interp1(
-                                . find(~spikes),cleanedData.([eyes{i} eyeSignals{j}])(~spikes),  find(spikes));
+                                cleanedData.([eyes{i} eyeSignals{j}])(spikes)  = interp1(find(~spikes),cleanedData.([eyes{i} eyeSignals{j}])(~spikes),  find(spikes));
                             end
                         else
                             badDataT = cleanedData.([eyes{i} 'BadDataT']);
