@@ -485,6 +485,8 @@ classdef VOGAnalysis < handle
             params.HFAC = 4;
             params.InterPeakMinInterval = 50; % ms
             params.units = 'seconds'; % could also be miliseconds
+            params.Remove_Bad_Data = 1;
+            params.Interpolate_Spikes_of_Bad_Data = 1;
         end
         
         function [eyes, eyeSignals, headSignals] = GetEyesAndSignals(calibratedData)
@@ -524,7 +526,7 @@ classdef VOGAnalysis < handle
             end
         end
         
-        function [resampledData] = ResampleAndCleanData(calibratedData, params)
+        function [resampledData, cleanedData] = ResampleAndCleanData(calibratedData, params)
             % RESAMPLE AND CLEAN DATA Resampes eye data to 500 Hz and
             % cleans all the data that may be blinks or bad tracking
             %
@@ -575,7 +577,7 @@ classdef VOGAnalysis < handle
                 resampledData = table;  % resampled data at 500Hz
                 
                 % calcualte the samplerate
-                totalNumberOfFrames = calibratedData.FrameNumberRaw(end) - calibratedData.FrameNumberRaw(1);
+                totalNumberOfFrames = calibratedData.FrameNumberRaw(end) - calibratedData.FrameNumberRaw(1)+1;
                 totalTime           = calibratedData.Time(end) - calibratedData.Time(1);
                 rawSampleRate       = (totalNumberOfFrames-1)/totalTime;
                 
@@ -641,8 +643,7 @@ classdef VOGAnalysis < handle
                 for i=1:length(eyes)
                     
                     % collect signals
-                    t = cleanedData.Time;
-                    dt = diff(t);
+                    dt = diff(cleanedData.Time);
                     x = cleanedData.([eyes{i} 'X']);
                     y = cleanedData.([eyes{i} 'Y']);
                     t = cleanedData.([eyes{i} 'T']);
@@ -737,18 +738,26 @@ classdef VOGAnalysis < handle
                             badData = cleanedData.([eyes{i} 'BadData']);
                             spikes = cleanedData.([eyes{i} 'Spikes']);
                             
-                            % put nan on bad samples of data (blinks)
-                            cleanedData.([eyes{i} eyeSignals{j}])(badData) = nan;
-                            % interpolate single spikes of bad data
-                            cleanedData.([eyes{i} eyeSignals{j}])(spikes)  = interp1(find(~spikes),cleanedData.([eyes{i} eyeSignals{j}])(~spikes),  find(spikes));
+                            if ( params.Remove_Bad_Data )
+                                % put nan on bad samples of data (blinks)
+                                cleanedData.([eyes{i} eyeSignals{j}])(badData) = nan;
+                            end
+                            if ( params.Interpolate_Spikes_of_Bad_Data )
+                                % interpolate single spikes of bad data
+                                cleanedData.([eyes{i} eyeSignals{j}])(spikes)  = interp1(find(~spikes),cleanedData.([eyes{i} eyeSignals{j}])(~spikes),  find(spikes));
+                            end
                         else
                             badDataT = cleanedData.([eyes{i} 'BadDataT']);
                             spikest = cleanedData.([eyes{i} 'SpikesT']);
                             
-                            % put nan on bad samples of data (blinks)
-                            cleanedData.([eyes{i} eyeSignals{j}])(badDataT) = nan;
-                            % interpolate single spikes of bad data
-                            cleanedData.([eyes{i} eyeSignals{j}])(spikest)  = interp1(find(~spikest),cleanedData.([eyes{i} eyeSignals{j}])(~spikest),  find(spikest));
+                            if ( params.Remove_Bad_Data )
+                                % put nan on bad samples of data (blinks)
+                                cleanedData.([eyes{i} eyeSignals{j}])(badDataT) = nan;
+                            end
+                            if ( params.Interpolate_Spikes_of_Bad_Data )
+                                % interpolate single spikes of bad data
+                                cleanedData.([eyes{i} eyeSignals{j}])(spikest)  = interp1(find(~spikest),cleanedData.([eyes{i} eyeSignals{j}])(~spikest),  find(spikest));
+                            end
                         end
                     end
                     

@@ -115,13 +115,16 @@ classdef Project < handle
         %
         % Analysis methods
         %
-        function dataTable = GetDataTable(this)
+        function dataTable = GetDataTable(this, sessions)
+            if( ~exist( 'sessions', 'var' ) )
+                sessions =  this.sessions;
+            end
          
             try
                 dataTable = table();
                 
-                for isess=1:length(this.sessions)
-                    session = this.sessions(isess);
+                for isess=1:length(sessions)
+                    session = sessions(isess);
                     
                     if ( ~isempty( session.sessionDataTable ) )
                         sessionRow = session.sessionDataTable;

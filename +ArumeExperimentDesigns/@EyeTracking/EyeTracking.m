@@ -230,7 +230,6 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         
         function optionsDlg = GetAnalysisOptionsDialog(this)
             optionsDlg.Detect_Quik_and_Slow_Phases =  { {'{0}','1'} };
-            optionsDlg.Detect_Quik_and_Slow_Phases2 =  { {'{0}','1'} };
         end
         
         function [analysisResults, samplesDataTable, trialDataTable, sessionTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, sessionTable, options)

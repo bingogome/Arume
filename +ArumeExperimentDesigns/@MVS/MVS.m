@@ -158,26 +158,37 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                         sessionTable.([periodName 'StartMin']) = periodMin(1);
                         sessionTable.([periodName 'StopMin']) = periodMin(2);
                         
+                        sessionTable.(['SPV_' fields{j} '_' periodName]) = nan;
+                        sessionTable.(['SPVNorm_' fields{j} '_' periodName]) = nan;
+                        sessionTable.(['SPV_' fields{j} '_' periodName '_Peak']) = nan;
+                        sessionTable.(['SPV_' fields{j} '_' periodName '_PeakTime']) = nan;
+                        sessionTable.(['SPVNorm_' fields{j} '_' periodName '_Peak']) = nan;
+                        sessionTable.(['SPVNorm_' fields{j} '_' periodName '_PeakTime']) = nan;
+                        
                         x = analysisResults.SPVRealigned.(fields{j});
                         t = analysisResults.SPVRealigned.Time;
                         xNorm = analysisResults.SPVNormalized.(fields{j});
+                        
                         if ( ~isnan(sessionTable.([periodName 'StartMin'])))
                             idx = sessionTable.([periodName 'StartMin'])*60:sessionTable.([periodName 'StopMin'])*60;
-                            sessionTable.(['SPV_' fields{j} '_' periodName]) = nanmedian(x(idx));
-                            sessionTable.(['SPVNorm_' fields{j} '_' periodName]) = nanmedian(xNorm(idx));
+                            xidx = idx(~isnan(x(idx)));
+                            xnormidx = idx(~isnan(xNorm(idx)));
+                            % important! measure area under the curve to be
+                            % more fair into how samples are weighted in
+                            % the case of nans
+                            if ( length(xidx)>10 )
+                                sessionTable.(['SPV_' fields{j} '_' periodName]) = trapz(t(xidx),x(xidx))/(t(xidx(end))-t(xidx(1)));
+                            end
+                            if ( length(xnormidx)>10)
+                                sessionTable.(['SPVNorm_' fields{j} '_' periodName]) = trapz(t(xnormidx),xNorm(xnormidx))/(t(xnormidx(end))-t(xnormidx(1)));
+                            end
                             
+                            % find absolute value peak within period
                             [~,maxIdx] = max(abs(x(idx)));
                             sessionTable.(['SPV_' fields{j} '_' periodName '_Peak']) = x(idx(maxIdx));
                             sessionTable.(['SPV_' fields{j} '_' periodName '_PeakTime']) = t(idx(maxIdx));
                             sessionTable.(['SPVNorm_' fields{j} '_' periodName '_Peak']) = xNorm(idx(maxIdx));
                             sessionTable.(['SPVNorm_' fields{j} '_' periodName '_PeakTime']) = t(idx(maxIdx));
-                        else
-                            sessionTable.(['SPV_' fields{j} '_' periodName]) = nan;
-                            sessionTable.(['SPVNorm_' fields{j} '_' periodName]) = nan;
-                            sessionTable.(['SPV_' fields{j} '_' periodName '_Peak']) = nan;
-                            sessionTable.(['SPV_' fields{j} '_' periodName '_PeakTime']) = nan;
-                            sessionTable.(['SPVNorm_' fields{j} '_' periodName '_Peak']) = nan;
-                            sessionTable.(['SPVNorm_' fields{j} '_' periodName '_PeakTime']) = nan;
                         end
                     end
                 end
@@ -192,6 +203,20 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
     % Plot methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
+        
+        function Plot_MVS_VposExit(this)
+            
+            t = this.Session.samplesDataTable.Time;
+            ly = this.Session.samplesDataTable.LeftY;
+            ry = this.Session.samplesDataTable.RightY;
+            y = nanmean([ry ly],2);
+            
+            tExit = this.Session.experimentDesign.ExperimentOptions.Events.ExitMagnet;
+            
+            figure('name', [this.Session.subjectCode '  ' this.Session.sessionCode]);
+            plot(t(1:end-1)/60,sgolayfilt(diff(y),1,5));
+            set(gca,'xlim',tExit +[-1 +1],'ylim',[-0.2 0.2]);
+        end
         
         function Plot_MVS_SPV_Trace(this)
             if ( ~isfield(this.Session.analysisResults, 'SPV' ) )
@@ -246,6 +271,8 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
         
         
         function Plot_MVS_SPVH_Trace(this)
+            CLRS = get(groot,'defaultAxesColorOrder');
+            
             if ( ~isfield(this.Session.analysisResults, 'SPV' ) )
                 error( ['Need to run analysis SPV before ploting SPV. Session: ' this.Session.name]);
             end
@@ -259,9 +286,9 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             %%
             figure('name', [this.Session.subjectCode '  ' this.Session.sessionCode]);
             grid
-            plot(tr,vr,'o')
+            plot(t,v,'color',CLRS(2,:))
             hold
-            plot(t,v)
+            plot(tr,vr,'o','color',CLRS(1,:))
             set(gca,'nextplot','add');
             % make the y axis symmetrical around 0 and a multiple of 10
             set(gca,'ylim',[-1 1]*10*ceil(max(abs(get(gca,'ylim')))/10));
@@ -290,36 +317,75 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             
         end
         
-        function PlotAggregate_MVS_SPV_Trace_combined(this, sessions)
+        function PlotAggregate_MVS_SPV(this, sessions)
             
-            s = table();
-            s.Subject = cell(length(sessions),1);
-            s.SessionCode = cell(length(sessions),1);
+            CLRS = get(groot,'defaultAxesColorOrder');
+            
+            arume = Arume('nogui');
+            s = arume.currentProject.GetDataTable(sessions);
             s.SessionObj = sessions';
-            for i=1:length(sessions)
-                s.Subject{i} = sessions(i).subjectCode;
-                s.SessionCode{i} = sessions(i).sessionCode ;
-            end
+            s.IsControl = s.Option_ControlSession == s.SessionCode;
             s = sortrows(s,'SessionCode');
             %%
-            figure('color','w')
             subjects = unique(s.Subject);
             for i=1:length(subjects)
                 subplot(length(subjects),1, i,'nextplot','add');
-                ss = s(strcmp(s.Subject,subjects{i}),:);
+                ss = s(s.Subject == subjects(i),:);
                 for j=1:height(ss)
-                    t = ss.SessionObj(j).analysisResults.SPV.Time;
-                    vxl = ss.SessionObj(j).analysisResults.SPV.LeftX;
-                    vxr = ss.SessionObj(j).analysisResults.SPV.RightX;
+                    t = ss.SessionObj(j).analysisResults.SPVRealigned.Time/60;
+                    vxl = ss.SessionObj(j).analysisResults.SPVRealigned.LeftX;
+                    vxr = ss.SessionObj(j).analysisResults.SPVRealigned.RightX;
                     spv = nanmean([vxl vxr],2);
-                    if (~isempty(strfind(ss.SessionCode{j},'HeadMoving') ) )
+                    if (ss.Option_Experiment=='HeadMoving' )
                         spv(t>180 & t<405) = nan;
                     end
-                    plot(t,spv,'.','markersize',10);
+                    if ( ss.IsControl(j))
+                        color = CLRS(1,:);
+                    else
+                        color = CLRS(2,:);
+                    end
+                    plot(t,spv,'.','markersize',10,'color',color);
                 end
                 line(get(gca,'xlim'),[0 0],'color',[0.5 0.5 0.5],'linestyle','-.')
-                legend(strrep(ss.SessionCode,'_',' '));
-                title(subjects{i});
+                legend(strrep(string(ss.SessionCode),'_',' '));
+                title(string(subjects(i)));
+                xlabel('Time (s)');
+                ylabel('SPV (deg/s)');
+            end
+        end
+        
+        function PlotAggregate_MVS_SPV_Normalized(this, sessions)
+            
+            CLRS = get(groot,'defaultAxesColorOrder');
+            
+            arume = Arume('nogui');
+            s = arume.currentProject.GetDataTable(sessions);
+            s.SessionObj = sessions';
+            s.IsControl = s.Option_ControlSession == s.SessionCode;
+            s = sortrows(s,'SessionCode');
+            %%
+            subjects = unique(s.Subject);
+            for i=1:length(subjects)
+                subplot(length(subjects),1, i,'nextplot','add');
+                ss = s(s.Subject == subjects(i),:);
+                for j=1:height(ss)
+                    t = ss.SessionObj(j).analysisResults.SPVNormalized.Time/60;
+                    vxl = ss.SessionObj(j).analysisResults.SPVNormalized.LeftX;
+                    vxr = ss.SessionObj(j).analysisResults.SPVNormalized.RightX;
+                    spv = nanmean([vxl vxr],2);
+                    if (ss.Option_Experiment=='HeadMoving' )
+                        spv(t>180 & t<405) = nan;
+                    end
+                    if ( ss.IsControl(j))
+                        color = CLRS(1,:);
+                    else
+                        color = CLRS(2,:);
+                    end
+                    plot(t,spv,'.','markersize',10,'color',color);
+                end
+                line(get(gca,'xlim'),[0 0],'color',[0.5 0.5 0.5],'linestyle','-.')
+                legend(strrep(string(ss.SessionCode),'_',' '));
+                title(string(subjects(i)));
                 xlabel('Time (s)');
                 ylabel('SPV (deg/s)');
             end
