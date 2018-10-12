@@ -154,7 +154,7 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             
             for i=1:length(dataFiles)
                 dataFile = dataFiles{i};
-                cprintf('blue','Reading data File %s\n',dataFile);
+                cprintf('blue','ARUME :: PrepareSamplesDataTable::Reading data File %s ...\n',dataFile);
                 calibrationFile = calibrationFiles{i};
                 
                 dataFilePath = fullfile(this.Session.dataPath, dataFile);
@@ -233,7 +233,6 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         end
         
         function [analysisResults, samplesDataTable, trialDataTable, sessionTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, sessionTable, options)
-            analysisResults = [];
             params = VOGAnalysis.GetParameters();
             
             if ( options.Detect_Quik_and_Slow_Phases )

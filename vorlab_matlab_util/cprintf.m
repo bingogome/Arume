@@ -352,7 +352,7 @@ function [underlineFlag,boldFlag,style,debugFlag] = processStyleInfo(style)
 
       % Color name
       elseif matches < length(validStyles)
-          colors = [0,0,0; 0,1,1; 1,0,1; 0,0,1; 0,1,0; 1,0,0; 1,1,0; 1,1,1];
+          colors = [0,0,0; 0,1,1; 1,0,1; 0,0,1; 0,1,0; 1,0,0; 0.9,0.6,0; 1,1,1];
           requestedColor = colors(matches-length(matlabStyles),:);
           style = getColorStyle(requestedColor);
 
