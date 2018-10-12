@@ -237,7 +237,7 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             for j=1:ceil(size(data,1)/stepSize)
                 idx = (1:binSize) + (j-1)*stepSize;
                 idx(idx<1 | idx>size(data,1)) = [];
-                if ( length(idx) >= 20 )
+                if ( length(idx) >= 60 )
                     angles = data.Angle(idx);
                     responses = data.Response(idx);
                     [SVV1, a, p, allAngles, allResponses, trialCounts, SVVth1] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, responses);
@@ -329,8 +329,8 @@ classdef SVV2AFCAdaptive < ArumeExperimentDesigns.SVV2AFC
             plot(ds.TrialNumber, ds.RangeCenter,'linewidth',3,'color',MEDIUM_GREEN);
             plot(ds.TrialNumber, ds.RangeCenter-ds.Range,'linewidth',1,'color',MEDIUM_GREEN);
             plot(ds.TrialNumber, ds.RangeCenter+ds.Range,'linewidth',1,'color',MEDIUM_GREEN);
-            %             plot(ds.TrialNumber, ds.Bin30SVV,'linewidth',3,'color',[.3 .5 .8]);
-            %             plot(ds.TrialNumber, ds.Bin100SVV,'linewidth',3,'color',[.8 .3 .5]);
+%             plot(ds.TrialNumber, ds.Bin30SVV,'linewidth',3,'color',[.3 .5 .8]);
+            plot(ds.TrialNumber, ds.Bin100SVV,'linewidth',3,'color',[.8 .3 .5]);
             
             SVV = [];
             T = [];
