@@ -1116,7 +1116,7 @@ classdef ArumeGui < matlab.apps.AppBase
             % update comments text box
             if ( ~isempty( this.arumeController.currentSession ) )
                 this.commentsTextBox.Enable = 'on';
-                this.commentsTextBox.Value = this.arumeController.currentSession.comment;
+                this.commentsTextBox.Value = cellstr(this.arumeController.currentSession.comment);
             else
                 this.commentsTextBox.Enable = 'off';
                 this.commentsTextBox.Value = '';
