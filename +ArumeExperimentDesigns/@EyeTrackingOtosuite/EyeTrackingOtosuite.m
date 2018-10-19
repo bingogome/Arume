@@ -1,14 +1,11 @@
-classdef EyeTrackingOtosuite  < ArumeCore.EyeTracking
-    
-    properties
-    end
+classdef EyeTrackingOtosuite  < ArumeExperimentDesigns.EyeTracking
     
     % ---------------------------------------------------------------------
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods (Access=protected)
         function dlg = GetOptionsDialog( this, importing )
-            
+            dlg = [];
             if ( exist('importing','var') && importing )
                 dlg.RawDataFile = { {['uigetfile(''' fullfile(pwd,'*.txt') ''',''MultiSelect'', ''on'')']} };
                 dlg.SpvDataFile = { {['uigetfile(''' fullfile(pwd,'*.txt') ''',''MultiSelect'', ''on'')']} };
@@ -16,7 +13,7 @@ classdef EyeTrackingOtosuite  < ArumeCore.EyeTracking
             end
         end
         
-        function initBeforeRunning( this )            
+        function initBeforeRunning( this )
         end
         
         function cleanAfterRunning(this)
@@ -26,13 +23,13 @@ classdef EyeTrackingOtosuite  < ArumeCore.EyeTracking
         end
         function variables = TrialStopCallBack(this, variables)
         end
-            
-    end
         
+    end
+    
     % --------------------------------------------------------------------
     % Analysis methods --------------------------------------------------
     % --------------------------------------------------------------------
-    methods ( Access = public )    
+    methods ( Access = public )
         %% ImportSession
         function ImportSession( this )
             
@@ -50,75 +47,62 @@ classdef EyeTrackingOtosuite  < ArumeCore.EyeTracking
             
             % FOR SAI should have code to copy files into the session folder using this.Session.addFile
             
-            dataFiles = this.ExperimentOptions.DataFiles;
-            eventFiles = this.ExperimentOptions.EventFiles;
-            calibrationFiles = this.ExperimentOptions.CalibrationFiles;
-            if ( ~iscell(dataFiles) )
-                dataFiles = {dataFiles};
-            end
-            if ( ~iscell(eventFiles) )
-                eventFiles = {eventFiles};
-            end
-            if ( ~iscell(calibrationFiles) )
-                calibrationFiles = {calibrationFiles};
+            rawFile = this.ExperimentOptions.RawDataFile;
+            spvFile = this.ExperimentOptions.SpvDataFile;
+            
+            if (exist(rawFile,'file') )
+                this.Session.addFile('vogRawDataFile', rawFile);
             end
             
-            for i=1:length(dataFiles)
-                if (exist(dataFiles{i},'file') )
-                    this.Session.addFile('vogDataFile', dataFiles{i});
-                end
+            if (exist(spvFile,'file') )
+                this.Session.addFile('vogSpvDataFile', spvFile);
             end
-            for i=1:length(eventFiles)
-                if (exist(eventFiles{i},'file') )
-                    this.Session.addFile('vogEventsFile', eventFiles{i});
-                end
-            end
-            for i=1:length(calibrationFiles)
-                if (exist(calibrationFiles{i},'file') )
-                    this.Session.addFile('vogCalibrationFile', calibrationFiles{i});
-                end
-            end
+            
         end
         
         function [samplesDataTable, rawData] = PrepareSamplesDataTable(this)
             samplesDataTable = table();
             rawData = table();
+            spvData = table();
             
-            if ( ~isprop(this.Session.currentRun, 'LinkedFiles' ) || ~isfield(this.Session.currentRun.LinkedFiles,  'vogDataFile') )
+            if ( ~isprop(this.Session.currentRun, 'LinkedFiles' ) || ~isfield(this.Session.currentRun.LinkedFiles,  'vogRawDataFile') )
                 return;
             end
-            % FOR SAI load the file that you added in import using
-            % Linkedfiles
-            dataFile = this.Session.currentRun.LinkedFiles.vogDataFile;
-            calibrationFiles = this.Session.currentRun.LinkedFiles.vogCalibrationFile;
-                        
-                cprintf('blue','ARUME :: PrepareSamplesDataTable::Reading data File %s ...\n',dataFile);
-                calibrationFile = calibrationFiles{i};
-                
-                dataFilePath = fullfile(this.Session.dataPath, dataFile);
-                calibrationFilePath = fullfile(this.Session.dataPath, calibrationFile);
-                
-                % load and preprocess data
-                
-                rawDataFile         = VOGAnalysis.LoadVOGdata(dataFilePath);
-                calibrationTable    = VOGAnalysis.ReadCalibration(calibrationFilePath);
-                calibratedData      = VOGAnalysis.CalibrateData(rawDataFile, calibrationTable);
-                
-                % FOR SAI create a new function that loads the data and
-                % puts it in this format:
-                % 
-                %             calibratedData = table(t, f, fr, lx, ly, lt, rx, ry, rt, lel,rel,lell,rell, lp, rp, ...
-                %                 'VariableNames',{'Time' 'FrameNumber', 'FrameNumberRaw', 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT' 'LeftUpperLid' 'RightUpperLid'  'LeftLowerLid' 'RightLowerLid' 'LeftPupil' 'RightPupil'});
-                %
-                %             headData = table( rawData.AccelerometerX, rawData.AccelerometerY, rawData.AccelerometerZ, rawData.GyroX, rawData.GyroY, rawData.GyroZ, ...
-                %                 'VariableNames', {'HeadRoll', 'HeadPitch', 'HeadYaw', 'HeadRollVel', 'HeadPitchVel', 'HeadYawVel'});
-                %
-                %             calibratedData = [calibratedData headData];
-                
-                % FOR SAI do not change this creates the nice cleaned data
-                params              = VOGAnalysis.GetParameters();
-                samplesDataTable  = VOGAnalysis.ResampleAndCleanData(calibratedData,params);
-                       
+            
+            if ( ~isprop(this.Session.currentRun, 'LinkedFiles' ) || ~isfield(this.Session.currentRun.LinkedFiles,  'vogSpvDataFile') )
+                return;
+            end
+            
+            % FOR SAI load the file that you added in import using Linkedfiles
+            rawFile = this.Session.currentRun.LinkedFiles.vogRawDataFile;
+            spvFile = this.Session.currentRun.LinkedFiles.vogSpvDataFile;
+            
+            cprintf('blue','ARUME :: PreparingDataTable::Reading data File %s ...\n',rawFile);
+            
+            rawFilePath = fullfile(this.Session.dataPath, rawFile);
+            spvFilePath = fullfile(this.Session.dataPath, spvFile);
+            
+            
+            % load and preprocess data
+            rawDataFile         = VOGAnalysis.LoadVOGdata(rawFilePath);
+            calibrationTable    = VOGAnalysis.ReadCalibration(calibrationFilePath);
+            calibratedData      = VOGAnalysis.CalibrateData(rawDataFile, calibrationTable);
+            
+            % FOR SAI create a new function that loads the data and
+            % puts it in this format:
+            %
+            %             calibratedData = table(t, f, fr, lx, ly, lt, rx, ry, rt, lel,rel,lell,rell, lp, rp, ...
+            %                 'VariableNames',{'Time' 'FrameNumber', 'FrameNumberRaw', 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT' 'LeftUpperLid' 'RightUpperLid'  'LeftLowerLid' 'RightLowerLid' 'LeftPupil' 'RightPupil'});
+            %
+            %             headData = table( rawData.AccelerometerX, rawData.AccelerometerY, rawData.AccelerometerZ, rawData.GyroX, rawData.GyroY, rawData.GyroZ, ...
+            %                 'VariableNames', {'HeadRoll', 'HeadPitch', 'HeadYaw', 'HeadRollVel', 'HeadPitchVel', 'HeadYawVel'});
+            %
+            %             calibratedData = [calibratedData headData];
+            
+            % FOR SAI do not change this creates the nice cleaned data
+            params              = VOGAnalysis.GetParameters();
+            samplesDataTable  = VOGAnalysis.ResampleAndCleanData(calibratedData,params);
+            
         end
         
         function optionsDlg = GetAnalysisOptionsDialog(this)
@@ -131,7 +115,7 @@ classdef EyeTrackingOtosuite  < ArumeCore.EyeTracking
             % fill in with new analysis for otosuite data
         end
     end
-            
+    
     % ---------------------------------------------------------------------
     % Plot methods
     % ---------------------------------------------------------------------
