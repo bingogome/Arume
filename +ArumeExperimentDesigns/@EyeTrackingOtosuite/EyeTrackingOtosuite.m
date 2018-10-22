@@ -60,33 +60,22 @@ classdef EyeTrackingOtosuite  < ArumeExperimentDesigns.EyeTracking
             
         end
         
-        function [samplesDataTable, rawData] = PrepareSamplesDataTable(this)
-            samplesDataTable = table();
+        function [rawData, rawPixelData] = PrepareSamplesDataTable(this)
             rawData = table();
-            spvData = table();
+            rawPixelData = table();
             
             if ( ~isprop(this.Session.currentRun, 'LinkedFiles' ) || ~isfield(this.Session.currentRun.LinkedFiles,  'vogRawDataFile') )
                 return;
             end
             
-            if ( ~isprop(this.Session.currentRun, 'LinkedFiles' ) || ~isfield(this.Session.currentRun.LinkedFiles,  'vogSpvDataFile') )
-                return;
-            end
-            
             % FOR SAI load the file that you added in import using Linkedfiles
             rawFile = this.Session.currentRun.LinkedFiles.vogRawDataFile;
-            spvFile = this.Session.currentRun.LinkedFiles.vogSpvDataFile;
             
             cprintf('blue','ARUME :: PreparingDataTable::Reading data File %s ...\n',rawFile);
             
             rawFilePath = fullfile(this.Session.dataPath, rawFile);
-            spvFilePath = fullfile(this.Session.dataPath, spvFile);
             
-            
-            % load and preprocess data
-            rawDataFile         = VOGAnalysis.LoadVOGdata(rawFilePath);
-            calibrationTable    = VOGAnalysis.ReadCalibration(calibrationFilePath);
-            calibratedData      = VOGAnalysis.CalibrateData(rawDataFile, calibrationTable);
+            % load and preprocess data         
             
             % FOR SAI create a new function that loads the data and
             % puts it in this format:
@@ -99,9 +88,11 @@ classdef EyeTrackingOtosuite  < ArumeExperimentDesigns.EyeTracking
             %
             %             calibratedData = [calibratedData headData];
             
+            [calibratedData, rawPixelData] = LoadRawData(rawFilePath);   
+                        
             % FOR SAI do not change this creates the nice cleaned data
-            params              = VOGAnalysis.GetParameters();
-            samplesDataTable  = VOGAnalysis.ResampleAndCleanData(calibratedData,params);
+            params   = VOGAnalysis.GetParameters();
+            rawData  = VOGAnalysis.ResampleAndCleanData(calibratedData,params);
             
         end
         
@@ -112,6 +103,9 @@ classdef EyeTrackingOtosuite  < ArumeExperimentDesigns.EyeTracking
         end
         
         function [analysisResults, samplesDataTable, trialDataTable, sessionTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable, sessionTable, options)
+            
+            [analysisResults, samplesDataTable, trialDataTable, sessionTable]  =  RunDataAnalyses@ArumeExperimentDesigns.EyeTracking(this, analysisResults, samplesDataTable, trialDataTable, sessionTable, options);
+            
             % fill in with new analysis for otosuite data
         end
     end
@@ -122,6 +116,7 @@ classdef EyeTrackingOtosuite  < ArumeExperimentDesigns.EyeTracking
     methods ( Access = public )
         
         function Plot_Example(this)
+            a=1;
         end
     end
     

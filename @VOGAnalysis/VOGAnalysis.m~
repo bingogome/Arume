@@ -1244,9 +1244,9 @@ classdef VOGAnalysis < handle
         function [quickPhaseTable, slowPhaseTable] = GetQuickAndSlowPhaseTable(data)
             [quickPhaseTable] = VOGAnalysis.GetQuickPhaseTable(data);
             [slowPhaseTable] = VOGAnalysis.GetSlowPhaseTable(data);
-%             [qpPrevNextTable, spPrevNextTable] = VOGAnalysis.GetQuickAndSlowPhasesPrevNext(data, quickPhaseTable, slowPhaseTable);
-%             quickPhaseTable = [quickPhaseTable qpPrevNextTable];
-%             slowPhaseTable = [slowPhaseTable spPrevNextTable];
+            [qpPrevNextTable, spPrevNextTable] = VOGAnalysis.GetQuickAndSlowPhasesPrevNext(data, quickPhaseTable, slowPhaseTable);
+            quickPhaseTable = [quickPhaseTable qpPrevNextTable];
+            slowPhaseTable = [slowPhaseTable spPrevNextTable];
         end
         
         function [quickPhaseTable] = GetQuickPhaseTable(data)
@@ -1350,15 +1350,14 @@ classdef VOGAnalysis < handle
                     elseif(contains(eyes,'Left'))   
                         quickPhaseTable.([rows{j} '_' field ]) = props.Left.(rows{j}).(field);
                     elseif(contains(eyes,'Right')) 
-                        quickPhaseTable.([rows{j} '_' field ]) = props.Right.(rows{j}).(field);
+                        quickPhaseTable.([rows{j} '_' field ]) = nanmean([ props.Left.(rows{j}).(field) props.Right.(rows{j}).(field)],2);
                     end
                 end
-            end
             
             
             
             % merge props
-            for k=1:length(eyes)
+            for k=1:2
                 fields = fieldnames(props.(eyes{k}).XY);
                 for i=1:length(fields)
                     quickPhaseTable.([ eyes{k} '_' fields{i}]) = props.(eyes{k}).XY.(fields{i});
@@ -1376,9 +1375,9 @@ classdef VOGAnalysis < handle
         end
         
         function [slowPhaseTable] = GetSlowPhaseTable(data)
-            [eyes, eyeSignals] = VOGAnalysis.GetEyesAndSignals(data);
             %% get SP properties
-            rows = eyeSignals;
+            eyes = {'Left' 'Right'};
+            rows = {'X' 'Y' 'T'};
             SAMPLERATE = 500;
             sp = data.SlowPhase;
             sp = [find(diff([0;sp])>0) find(diff([sp;0])<0)];
@@ -1390,7 +1389,7 @@ classdef VOGAnalysis < handle
             slowPhaseTable.DurationMs = (sp(:,2) - sp(:,1)) * 1000 / SAMPLERATE;
             
             props = [];
-            for k=1:length(eyes)
+            for k=1:2
                 for j=1:3
                     pos = data.([eyes{k} rows{j}]);
                     vel = data.([eyes{k} 'Vel' rows{j}]);
@@ -1462,23 +1461,11 @@ classdef VOGAnalysis < handle
             end
             
             % properties common for all eyes and components
-             % properties common for all eyes and components
-            if ( contains(eyes,'Left') && contains(eyes,'Right') )
-                slowPhaseTable.Amplitude      = nanmean([ props.Left.XY.Amplitude props.Right.XY.Amplitude],2);
-                slowPhaseTable.Displacement   = nanmean([ props.Left.XY.Displacement props.Right.XY.Displacement],2);
-                slowPhaseTable.PeakSpeed      = nanmean([ props.Left.XY.PeakSpeed props.Right.XY.PeakSpeed],2);
-                slowPhaseTable.MeanSpeed      = nanmean([ props.Left.XY.MeanSpeed props.Right.XY.MeanSpeed],2);
-            elseif(contains(eyes,'Left'))
-                slowPhaseTable.Amplitude      = props.Left.XY.Amplitude;
-                slowPhaseTable.Displacement   = props.Left.XY.Displacement;
-                slowPhaseTable.PeakSpeed      = props.Left.XY.PeakSpeed;
-                slowPhaseTable.MeanSpeed      = props.Left.XY.MeanSpeed;
-            elseif(contains(eyes,'Right'))
-                slowPhaseTable.Amplitude      = props.Right.XY.Amplitude;
-                slowPhaseTable.Displacement   = props.Right.XY.Displacement;
-                slowPhaseTable.PeakSpeed      = props.Right.XY.PeakSpeed;
-                slowPhaseTable.MeanSpeed      = props.Right.XY.MeanSpeed;
-            end
+            
+            slowPhaseTable.Amplitude      = nanmean([ props.Left.XY.Amplitude props.Right.XY.Amplitude],2);
+            slowPhaseTable.Displacement   = nanmean([ props.Left.XY.Displacement props.Right.XY.Displacement],2);
+            slowPhaseTable.PeakSpeed      = nanmean([ props.Left.XY.PeakSpeed props.Right.XY.PeakSpeed],2);
+            slowPhaseTable.MeanSpeed      = nanmean([ props.Left.XY.MeanSpeed props.Right.XY.MeanSpeed],2);
             
             fieldsToAverageAcrossEyes = {...
                 'Amplitude'...
@@ -1494,19 +1481,13 @@ classdef VOGAnalysis < handle
             for i=1:length(fieldsToAverageAcrossEyes)
                 field  = fieldsToAverageAcrossEyes{i};
                 for j=1:3
-                    if ( contains(eyes,'Left') && contains(eyes,'Right') )
-                        slowPhaseTable.([rows{j} '_' field ]) = nanmean([ props.Left.(rows{j}).(field) props.Right.(rows{j}).(field)],2);
-                    elseif(contains(eyes,'Left'))   
-                        slowPhaseTable.([rows{j} '_' field ]) = props.Left.(rows{j}).(field);
-                    elseif(contains(eyes,'Right')) 
-                        slowPhaseTable.([rows{j} '_' field ]) = props.Right.(rows{j}).(field);
-                    end
+                    slowPhaseTable.([rows{j} '_' field ]) = nanmean([ props.Left.(rows{j}).(field) props.Right.(rows{j}).(field)],2);
                 end
             end
             
             
             % merge props
-            for k=1:length(eyes)
+            for k=1:2
                 fields = fieldnames(props.(eyes{k}).XY);
                 for i=1:length(fields)
                     slowPhaseTable.([ eyes{k} '_' fields{i}]) = props.(eyes{k}).XY.(fields{i});
@@ -1524,9 +1505,6 @@ classdef VOGAnalysis < handle
         end
         
         function [qpPrevNextTable, spPrevNextTable] = GetQuickAndSlowPhasesPrevNext(data, quickPhaseTable, slowPhaseTable)
-            
-            [eyes, eyeSignals] = VOGAnalysis.GetEyesAndSignals(data);
-            
             qpPrevNextTable = table();
             spPrevNextTable = table();
             
@@ -1539,19 +1517,9 @@ classdef VOGAnalysis < handle
                 nextIntervalIdx = slowPhaseTable.EndIndex(i):quickPhaseTable.StartIndex(nextQP1);
                 
                 
-                if ( contains(eyes,'Left') && contains(eyes,'Right') )
-                    goodSamples.X = ~isnan(data.LeftVelX) | ~isnan(data.RightVelX);
-                    goodSamples.Y = ~isnan(data.LeftVelY) | ~isnan(data.RightVelY);
-                    goodSamples.T = ~isnan(data.LeftVelT) | ~isnan(data.RightVelT);
-                elseif contains(eyes,'Left')
-                    goodSamples.X = ~isnan(data.LeftVelX);
-                    goodSamples.Y = ~isnan(data.LeftVelY);
-                    goodSamples.T = ~isnan(data.LeftVelT);
-                elseif contains(eyes,'Right')
-                    goodSamples.X = ~isnan(data.RightVelX);
-                    goodSamples.Y = ~isnan(data.RightVelY);
-                    goodSamples.T = ~isnan(data.RightVelT);
-                end
+                goodSamples.X = ~isnan(data.LeftVelX) | ~isnan(data.RightVelX);
+                goodSamples.Y = ~isnan(data.LeftVelY) | ~isnan(data.RightVelY);
+                goodSamples.T = ~isnan(data.LeftVelT) | ~isnan(data.RightVelT);
                 
                 % for each variable in quick phase table
                 for k=1:length(quickPhaseTable.Properties.VariableNames)
@@ -1604,19 +1572,9 @@ classdef VOGAnalysis < handle
                 nextIntervalIdx = quickPhaseTable.EndIndex(i):slowPhaseTable.StartIndex(nextSP1);
                 
                 
-                if ( contains(eyes,'Left') && contains(eyes,'Right') )
-                    goodSamples.X = ~isnan(data.LeftVelX) | ~isnan(data.RightVelX);
-                    goodSamples.Y = ~isnan(data.LeftVelY) | ~isnan(data.RightVelY);
-                    goodSamples.T = ~isnan(data.LeftVelT) | ~isnan(data.RightVelT);
-                elseif contains(eyes,'Left')
-                    goodSamples.X = ~isnan(data.LeftVelX);
-                    goodSamples.Y = ~isnan(data.LeftVelY);
-                    goodSamples.T = ~isnan(data.LeftVelT);
-                elseif contains(eyes,'Right')
-                    goodSamples.X = ~isnan(data.RightVelX);
-                    goodSamples.Y = ~isnan(data.RightVelY);
-                    goodSamples.T = ~isnan(data.RightVelT);
-                end
+                goodSamples.X = ~isnan(data.LeftVelX) | ~isnan(data.RightVelX);
+                goodSamples.Y = ~isnan(data.LeftVelY) | ~isnan(data.RightVelY);
+                goodSamples.T = ~isnan(data.LeftVelT) | ~isnan(data.RightVelT);
                 
                 %                 if ( ~isempty(prevSP1) )
                 %                     qp.PrevspIdx(i) = prevSP1;
