@@ -64,7 +64,6 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 this.blocks = [ ...
                     struct( 'fromCondition', 1, 'toCondition', this.NumberOfConditions, 'trialsToRun', this.NumberOfConditions  )];
             end
-            
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -92,29 +91,12 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             end
         end
         
-        function initBeforeRunning( this )
-            initBeforeRunning@ArumeExperimentDesigns.EyeTracking(this);
-        end
-        
-        function cleanAfterRunning(this)
-            cleanAfterRunning@ArumeExperimentDesigns.EyeTracking(this);
-        end
-        
-        function trialResult = runPreTrial(this, variables )
-            Enum = ArumeCore.ExperimentDesign.getEnum();
-            
-            trialResult =  Enum.trialResult.CORRECT;
-        end
-        
-        function trialResult = runTrial( this, variables )
+        function [trialResult, thisTrialData] = runTrial( this, thisTrialData )
             
             try
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
-                
-                if ( this.ExperimentOptions.UseEyeTracker )
-                    this.eyeTracker.RecordEvent(['new trial [' variables.Side ',' num2str(variables.CenterLocation) ']'] );
-                end
+               
                 
                 graph = this.Graph;
                 
@@ -126,7 +108,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 
                 %-- add here the trial code
                 
-                if (strcmp(variables.TypeOfTrial , 'Rebound') )
+                if (strcmp(thisTrialData.TypeOfTrial , 'Rebound') )
                     totalDuration = this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration + this.ExperimentOptions.CenterDuration;
                 else
                     totalDuration = this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.CenterDuration;
@@ -134,6 +116,10 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 lastFlipTime        = GetSecs;
                 secondsRemaining    = totalDuration;
                 startLoopTime = lastFlipTime;
+                
+                if ( ~isempty(this.eyeTracker) )
+                    thisTrialData.EyeTrackerFrameStartLoop = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_LOOP %d %d', thisTrialData.TrialNumber, thisTrialData.Condition) );
+                end
                 
                     sound1 = 0;
                     sound2 = 0;
@@ -148,7 +134,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                     % -----------------------------------------------------------------
                     
                     initialFixationPeriod = secondsElapsed < this.ExperimentOptions.InitialFixaitonDuration;
-                    if ( strcmp(variables.TypeOfTrial , 'Rebound') )
+                    if ( strcmp(thisTrialData.TypeOfTrial , 'Rebound') )
                         eccentricFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration && secondsElapsed < (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
                         variCenterFixationPeriod = secondsElapsed >= (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
                     else
@@ -166,7 +152,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                             sound1=1;
                         end
                         
-                        switch(variables.Side)
+                        switch(thisTrialData.Side)
                             case 'Left'
                                 xdeg = -this.ExperimentOptions.EccentricPosition;
                             case 'Right'
@@ -181,11 +167,11 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                             sound2=1;
                         end
                         
-                        switch(variables.Side)
+                        switch(thisTrialData.Side)
                             case 'Left'
-                                xdeg = -variables.CenterLocation;
+                                xdeg = -thisTrialData.CenterLocation;
                             case 'Right'
-                                xdeg = variables.CenterLocation;
+                                xdeg = thisTrialData.CenterLocation;
                         end
                         ydeg = 0;
                     end
@@ -236,12 +222,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 rethrow(ex)
             end
             
-        end
-        
-        function trialOutput = runPostTrial(this)
-            trialOutput = [];
-        end
-        
+        end        
     end
     
     % --------------------------------------------------------------------

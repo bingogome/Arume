@@ -35,7 +35,8 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             conditionVars(i).values = 1;
         end
         
-        function initBeforeRunning( this )            
+        function shouldContinue = initBeforeRunning( this )            
+            
             if ( this.ExperimentOptions.UseEyeTracker )
                 this.eyeTracker = ArumeHardware.VOG();
                 this.eyeTracker.Connect();
@@ -44,6 +45,8 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 this.AddTrialStartCallback(@this.TrialStartCallback)
                 this.AddTrialStopCallback(@this.TrialStopCallBack)
             end
+            
+            shouldContinue = 1;
         end
         
         function cleanAfterRunning(this)
@@ -74,9 +77,18 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         end
         
         function variables = TrialStartCallback(this, variables)
+            if ( ~this.eyeTracker.IsRecording )
+                ME = MException('ArumeHardware.VOG:NotRecording', 'The eye tracker is not recording.');
+                throw(ME);
+            end
+                
             variables.EyeTrackerFrameNumberTrialStart = this.eyeTracker.RecordEvent(sprintf('TRIAL_START %d %d', variables.TrialNumber, variables.Condition) );
         end
         function variables = TrialStopCallBack(this, variables)
+            if ( ~this.eyeTracker.IsRecording )
+                ME = MException('ArumeHardware.VOG:NotRecording', 'The eye tracker is not recording.');
+                throw(ME);
+            end
             variables.EyeTrackerFrameNumberTrialStop = this.eyeTracker.RecordEvent(sprintf('TRIAL_STOP %d %d', variables.TrialNumber, variables.Condition) );
         end
             
