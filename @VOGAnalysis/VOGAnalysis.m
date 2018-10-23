@@ -807,11 +807,11 @@ classdef VOGAnalysis < handle
                 LbadT = nan;
                 RbadT = nan;
                 
-                if ( contains(eyes,'Left') )
+                if ( any(contains(eyes,'Left') ))
                     Lbad = round(mean(~cleanedData.LeftBadData)*100);
                     LbadT = round(mean(~cleanedData.LeftBadDataT)*100);
                 end
-                if ( contains(eyes,'Right') )
+                if ( any(contains(eyes,'Right') ))
                     Rbad = round(mean(~cleanedData.RightBadData)*100);
                     RbadT = round(mean(~cleanedData.RightBadDataT)*100);
                 end
@@ -1332,17 +1332,17 @@ classdef VOGAnalysis < handle
             end
             
             % properties common for all eyes and components
-            if ( contains(eyes,'Left') && contains(eyes,'Right') )
+            if ( any(contains(eyes,'Left')) && any(contains(eyes,'Right')) )
                 quickPhaseTable.Amplitude      = nanmean([ props.Left.XY.Amplitude props.Right.XY.Amplitude],2);
                 quickPhaseTable.Displacement   = nanmean([ props.Left.XY.Displacement props.Right.XY.Displacement],2);
                 quickPhaseTable.PeakSpeed      = nanmean([ props.Left.XY.PeakSpeed props.Right.XY.PeakSpeed],2);
                 quickPhaseTable.MeanSpeed      = nanmean([ props.Left.XY.MeanSpeed props.Right.XY.MeanSpeed],2);
-            elseif(contains(eyes,'Left'))
+            elseif(any(contains(eyes,'Left')))
                 quickPhaseTable.Amplitude      = props.Left.XY.Amplitude;
                 quickPhaseTable.Displacement   = props.Left.XY.Displacement;
                 quickPhaseTable.PeakSpeed      = props.Left.XY.PeakSpeed;
                 quickPhaseTable.MeanSpeed      = props.Left.XY.MeanSpeed;
-            elseif(contains(eyes,'Right'))
+            elseif(any(contains(eyes,'Right')))
                 quickPhaseTable.Amplitude      = props.Right.XY.Amplitude;
                 quickPhaseTable.Displacement   = props.Right.XY.Displacement;
                 quickPhaseTable.PeakSpeed      = props.Right.XY.PeakSpeed;
@@ -1359,11 +1359,11 @@ classdef VOGAnalysis < handle
             for i=1:length(fieldsToAverageAcrossEyes)
                 field  = fieldsToAverageAcrossEyes{i};
                 for j=1:3
-                    if ( contains(eyes,'Left') && contains(eyes,'Right') )
+                    if ( any(contains(eyes,'Left')) && any(contains(eyes,'Right')) )
                         quickPhaseTable.([rows{j} '_' field ]) = nanmean([ props.Left.(rows{j}).(field) props.Right.(rows{j}).(field)],2);
-                    elseif(contains(eyes,'Left'))   
+                    elseif(any(contains(eyes,'Left')))   
                         quickPhaseTable.([rows{j} '_' field ]) = props.Left.(rows{j}).(field);
-                    elseif(contains(eyes,'Right')) 
+                    elseif(any(contains(eyes,'Right'))) 
                         quickPhaseTable.([rows{j} '_' field ]) = props.Right.(rows{j}).(field);
                     end
                 end
@@ -1477,17 +1477,17 @@ classdef VOGAnalysis < handle
             
             % properties common for all eyes and components
              % properties common for all eyes and components
-            if ( contains(eyes,'Left') && contains(eyes,'Right') )
+            if ( any(contains(eyes,'Left')) && any(contains(eyes,'Right')) )
                 slowPhaseTable.Amplitude      = nanmean([ props.Left.XY.Amplitude props.Right.XY.Amplitude],2);
                 slowPhaseTable.Displacement   = nanmean([ props.Left.XY.Displacement props.Right.XY.Displacement],2);
                 slowPhaseTable.PeakSpeed      = nanmean([ props.Left.XY.PeakSpeed props.Right.XY.PeakSpeed],2);
                 slowPhaseTable.MeanSpeed      = nanmean([ props.Left.XY.MeanSpeed props.Right.XY.MeanSpeed],2);
-            elseif(contains(eyes,'Left'))
+            elseif(any(contains(eyes,'Left')))
                 slowPhaseTable.Amplitude      = props.Left.XY.Amplitude;
                 slowPhaseTable.Displacement   = props.Left.XY.Displacement;
                 slowPhaseTable.PeakSpeed      = props.Left.XY.PeakSpeed;
                 slowPhaseTable.MeanSpeed      = props.Left.XY.MeanSpeed;
-            elseif(contains(eyes,'Right'))
+            elseif(any(contains(eyes,'Right')))
                 slowPhaseTable.Amplitude      = props.Right.XY.Amplitude;
                 slowPhaseTable.Displacement   = props.Right.XY.Displacement;
                 slowPhaseTable.PeakSpeed      = props.Right.XY.PeakSpeed;
@@ -1508,11 +1508,11 @@ classdef VOGAnalysis < handle
             for i=1:length(fieldsToAverageAcrossEyes)
                 field  = fieldsToAverageAcrossEyes{i};
                 for j=1:3
-                    if ( contains(eyes,'Left') && contains(eyes,'Right') )
+                    if ( any(contains(eyes,'Left')) && any(contains(eyes,'Right')) )
                         slowPhaseTable.([rows{j} '_' field ]) = nanmean([ props.Left.(rows{j}).(field) props.Right.(rows{j}).(field)],2);
-                    elseif(contains(eyes,'Left'))   
+                    elseif(any(contains(eyes,'Left')))   
                         slowPhaseTable.([rows{j} '_' field ]) = props.Left.(rows{j}).(field);
-                    elseif(contains(eyes,'Right')) 
+                    elseif(any(contains(eyes,'Right'))) 
                         slowPhaseTable.([rows{j} '_' field ]) = props.Right.(rows{j}).(field);
                     end
                 end
@@ -1553,15 +1553,15 @@ classdef VOGAnalysis < handle
                 nextIntervalIdx = slowPhaseTable.EndIndex(i):quickPhaseTable.StartIndex(nextQP1);
                 
                 
-                if ( contains(eyes,'Left') && contains(eyes,'Right') )
+                if ( any(contains(eyes,'Left')) && any(contains(eyes,'Right')) )
                     goodSamples.X = ~isnan(data.LeftVelX) | ~isnan(data.RightVelX);
                     goodSamples.Y = ~isnan(data.LeftVelY) | ~isnan(data.RightVelY);
                     goodSamples.T = ~isnan(data.LeftVelT) | ~isnan(data.RightVelT);
-                elseif contains(eyes,'Left')
+                elseif any(contains(eyes,'Left'))
                     goodSamples.X = ~isnan(data.LeftVelX);
                     goodSamples.Y = ~isnan(data.LeftVelY);
                     goodSamples.T = ~isnan(data.LeftVelT);
-                elseif contains(eyes,'Right')
+                elseif any(contains(eyes,'Right'))
                     goodSamples.X = ~isnan(data.RightVelX);
                     goodSamples.Y = ~isnan(data.RightVelY);
                     goodSamples.T = ~isnan(data.RightVelT);
@@ -1616,15 +1616,15 @@ classdef VOGAnalysis < handle
                 nextIntervalIdx = quickPhaseTable.EndIndex(i):slowPhaseTable.StartIndex(nextSP1);
                 
                 
-                if ( contains(eyes,'Left') && contains(eyes,'Right') )
+                if ( any(contains(eyes,'Left')) && any(contains(eyes,'Right')) )
                     goodSamples.X = ~isnan(data.LeftVelX) | ~isnan(data.RightVelX);
                     goodSamples.Y = ~isnan(data.LeftVelY) | ~isnan(data.RightVelY);
                     goodSamples.T = ~isnan(data.LeftVelT) | ~isnan(data.RightVelT);
-                elseif contains(eyes,'Left')
+                elseif any(contains(eyes,'Left'))
                     goodSamples.X = ~isnan(data.LeftVelX);
                     goodSamples.Y = ~isnan(data.LeftVelY);
                     goodSamples.T = ~isnan(data.LeftVelT);
-                elseif contains(eyes,'Right')
+                elseif any(contains(eyes,'Right'))
                     goodSamples.X = ~isnan(data.RightVelX);
                     goodSamples.Y = ~isnan(data.RightVelY);
                     goodSamples.T = ~isnan(data.RightVelT);
