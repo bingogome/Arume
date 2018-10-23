@@ -662,7 +662,7 @@ classdef VOGAnalysis < handle
                     % Calculate a smooth version of the pupil size to detect changes in
                     % pupil size that are not normal. Thus, must be blinks or errors in
                     % tracking. Downsample the signal to speed up the smoothing.
-                    if ( ismember('Pupil', eyeSignals) )
+                    if ( ismember('Pupil', eyeSignals) && length( cleanedData.([eyes{i} 'Pupil'])) > 200)
                         pupil = cleanedData.([eyes{i} 'Pupil']);
                         pupilDecimated = pupil(1:25:end); %decimate the pupil signal
                         if ( exist('smooth','file') )
