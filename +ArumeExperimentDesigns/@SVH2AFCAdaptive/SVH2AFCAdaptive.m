@@ -19,7 +19,7 @@ classdef SVH2AFCAdaptive < ArumeExperimentDesigns.SVV2AFCAdaptive
             end
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptive(this, importing);
             % Change some of the defaults
-            dlg.Type_of_line = { {'{Diameter}'} };
+            dlg.Type_of_line = { 'Radius|{Diameter}'} ;
             dlg.UseGamePad = { {'{0}','1'} };
             dlg.UseMouse = { {'0','{1}'} };
             dlg.responseDuration = { 5000 '* (ms)' [100 10000] };
