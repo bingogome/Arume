@@ -35,8 +35,7 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             conditionVars(i).values = 1;
         end
         
-        function shouldContinue = initBeforeRunning( this )            
-            
+        function initBeforeRunning( this )            
             if ( this.ExperimentOptions.UseEyeTracker )
                 this.eyeTracker = ArumeHardware.VOG();
                 this.eyeTracker.Connect();
@@ -45,8 +44,6 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 this.AddTrialStartCallback(@this.TrialStartCallback)
                 this.AddTrialStopCallback(@this.TrialStopCallBack)
             end
-            
-            shouldContinue = 1;
         end
         
         function cleanAfterRunning(this)
@@ -77,18 +74,9 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         end
         
         function variables = TrialStartCallback(this, variables)
-            if ( ~this.eyeTracker.IsRecording )
-                ME = MException('ArumeHardware.VOG:NotRecording', 'The eye tracker is not recording.');
-                throw(ME);
-            end
-                
             variables.EyeTrackerFrameNumberTrialStart = this.eyeTracker.RecordEvent(sprintf('TRIAL_START %d %d', variables.TrialNumber, variables.Condition) );
         end
         function variables = TrialStopCallBack(this, variables)
-            if ( ~this.eyeTracker.IsRecording )
-                ME = MException('ArumeHardware.VOG:NotRecording', 'The eye tracker is not recording.');
-                throw(ME);
-            end
             variables.EyeTrackerFrameNumberTrialStop = this.eyeTracker.RecordEvent(sprintf('TRIAL_STOP %d %d', variables.TrialNumber, variables.Condition) );
         end
             
@@ -212,8 +200,8 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                     trialDataTable.SampleStartTrial = nan(size(trialDataTable.TrialNumber));
                     s.TrialNumber = nan(size(s.FrameNumber));
                     for i=1:height(trialDataTable)
-                        trialDataTable.SampleStartTrial(i) = find(s.FrameNumber'==ft(i),1,'first');
-                        trialDataTable.SampleStopTrial(i) = find(s.FrameNumber'==fte(i),1,'first');
+                        trialDataTable.SampleStartTrial(i) = find(s.FrameNumber'==ft(i));
+                        trialDataTable.SampleStopTrial(i) = find(s.FrameNumber'==fte(i));
                         idx = trialDataTable.SampleStartTrial(i):trialDataTable.SampleStopTrial(i);
                         s.TrialNumber(idx) = trialDataTable.TrialNumber(i);
                     end
@@ -221,18 +209,7 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                     LRdataVars = {'X' 'Y' 'T'};
                     
                     for i=1:length(LRdataVars)
-                        hasLeft = any(strcmp(s.Properties.VariableNames,['Left' LRdataVars{i}]));
-                        hasRight = any(strcmp(s.Properties.VariableNames,['Right' LRdataVars{i}]));
-                        if ( hasLeft && hasRight)
-                            s.(LRdataVars{i}) = mean([s.(['Left' LRdataVars{i}]),s.(['Right' LRdataVars{i}])],2);
-                        elseif ( hasLeft )   
-                            s.(LRdataVars{i}) = s.(['Left' LRdataVars{i}]);
-                            % TODO: this is a bit ugly, think about it...
-                            s.(['Right' LRdataVars{i}]) = nan(size(s.(['Left' LRdataVars{i}])));
-                        elseif ( hasRight)    
-                            s.(LRdataVars{i}) = s.(['Right' LRdataVars{i}]);
-                            s.(['Left' LRdataVars{i}]) = nan(size(s.(['Right' LRdataVars{i}])));
-                        end
+                        s.(LRdataVars{i}) = mean([s.(['Left' LRdataVars{i}]),s.(['Right' LRdataVars{i}])],2);
                     end
                     dataVars = { 'X' 'Y' 'T' 'LeftX' 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
                     

@@ -626,12 +626,12 @@ classdef ExperimentDesign < handle
                     cprintf('red', '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
                     
                     if ( status == FINILIZING_EXPERIMENT )
-                        ShowCursor;
-                        ListenChar(0);
-                        break; % finish loop
+                        status = FINALIZING_HARDWARE;
+                    elseif ( status == FINALIZING_HARDWARE )
+                        break;
+                    else
+                        status = FINILIZING_EXPERIMENT;
                     end
-                    
-                    status = FINILIZING_EXPERIMENT;
                 end
             end
             % --------------------------------------------------------------------

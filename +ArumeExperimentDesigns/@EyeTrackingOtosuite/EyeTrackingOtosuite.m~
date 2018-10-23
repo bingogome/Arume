@@ -95,7 +95,7 @@ classdef EyeTrackingOtosuite  < ArumeExperimentDesigns.EyeTracking
             [analysisResults, samplesDataTable, trialDataTable, sessionTable]  =  RunDataAnalyses@ArumeExperimentDesigns.EyeTracking(this, analysisResults, samplesDataTable, trialDataTable, sessionTable, options);
             
             % fill in with new analysis for otosuite data
-            analysisResults.SPV = [];
+            
         end
     end
     
