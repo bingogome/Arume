@@ -801,8 +801,22 @@ classdef VOGAnalysis < handle
                 timeCleaning = toc;
                 cprintf('blue', sprintf('VOGAnalysis :: ResampleAndCleanData :: Data has %d dropped frames, %d were interpolated.\n', ...
                     sum(cleanedData.DroppedFrame), sum(interpolableFrames)) );
-                %                 cprintf('blue', sprintf('VOGAnalysis :: ResampleAndCleanData :: Data cleaned in %0.1f s: LXY %d%%%% RXY %d%%%% LT %d%%%% RT %d%%%% is good data.\n', ...
-                %                         timeCleaning, round(mean(~cleanedData.LeftBadData)*100), round(mean(~cleanedData.RightBadData)*100), round(mean(~cleanedData.LeftBadDataT)*100), round(mean(~cleanedData.RightBadDataT)*100) ));
+                
+                Lbad = nan;
+                Rbad = nan;
+                LbadT = nan;
+                RbadT = nan;
+                
+                if ( contains(eyes,'Left') )
+                    Lbad = round(mean(~cleanedData.LeftBadData)*100);
+                    LbadT = round(mean(~cleanedData.LeftBadDataT)*100);
+                end
+                if ( contains(eyes,'Right') )
+                    Rbad = round(mean(~cleanedData.RightBadData)*100);
+                    RbadT = round(mean(~cleanedData.RightBadDataT)*100);
+                end
+                cprintf('blue', sprintf('VOGAnalysis :: ResampleAndCleanData :: Data cleaned in %0.1f s: LXY %d%%%% RXY %d%%%% LT %d%%%% RT %d%%%% is good data.\n', ...
+                    timeCleaning, Lbad, Rbad, LbadT, RbadT ));
                 
             catch ex
                 getReport(ex)
