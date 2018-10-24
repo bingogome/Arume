@@ -24,6 +24,11 @@ classdef VOG  < handle
                 if ( ~exist('ip','var') )
                     ip = fileread('C:\secure\EyeTracker Debug 2018-22-08\IP.txt');
                 end
+            elseif exist('C:\Secure\EyeTracker\Debug\EyeTrackerRemoteClient.dll')
+                asm = NET.addAssembly('C:\Secure\EyeTracker\Debug\EyeTrackerRemoteClient.dll');
+                if ( ~exist('ip','var') )
+                    ip = fileread('C:\Secure\EyeTracker\Debug\IP.txt');
+                end
             else
                 asm = NET.addAssembly('C:\secure\code\Debug\EyeTrackerRemoteClient.dll');
                 

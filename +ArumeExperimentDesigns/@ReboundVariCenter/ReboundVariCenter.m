@@ -13,6 +13,10 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
         function dlg = GetOptionsDialog( this, importing )
             dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
             
+            dlg.ScreenWidth = { 121 '* (cm)' [1 3000] };
+            dlg.ScreenHeight = { 68 '* (cm)' [1 3000] };
+            dlg.ScreenDistance = { 60 '* (cm)' [1 3000] };
+            
             dlg.TargetSize = 0.3;
             dlg.InitialFixaitonDuration = 10;
             dlg.EccentricDuration       = 30;
@@ -32,6 +36,8 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
         end
         
         function initExperimentDesign( this  )
+            this.DisplayVariableSelection = {'TrialNumber' 'TrialResult' 'TypeOfTrial' 'Side' 'CenterLocation' 'TimeFlashes'};
+        
             this.HitKeyBeforeTrial = 1;
             this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness;
             
@@ -108,24 +114,30 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 
                 %-- add here the trial code
                 
-                if (strcmp(thisTrialData.TypeOfTrial , 'Rebound') )
+                if (thisTrialData.TypeOfTrial == 'Rebound') 
                     totalDuration = this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration + this.ExperimentOptions.CenterDuration;
                 else
                     totalDuration = this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.CenterDuration;
                 end
+                
+                nflashes =  ceil((this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration + this.ExperimentOptions.CenterDuration)/this.ExperimentOptions.FlashingPeriodMs*1000);
+                thisTrialData.TimeFlashes = nan(1,nflashes);
+                
                 lastFlipTime        = GetSecs;
                 secondsRemaining    = totalDuration;
-                startLoopTime = lastFlipTime;
+                thisTrialData.TimeStartLoop = lastFlipTime;
                 
                 if ( ~isempty(this.eyeTracker) )
                     thisTrialData.EyeTrackerFrameStartLoop = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_LOOP %d %d', thisTrialData.TrialNumber, thisTrialData.Condition) );
                 end
                 
-                    sound1 = 0;
-                    sound2 = 0;
+                
+                sound1 = 0;
+                sound2 = 0;
+                nFlashCounter = 1;
                 while secondsRemaining > 0
                     
-                    secondsElapsed      = GetSecs - startLoopTime;
+                    secondsElapsed      = GetSecs - thisTrialData.TimeStartLoop;
                     secondsRemaining    = totalDuration - secondsElapsed;
                     
                     
@@ -133,47 +145,55 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                     % --- Drawing of stimulus -----------------------------------------
                     % -----------------------------------------------------------------
                     
-                    initialFixationPeriod = secondsElapsed < this.ExperimentOptions.InitialFixaitonDuration;
+                    isInitialFixationPeriod = secondsElapsed < this.ExperimentOptions.InitialFixaitonDuration;
                     if ( strcmp(thisTrialData.TypeOfTrial , 'Rebound') )
-                        eccentricFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration && secondsElapsed < (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
-                        variCenterFixationPeriod = secondsElapsed >= (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
+                        isEccentricFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration && secondsElapsed < (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
+                        isVariCenterFixationPeriod = secondsElapsed >= (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
                     else
-                        eccentricFixationPeriod = 0;
-                        variCenterFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration;
+                        isEccentricFixationPeriod = 0;
+                        isVariCenterFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration;
                     end
                                         
-                    if ( initialFixationPeriod )
-                        xdeg = 0;
-                        ydeg = 0;
-                    elseif ( eccentricFixationPeriod )
+                    if ( isInitialFixationPeriod )
+                        
+                        thisTrialData.Xdeg = 0;
+                        thisTrialData.Ydeg = 0;
+                        
+                    elseif ( isEccentricFixationPeriod )
                         
                         if (sound1==0) 
                             sound(sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   ), 8192);
                             sound1=1;
+                            thisTrialData.EyeTrackerFrameStartEccectric = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_ECCENTRIC %d', thisTrialData.TrialNumber) );
+                            thisTrialData.TimeStartEccentric = GetSecs;
                         end
                         
                         switch(thisTrialData.Side)
                             case 'Left'
-                                xdeg = -this.ExperimentOptions.EccentricPosition;
+                                thisTrialData.Xdeg = -this.ExperimentOptions.EccentricPosition;
                             case 'Right'
-                                xdeg = this.ExperimentOptions.EccentricPosition;
+                                thisTrialData.Xdeg = this.ExperimentOptions.EccentricPosition;
                         end
                         
-                        ydeg = 0;
-                    elseif ( variCenterFixationPeriod )
+                        thisTrialData.Ydeg = 0;
+                    
+                    elseif ( isVariCenterFixationPeriod )
                         
                         if (sound2==0) 
                             sound(sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   ), 8192);
                             sound2=1;
+                            thisTrialData.EyeTrackerFrameStartVariCenter = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_VARICENTER %d', thisTrialData.TrialNumber) );
+                            thisTrialData.TimeStartVariCenter = GetSecs;
                         end
                         
                         switch(thisTrialData.Side)
                             case 'Left'
-                                xdeg = -thisTrialData.CenterLocation;
+                                thisTrialData.Xdeg = -thisTrialData.CenterLocation;
                             case 'Right'
-                                xdeg = thisTrialData.CenterLocation;
+                                thisTrialData.Xdeg = thisTrialData.CenterLocation;
                         end
-                        ydeg = 0;
+                        thisTrialData.Ydeg = 0;
+                        
                     end
                     
                     
@@ -184,11 +204,14 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                     flashingTimer = tempFlashingTimer;
                     if ( flashCounter < this.ExperimentOptions.FlashingOnDurationFrames )
                         flashCounter = flashCounter +1;
+                        disp('flash')
+                        thisTrialData.TimeFlashes(nFlashCounter) = GetSecs;
+                        nFlashCounter = nFlashCounter+1;
                         
                         [mx, my] = RectCenter(this.Graph.wRect);
-                        xpix = mx + this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(xdeg/180*pi);
+                        xpix = mx + this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(thisTrialData.Xdeg/180*pi);
                         aspectRatio = 1;
-                        ypix = my + this.Graph.pxHeight/this.ExperimentOptions.ScreenHeight * this.ExperimentOptions.ScreenDistance * tan(ydeg/180*pi)*aspectRatio;
+                        ypix = my + this.Graph.pxHeight/this.ExperimentOptions.ScreenHeight * this.ExperimentOptions.ScreenDistance * tan(thisTrialData.Ydeg/180*pi)*aspectRatio;
                         
                         %-- Draw fixation spot
                         targetPix = this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(this.ExperimentOptions.TargetSize/180*pi);
