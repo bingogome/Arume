@@ -164,7 +164,9 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                         if (sound1==0) 
                             sound(sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   ), 8192);
                             sound1=1;
-                            thisTrialData.EyeTrackerFrameStartEccectric = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_ECCENTRIC %d', thisTrialData.TrialNumber) );
+                            if ( ~isempty(this.eyeTracker) )
+                                thisTrialData.EyeTrackerFrameStartEccectric = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_ECCENTRIC %d', thisTrialData.TrialNumber) );
+                            end
                             thisTrialData.TimeStartEccentric = GetSecs;
                         end
                         
@@ -182,7 +184,9 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                         if (sound2==0) 
                             sound(sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   ), 8192);
                             sound2=1;
-                            thisTrialData.EyeTrackerFrameStartVariCenter = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_VARICENTER %d', thisTrialData.TrialNumber) );
+                            if ( ~isempty(this.eyeTracker) )
+                                thisTrialData.EyeTrackerFrameStartVariCenter = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_VARICENTER %d', thisTrialData.TrialNumber) );
+                            end
                             thisTrialData.TimeStartVariCenter = GetSecs;
                         end
                         
