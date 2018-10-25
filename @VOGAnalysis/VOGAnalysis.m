@@ -518,7 +518,7 @@ classdef VOGAnalysis < handle
             end
             
             headSignals = {};
-            if ( sum(strcmp('Q1',calibratedData.Properties.VariableNames))>0 || sum(strcmp('Q1',calibratedData.Properties.VariableNames))>0 )
+            if ( sum(strcmp('Q1',calibratedData.Properties.VariableNames))>0 || sum(strcmp('HeadQ1',calibratedData.Properties.VariableNames))>0 )
                 headSignals{end+1} = 'Q1';
                 headSignals{end+1} = 'Q2';
                 headSignals{end+1} = 'Q3';
@@ -587,7 +587,7 @@ classdef VOGAnalysis < handle
                 droppedFrames(notDroppedFrames) = 0;
                 interpolableFrames = droppedFrames-imopen(droppedFrames,ones(3)); % 1 or 2 frames in a row, not more
                 
-                % create the new continuos FrameNumber and Time variables
+                % create the new continuos FrameNumber and Time variables 
                 % but also save the original raw frame numbers and time
                 % stamps with NaNs in the dropped frames.
                 cleanedData.FrameNumber     = (1:max(notDroppedFrames))';
@@ -713,12 +713,12 @@ classdef VOGAnalysis < handle
                     % interpolated
                     % find spikes of bad data. Single bad samples surrounded by at least 2
                     % good samples to each side
-                    spikes  = badData   & ( boxcar(~badData, 3)*3 >= 2 );
-                    spikest = badDataT  & ( boxcar(~badDataT,3)*3 >= 2 );
+                    spikes  = badData & ( boxcar(~badData, 3)*3 >= 2 );
+                    spikest = badDataT & ( boxcar(~badData, 3)*3 >= 2 );
                     
                     % TODO: maybe better than blink span find the first N samples
                     % around the blink that are wihtin a more stringent criteria
-                    badData  = boxcar( badData  & ~spikes,  round(params.blinkSpan/1000*rawSampleRate))>0;
+                    badData  = boxcar( badData  & ~spikes, round(params.blinkSpan/1000*rawSampleRate))>0;
                     badDataT = boxcar( badDataT & ~spikest, round(params.blinkSpan/1000*rawSampleRate))>0;
                     
                     cleanedData.([eyes{i} 'Spikes']) = spikes;
@@ -794,7 +794,7 @@ classdef VOGAnalysis < handle
                 resampledData.Properties.UserData.sampleRate = resampleRate;
                 resampledData.Properties.UserData.params = params;
                 if (1) % TODO: this may need to be optional eventually for memory issues
-                    resampledData.Properties.UserData.cleandData = cleanedData;
+                    resampledData.Properties.UserData.cleanedData = cleanedData;
                     resampledData.Properties.UserData.calibratedData = calibratedData;
                 end
                 

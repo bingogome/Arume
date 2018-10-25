@@ -77,7 +77,10 @@ classdef EyeTrackingOtosuite  < ArumeExperimentDesigns.EyeTracking
             %             calibratedData = [calibratedData headData];
             
             [calibratedData, rawPixelData] = LoadRawData(rawFilePath);   
-                        
+            inds  = find(diff(calibratedData.Time)==0);
+            if numel(inds)>1
+                error('Timing Overlap');
+            end
             % FOR SAI do not change this creates the nice cleaned data
             params   = VOGAnalysis.GetParameters();
             rawData  = VOGAnalysis.ResampleAndCleanData(calibratedData,params);
@@ -86,7 +89,8 @@ classdef EyeTrackingOtosuite  < ArumeExperimentDesigns.EyeTracking
         
         function optionsDlg = GetAnalysisOptionsDialog(this)
             optionsDlg = GetAnalysisOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
-            
+            optionsDlg.SPV_Simple = { {'{0}','1'} };
+            optionsDlg.SPV_QP_SP = { {'{0}','1'} };
             % add options for analysis
         end
         
@@ -95,7 +99,102 @@ classdef EyeTrackingOtosuite  < ArumeExperimentDesigns.EyeTracking
             [analysisResults, samplesDataTable, trialDataTable, sessionTable]  =  RunDataAnalyses@ArumeExperimentDesigns.EyeTracking(this, analysisResults, samplesDataTable, trialDataTable, sessionTable, options);
             
             % fill in with new analysis for otosuite data
-            analysisResults.SPV = [];
+             if ( options.SPV_Simple )
+                analysisResults.SPV_Simple = table();
+                
+                T = samplesDataTable.Properties.UserData.sampleRate;
+                analysisResults.SPV_Simple.Time = samplesDataTable.Time(T/2:T:end);
+                fields = {'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
+                
+                t = samplesDataTable.Time;
+                %
+                % calculate monocular spv
+                %
+                for j =1:length(fields)                    
+                    if ismember(fields{j}, samplesDataTable.Properties.VariableNames) 
+                        
+                        [vmed, xmed] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(fields{j}));
+                        
+                        analysisResults.SPV_Simple.(fields{j}) = vmed(T/2:T:end);
+                        analysisResults.SPV_Simple.([fields{j} 'Pos']) = xmed(T/2:T:end);   
+                        
+                    end                    
+                end                
+                %
+                % calculate binocular spv
+                %
+                LRdataVars = {'X' 'Y' 'T'};
+                for j =1:length(LRdataVars)
+                    if ismember(fields{j}, samplesDataTable.Properties.VariableNames) && ismember(fields{j+3}, samplesDataTable.Properties.VariableNames)
+                        
+                        [vleft, xleft] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(['Left' LRdataVars{j}]));
+                        [vright, xright] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(['Right' LRdataVars{j}]));
+                        
+                        vmed = nanmedfilt(nanmean([vleft, vright],2),T,1/2);
+                        xmed = nanmedfilt(nanmean([xleft, xright],2),T,1/2);
+                        
+                        analysisResults.SPV_Simple.(LRdataVars{j}) = vmed(T/2:T:end);
+                        analysisResults.SPV_Simple.([LRdataVars{j} 'Pos']) = xmed(T/2:T:end);
+                    
+                    elseif ismember(fields{j}, samplesDataTable.Properties.VariableNames) && ~ismember(fields{j+3}, samplesDataTable.Properties.VariableNames)
+                        
+                        [vleft, xleft] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(['Left' LRdataVars{j}]));
+                       
+                        analysisResults.SPV_Simple.(LRdataVars{j}) = vleft(T/2:T:end);
+                        analysisResults.SPV_Simple.([LRdataVars{j} 'Pos']) = xleft(T/2:T:end);
+                        
+                    elseif ~ismember(fields{j}, samplesDataTable.Properties.VariableNames) && ismember(fields{j+3}, samplesDataTable.Properties.VariableNames)
+
+                        [vright, xright] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(['Right' LRdataVars{j}]));
+                       
+                        analysisResults.SPV_Simple.(LRdataVars{j}) = vright(T/2:T:end);
+                        analysisResults.SPV_Simple.([LRdataVars{j} 'Pos']) = xright(T/2:T:end);                       
+                            
+                    end
+                end  
+                
+             end
+            
+             
+             if ( options.SPV_QP_SP )
+                 
+                 analysisResults.SPV_QP_SP = table();
+                 
+                 T = samplesDataTable.Properties.UserData.sampleRate;
+                 analysisResults.SPV_QP_SP.Time = samplesDataTable.Time(T/2:T:end);
+                 fields = {'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
+                 
+                 for j = 1:length(fields)
+                     if ismember(fields{j}, samplesDataTable.Properties.VariableNames)
+                         
+                         % calculate SPV using the QP and SP detection
+                         spv = diff(samplesDataTable.(fields{j}))./diff(samplesDataTable.Time);
+                         
+%                          for i =1:height(analysisResults.QuickPhases)
+                            spv(analysisResults.QuickPhases.StartIndex:analysisResults.QuickPhases.EndIndex) = nan;
+%                          end
+                         
+                         secondPassMedfiltWindow         = 1;    %s
+                         secondPassMedfiltNanFraction    = 0.5;   %
+                         spv = nanmedfilt(spv,T*secondPassMedfiltWindow,secondPassMedfiltNanFraction);
+                         spv = spv(T/2:T:end);
+                         
+                         analysisResults.SPV_QP_SP.(fields{j}) = spv;
+                         clear spv
+                     end
+                 end
+
+             end
+             
+             
+             load(sessionTable.Option_SpvDataFile);
+             analysisResults.SPV_Otosuite = spv;
+             if ismember('TR',analysisResults.SPV_Otosuite.Properties.VariableNames)
+                 analysisResults.SPV_Otosuite.Properties.VariableNames = {'Time','RightX','RightY','RightT'};
+             else
+                 analysisResults.SPV_Otosuite.Properties.VariableNames = {'Time','RightX','RightY'};
+             end
+             
         end
     end
     
