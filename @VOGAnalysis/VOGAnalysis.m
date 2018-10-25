@@ -1587,11 +1587,10 @@ classdef VOGAnalysis < handle
                         
                         newVarName = ['PrevQP_' var];
                         % if the field is already in there
-                        if ( sum(strcmp(spPrevNextTable.Properties.VariableNames,newVarName)) )
-                            spPrevNextTable.(newVarName)(i) = quickPhaseTable.(var)(prevQP1);
-                        else
+                        if (~sum(strcmp(spPrevNextTable.Properties.VariableNames,newVarName)) )
                             spPrevNextTable.(newVarName) = nan(size(slowPhaseTable.StartIndex));
                         end
+                        spPrevNextTable.(newVarName)(i) = quickPhaseTable.(var)(prevQP1);
                     end
                     
                     % look for the next quick phase that has continuos
@@ -1600,11 +1599,10 @@ classdef VOGAnalysis < handle
                         
                         newVarName = ['NextQP_' var];
                         % if the field is already in there
-                        if ( sum(strcmp(spPrevNextTable.Properties.VariableNames,newVarName)) )
-                            spPrevNextTable.(newVarName)(i) = quickPhaseTable.(var)(nextQP1);
-                        else
+                        if ( ~sum(strcmp(spPrevNextTable.Properties.VariableNames,newVarName)) )
                             spPrevNextTable.(newVarName) = nan(size(slowPhaseTable.StartIndex));
                         end
+                        spPrevNextTable.(newVarName)(i) = quickPhaseTable.(var)(nextQP1);
                     end
                 end
                 
@@ -1658,22 +1656,20 @@ classdef VOGAnalysis < handle
                         
                         newVarName = ['PrevSP_' var];
                         % if the field is already in there
-                        if ( sum(strcmp(qpPrevNextTable.Properties.VariableNames,newVarName)) )
-                            qpPrevNextTable.(newVarName)(i) = slowPhaseTable.(var)(prevSP1);
-                        else
+                        if ( ~sum(strcmp(qpPrevNextTable.Properties.VariableNames,newVarName)) )
                             qpPrevNextTable.(newVarName) = nan(height(qpPrevNextTable));
                         end
+                        qpPrevNextTable.(newVarName)(i) = slowPhaseTable.(var)(prevSP1);
                     end
                     
                     if (~isempty(nextSP1) && sum(badSamples(nextIntervalIdx)) == 0)
                         
                         newVarName = ['NextSP_' var];
                         % if the field is already in there
-                        if ( sum(strcmp(qpPrevNextTable.Properties.VariableNames,newVarName)) )
-                            qpPrevNextTable.(newVarName)(i) = slowPhaseTable.(var)(nextSP1);
-                        else
+                        if ( ~sum(strcmp(qpPrevNextTable.Properties.VariableNames,newVarName)) )
                             qpPrevNextTable.(newVarName) = nan(height(qpPrevNextTable));
                         end
+                        qpPrevNextTable.(newVarName)(i) = slowPhaseTable.(var)(nextSP1);
                     end
                 end
                 
