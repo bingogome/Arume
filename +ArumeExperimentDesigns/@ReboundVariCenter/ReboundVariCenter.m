@@ -17,7 +17,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             dlg.ScreenHeight = { 68 '* (cm)' [1 3000] };
             dlg.ScreenDistance = { 60 '* (cm)' [1 3000] };
             
-            dlg.TargetSize = 0.3;
+            dlg.TargetSize = 0.5;
             dlg.InitialFixaitonDuration = 10;
             dlg.EccentricDuration       = 30;
             dlg.CenterDuration          = 20;
@@ -25,7 +25,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             dlg.EccentricPosition = 40;
             dlg.EccentricFlashing = {{'{Yes}' 'No'}};
             dlg.FlashingPeriodMs = 750;
-            dlg.FlashingOnDurationFrames = 1;
+            dlg.FlashingOnDurationFrames = 2;
             
             dlg.NumberOfRepetitions = 5;
             
@@ -52,11 +52,11 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, ...
             
-            if (strcmp(this.ExperimentOptions.InterleaveCalibration , 'Yes') )
-                this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
-                this.blocksToRun = 7;
+            if (this.ExperimentOptions.InterleaveCalibration == 'Yes')
+                this.trialsPerSession = 18*6/2;
+                this.trialsBeforeBreak = 9;
+                this.blocksToRun = 6;
                 this.blocks = [ ...
-                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
                     struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
                     struct( 'fromCondition', 19,    'toCondition', 36, 'trialsToRun', 18 )...
                     struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
@@ -76,11 +76,11 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             %-- condition variables ---------------------------------------
             i= 0;
             
-            if (strcmp(this.ExperimentOptions.CenterLocationRange , 'Minus20to30') )
+            if (this.ExperimentOptions.CenterLocationRange == 'Minus20to30') 
                 i = i+1;
                 conditionVars(i).name   = 'CenterLocation';
                 conditionVars(i).values = [-20:10:30];
-            elseif (strcmp(this.ExperimentOptions.CenterLocationRange , 'Minus40to40') )
+            elseif (this.ExperimentOptions.CenterLocationRange == 'Minus40to40')
                 i = i+1;
                 conditionVars(i).name   = 'CenterLocation';
                 conditionVars(i).values = [-40:10:40];
@@ -90,7 +90,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             conditionVars(i).name   = 'Side';
             conditionVars(i).values = {'Left' 'Right'};
             
-            if (strcmp(this.ExperimentOptions.InterleaveCalibration , 'Yes') )
+            if (this.ExperimentOptions.InterleaveCalibration == 'Yes')
                 i = i+1;
                 conditionVars(i).name   = 'TypeOfTrial';
                 conditionVars(i).values = {'Rebound' 'Calibration'};
@@ -104,7 +104,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 Enum = ArumeCore.ExperimentDesign.getEnum();
                 
                 % prepare sound
-                beepSound1 = sin( (1:round(0.2*8192))  *  (2*pi*500/8192)   );
+                beepSound1 = sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   );
                 beepSound2 = [beepSound1 zeros(size(beepSound1)) beepSound1];
                 beepSound3 = [beepSound1 zeros(size(beepSound1)) beepSound1 zeros(size(beepSound1)) beepSound1];
                 FsSound = 8192;
@@ -127,7 +127,6 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 end
                 
                 nflashes =  ceil((this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration + this.ExperimentOptions.CenterDuration)/this.ExperimentOptions.FlashingPeriodMs*1000);
-                thisTrialData.TimeFlashes = nan(1,nflashes*this.ExperimentOptions.FlashingOnDurationFrames);
                 
                 lastFlipTime        = GetSecs;
                 secondsRemaining    = totalDuration;
@@ -141,7 +140,6 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 sound1 = 0;
                 sound2 = 0;
                 sound3 = 0;
-                nFlashCounter = 1;
                 while secondsRemaining > 0
                     
                     secondsElapsed      = GetSecs - thisTrialData.TimeStartLoop;
@@ -153,9 +151,9 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                     % -----------------------------------------------------------------
                     
                     isInitialFixationPeriod = secondsElapsed < this.ExperimentOptions.InitialFixaitonDuration;
-                    if ( strcmp(thisTrialData.TypeOfTrial , 'Rebound') )
+                    if ( thisTrialData.TypeOfTrial == 'Rebound' )
                         isEccentricFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration && secondsElapsed < (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
-                        isVariCenterFixationPeriod = secondsElapsed >= (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
+                        isVariCenterFixationPeriod = secondsElapsed >= ( this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
                     else
                         isEccentricFixationPeriod = 0;
                         isVariCenterFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration;
@@ -220,10 +218,6 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                     flashingTimer = tempFlashingTimer;
                     if ( flashCounter < this.ExperimentOptions.FlashingOnDurationFrames )
                         flashCounter = flashCounter +1;
-                        disp('flash')
-                        thisTrialData.TimeFlashes(nFlashCounter) = GetSecs;
-                        diff(thisTrialData.TimeFlashes(1:20)')
-                        nFlashCounter = nFlashCounter+1;
                         
                         [mx, my] = RectCenter(this.Graph.wRect);
                         xpix = mx + this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(thisTrialData.Xdeg/180*pi);
