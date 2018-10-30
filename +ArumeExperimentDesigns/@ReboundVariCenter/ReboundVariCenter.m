@@ -265,6 +265,14 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
         end        
     end
     
+    methods
+        function trialTable = GetTrialTable(this)
+            trialTable = GetTrialTable@ArumeCore.ExperimentDesign(this);
+            a=1;
+        end
+         
+    end
+    
     % --------------------------------------------------------------------
     %% Analysis methods --------------------------------------------------
     % --------------------------------------------------------------------
