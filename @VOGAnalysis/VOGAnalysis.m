@@ -594,7 +594,8 @@ classdef VOGAnalysis < handle
                 cleanedData.Time            = (cleanedData.FrameNumber-1)/rawSampleRate;
                 cleanedData.RawFrameNumber  = nan(height(cleanedData), 1);
                 cleanedData.RawTime         = nan(height(cleanedData), 1);
-                cleanedData.RawFrameNumber(notDroppedFrames) = calibratedData.FrameNumberRaw;
+                cleanedData.RawFrameNumber(notDroppedFrames)        = calibratedData.FrameNumber;
+                cleanedData.RawCameraFrameNumber(notDroppedFrames)  = calibratedData.FrameNumberRaw;
                 cleanedData.RawTime(notDroppedFrames)        = calibratedData.Time;
                 cleanedData.DroppedFrame    = droppedFrames;
                 
@@ -770,6 +771,7 @@ classdef VOGAnalysis < handle
                 rest = (0:1/resampleRate:max(t))';
                 resampledData.Time = rest;
                 resampledData.RawFrameNumber = interp1(t(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),cleanedData.RawFrameNumber(~isnan(cleanedData.RawFrameNumber) & ~isnan(t)),rest,'nearest');
+                resampledData.RawCameraFrameNumber = interp1(t(~isnan(cleanedData.RawCameraFrameNumber) & ~isnan(t)),cleanedData.RawCameraFrameNumber(~isnan(cleanedData.RawCameraFrameNumber) & ~isnan(t)),rest,'nearest');
                 resampledData.FrameNumber = interp1(t(~isnan(cleanedData.FrameNumber) & ~isnan(t)),cleanedData.FrameNumber(~isnan(cleanedData.FrameNumber) & ~isnan(t)),rest,'nearest');
                 for i=1:length(eyes)
                     for j=1:length(eyeSignals)
@@ -1710,7 +1712,7 @@ classdef VOGAnalysis < handle
             samplerate = round(mean(1./diff(timeSec)));
             
             % get the velocity
-            spv = diff(position)./diff(timeSec);
+            spv = [0;(diff(position)./diff(timeSec))];
             
             % first past at finding quick phases (>100 deg/s)
             qp = boxcar(abs(spv)>firstPassVThrehold | isnan(spv), firstPassPadding*samplerate/1000)>0;
