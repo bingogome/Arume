@@ -768,6 +768,12 @@ classdef ExperimentDesign < handle
     
     methods ( Static = true )
         
+        function options = GetDefaultExperimentOptions(experiment)
+            experiment = ArumeCore.ExperimentDesign.Create(experiment);
+            optionsDlg = experiment.GetExperimentOptionsDialog( );
+            options = StructDlg(optionsDlg,'',[],[],'off');
+        end
+            
         function experimentList = GetExperimentList()
             experimentList = {};
             

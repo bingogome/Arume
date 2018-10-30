@@ -44,26 +44,23 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             this.trialDuration = 60; %seconds
             
             % default parameters of any experiment
-            this.trialSequence = 'Random';	% Sequential, Random, Random with repetition, ...
-            
             this.trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
-            this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, ...
             
-            if (this.ExperimentOptions.InterleaveCalibration == 'Yes')
+            if (strcmp(this.ExperimentOptions.InterleaveCalibration, 'Yes'))
+                this.trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
                 this.trialsPerSession = 18*6/2;
-                this.trialsBeforeBreak = 9;
-                this.blocksToRun = 6;
+                this.trialsBeforeBreak = 11;
+                this.blocksToRun = 3;
                 this.blocks = [ ...
                     struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
-                    struct( 'fromCondition', 19,    'toCondition', 36, 'trialsToRun', 18 )...
                     struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
-                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
-                    struct( 'fromCondition', 19,    'toCondition', 36, 'trialsToRun', 18 )...
-                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )];
+                    struct( 'fromCondition', 19,    'toCondition', 36, 'trialsToRun', 18 )];
+                this.numberOfTimesRepeatBlockSequence = ceil(this.ExperimentOptions.NumberOfRepetitions/2);
             else
+                this.trialSequence = 'Random';	% Sequential, Random, Random with repetition, ...
                 this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
                 this.numberOfTimesRepeatBlockSequence = this.ExperimentOptions.NumberOfRepetitions;
                 this.blocksToRun = 1;
@@ -90,7 +87,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             conditionVars(i).name   = 'Side';
             conditionVars(i).values = {'Left' 'Right'};
             
-            if (this.ExperimentOptions.InterleaveCalibration == 'Yes')
+            if (strcmp(this.ExperimentOptions.InterleaveCalibration, 'Yes'))
                 i = i+1;
                 conditionVars(i).name   = 'TypeOfTrial';
                 conditionVars(i).values = {'Rebound' 'Calibration'};
@@ -261,10 +258,18 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
     
     methods
         function trialTable = GetTrialTable(this)
+            % Randomizes the table in a different way
             trialTable = GetTrialTable@ArumeCore.ExperimentDesign(this);
-            a=1;
+            sessions = unique(trialTable.Session);
+            for i=1:length(sessions)
+                session = sessions(i);
+                subtable = trialTable(trialTable.Session==session,:);
+                subtable = subtable(Shuffle(1:sum(trialTable.Session==session)),:);
+                trialTable(trialTable.Session==session,:) = subtable;
+            end
+            trialTable.BlockNumber = trialTable.Session;
+            trialTable.BlockSequenceNumber = trialTable.Session;
         end
-         
     end
     
     % --------------------------------------------------------------------

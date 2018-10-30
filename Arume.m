@@ -449,9 +449,7 @@ classdef Arume < handle
         end
         
         function options = getDefaultExperimentOptions(this, experiment)
-            experiment = ArumeCore.ExperimentDesign.Create(experiment);
-            optionsDlg = experiment.GetExperimentOptionsDialog( );
-            options = StructDlg(optionsDlg,'',[],[],'off');
+            options = ArumeCore.ExperimentDesign.GetDefaultExperimentOptions(experiment);
         end
         
         function dlg = getAnalysisOptions(this, sessions)
