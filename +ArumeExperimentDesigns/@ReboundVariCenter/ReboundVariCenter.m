@@ -102,8 +102,14 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             try
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
-               
                 
+                % prepare sound
+                beepSound1 = sin( (1:round(0.2*8192))  *  (2*pi*500/8192)   );
+                beepSound2 = [beepSound1 zeros(size(beepSound1)) beepSound1];
+                beepSound3 = [beepSound1 zeros(size(beepSound1)) beepSound1 zeros(size(beepSound1)) beepSound1];
+                FsSound = 8192;
+                
+                    
                 graph = this.Graph;
                 
                 trialResult = Enum.trialResult.CORRECT;
@@ -121,7 +127,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 end
                 
                 nflashes =  ceil((this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration + this.ExperimentOptions.CenterDuration)/this.ExperimentOptions.FlashingPeriodMs*1000);
-                thisTrialData.TimeFlashes = nan(1,nflashes);
+                thisTrialData.TimeFlashes = nan(1,nflashes*this.ExperimentOptions.FlashingOnDurationFrames);
                 
                 lastFlipTime        = GetSecs;
                 secondsRemaining    = totalDuration;
@@ -134,6 +140,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 
                 sound1 = 0;
                 sound2 = 0;
+                sound3 = 0;
                 nFlashCounter = 1;
                 while secondsRemaining > 0
                     
@@ -153,17 +160,22 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                         isEccentricFixationPeriod = 0;
                         isVariCenterFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration;
                     end
-                                        
+                    
                     if ( isInitialFixationPeriod )
                         
                         thisTrialData.Xdeg = 0;
                         thisTrialData.Ydeg = 0;
                         
+                        if (sound1==0) 
+                            sound(beepSound1, FsSound);
+                            sound1=1;
+                        end
+                        
                     elseif ( isEccentricFixationPeriod )
                         
-                        if (sound1==0) 
-                            sound(sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   ), 8192);
-                            sound1=1;
+                        if (sound2==0) 
+                            sound(beepSound2, FsSound);
+                            sound2=1;
                             if ( ~isempty(this.eyeTracker) )
                                 thisTrialData.EyeTrackerFrameStartEccectric = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_ECCENTRIC %d', thisTrialData.TrialNumber) );
                             end
@@ -181,9 +193,9 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                     
                     elseif ( isVariCenterFixationPeriod )
                         
-                        if (sound2==0) 
-                            sound(sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   ), 8192);
-                            sound2=1;
+                        if (sound3==0) 
+                            sound(beepSound3, FsSound);
+                            sound3=1;
                             if ( ~isempty(this.eyeTracker) )
                                 thisTrialData.EyeTrackerFrameStartVariCenter = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_VARICENTER %d', thisTrialData.TrialNumber) );
                             end
@@ -210,6 +222,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                         flashCounter = flashCounter +1;
                         disp('flash')
                         thisTrialData.TimeFlashes(nFlashCounter) = GetSecs;
+                        diff(thisTrialData.TimeFlashes(1:20)')
                         nFlashCounter = nFlashCounter+1;
                         
                         [mx, my] = RectCenter(this.Graph.wRect);
