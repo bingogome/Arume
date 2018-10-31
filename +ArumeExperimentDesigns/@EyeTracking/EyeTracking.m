@@ -83,7 +83,9 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             end
                 
             variables.EyeTrackerFrameNumberTrialStart = this.eyeTracker.RecordEvent(sprintf('TRIAL_START %d %d', variables.TrialNumber, variables.Condition) );
+            variables.FileNumber = length(this.Session.currentRun.LinkedFiles.vogDataFile)+1;
         end
+        
         function variables = TrialStopCallBack(this, variables)
             if ( ~this.eyeTracker.IsRecording )
                 ME = MException('ArumeHardware.VOG:NotRecording', 'The eye tracker is not recording.');
@@ -193,12 +195,16 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
             s = this.Session.samplesDataTable;
             
-            % Find the file number that corresponds with each trial. Not a
-            % super clean way of doing it. 
-            % TODO: take into account crashes and all the other
-            % posibilities.
-            fn = cumsum(this.Session.currentRun.pastTrialTable.TrialResult=='QUIT')+1;
-            trialDataTable.FileNumber = fn(this.Session.currentRun.pastTrialTable.TrialResult=='CORRECT');
+            if ( ~any(strcmp(trialDataTable.Properties.VariableNames,'FileNumber')) )
+                % Find the file number that corresponds with each trial. Not a
+                % super clean way of doing it.
+                % TODO: take into account crashes and all the other
+                % posibilities.
+                fn = cumsum(this.Session.currentRun.pastTrialTable.TrialResult=='QUIT')+1;
+                trialDataTable.FileNumber = fn(this.Session.currentRun.pastTrialTable.TrialResult=='CORRECT');
+                 trialDataTable.FileNumber(11:end) = trialDataTable.FileNumber(11:end) -1;
+                 trialDataTable.FileNumber(45:end) = trialDataTable.FileNumber(45:end) +1;
+            end
             
             if ( ~isempty( s) )
                 if ( any(strcmp(trialDataTable.Properties.VariableNames,'EyeTrackerFrameNumberTrialStart')) )
