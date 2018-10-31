@@ -188,8 +188,12 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                     
                     elseif ( isVariCenterFixationPeriod )
                         
-                        if (sound3==0) 
-                            sound(beepSound3, FsSound);
+                        if (sound3==0)
+                            if ( thisTrialData.TypeOfTrial == 'Rebound' )
+                                sound(beepSound3, FsSound);
+                            else
+                                sound(beepSound2, FsSound);
+                            end
                             sound3=1;
                             if ( ~isempty(this.eyeTracker) )
                                 thisTrialData.EyeTrackerFrameStartVariCenter = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_VARICENTER %d', thisTrialData.TrialNumber) );
