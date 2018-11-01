@@ -83,7 +83,9 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             end
                 
             variables.EyeTrackerFrameNumberTrialStart = this.eyeTracker.RecordEvent(sprintf('TRIAL_START %d %d', variables.TrialNumber, variables.Condition) );
+            variables.FileNumber = length(this.Session.currentRun.LinkedFiles.vogDataFile)+1;
         end
+        
         function variables = TrialStopCallBack(this, variables)
             if ( ~this.eyeTracker.IsRecording )
                 ME = MException('ArumeHardware.VOG:NotRecording', 'The eye tracker is not recording.');
@@ -193,27 +195,35 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
             s = this.Session.samplesDataTable;
             
+            if ( ~any(strcmp(trialDataTable.Properties.VariableNames,'FileNumber')) )
+                % Find the file number that corresponds with each trial. Not a
+                % super clean way of doing it.
+                % TODO: take into account crashes and all the other
+                % posibilities.
+                fn = cumsum(this.Session.currentRun.pastTrialTable.TrialResult=='QUIT')+1;
+                trialDataTable.FileNumber = fn(this.Session.currentRun.pastTrialTable.TrialResult=='CORRECT');
+                 trialDataTable.FileNumber(11:end) = trialDataTable.FileNumber(11:end) -1;
+                 trialDataTable.FileNumber(45:end) = trialDataTable.FileNumber(45:end) +1;
+            end
+            
             if ( ~isempty( s) )
                 if ( any(strcmp(trialDataTable.Properties.VariableNames,'EyeTrackerFrameNumberTrialStart')) )
                     ft = trialDataTable.EyeTrackerFrameNumberTrialStart;
                     fte = trialDataTable.EyeTrackerFrameNumberTrialStop;
                 else
                     if ( any(ismember(s.Properties.VariableNames,'FrameNumber')) )
-                        ft = s.FrameNumber(1);
-                        fte = s.FrameNumber(end);
+                        ft = s.RawFrameNumber(1);
+                        fte = s.RawFrameNumber(end);
                     end
                 end
                 
                 if ( exist( 'ft' , 'var') )
-                    % BIG TODO:!!!!  Match timestamps with samples of the
-                    % corresponding file. careful with this!
-                    
                     % Find the samples that mark the begining and ends of trials
                     trialDataTable.SampleStartTrial = nan(size(trialDataTable.TrialNumber));
                     s.TrialNumber = nan(size(s.FrameNumber));
                     for i=1:height(trialDataTable)
-                        trialDataTable.SampleStartTrial(i) = find(s.FrameNumber'==ft(i),1,'first');
-                        trialDataTable.SampleStopTrial(i) = find(s.FrameNumber'==fte(i),1,'first');
+                        trialDataTable.SampleStartTrial(i) = find(s.FileNumber' == trialDataTable.FileNumber(i) & s.RawFrameNumber'==ft(i),1,'first');
+                        trialDataTable.SampleStopTrial(i) = find(s.FileNumber' == trialDataTable.FileNumber(i) & s.RawFrameNumber'==fte(i),1,'first');
                         idx = trialDataTable.SampleStartTrial(i):trialDataTable.SampleStopTrial(i);
                         s.TrialNumber(idx) = trialDataTable.TrialNumber(i);
                     end

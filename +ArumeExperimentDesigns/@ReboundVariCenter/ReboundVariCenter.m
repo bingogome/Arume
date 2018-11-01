@@ -13,7 +13,11 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
         function dlg = GetOptionsDialog( this, importing )
             dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
             
-            dlg.TargetSize = 0.3;
+            dlg.ScreenWidth = { 121 '* (cm)' [1 3000] };
+            dlg.ScreenHeight = { 68 '* (cm)' [1 3000] };
+            dlg.ScreenDistance = { 60 '* (cm)' [1 3000] };
+            
+            dlg.TargetSize = 0.5;
             dlg.InitialFixaitonDuration = 10;
             dlg.EccentricDuration       = 30;
             dlg.CenterDuration          = 20;
@@ -21,7 +25,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             dlg.EccentricPosition = 40;
             dlg.EccentricFlashing = {{'{Yes}' 'No'}};
             dlg.FlashingPeriodMs = 750;
-            dlg.FlashingOnDurationFrames = 1;
+            dlg.FlashingOnDurationFrames = 2;
             
             dlg.NumberOfRepetitions = 5;
             
@@ -32,32 +36,31 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
         end
         
         function initExperimentDesign( this  )
+            this.DisplayVariableSelection = {'TrialNumber' 'TrialResult' 'TypeOfTrial' 'Side' 'CenterLocation' 'TimeFlashes'};
+        
             this.HitKeyBeforeTrial = 1;
             this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness;
             
             this.trialDuration = 60; %seconds
             
             % default parameters of any experiment
-            this.trialSequence = 'Random';	% Sequential, Random, Random with repetition, ...
-            
             this.trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
-            this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, ...
             
-            if (strcmp(this.ExperimentOptions.InterleaveCalibration , 'Yes') )
-                this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
-                this.blocksToRun = 7;
+            if (strcmp(this.ExperimentOptions.InterleaveCalibration, 'Yes'))
+                this.trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
+                this.trialsPerSession = 18*6/2;
+                this.trialsBeforeBreak = 11;
+                this.blocksToRun = 3;
                 this.blocks = [ ...
                     struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
                     struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
-                    struct( 'fromCondition', 19,    'toCondition', 36, 'trialsToRun', 18 )...
-                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
-                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
-                    struct( 'fromCondition', 19,    'toCondition', 36, 'trialsToRun', 18 )...
-                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )];
+                    struct( 'fromCondition', 19,    'toCondition', 36, 'trialsToRun', 18 )];
+                this.numberOfTimesRepeatBlockSequence = ceil(this.ExperimentOptions.NumberOfRepetitions/2);
             else
+                this.trialSequence = 'Random';	% Sequential, Random, Random with repetition, ...
                 this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
                 this.numberOfTimesRepeatBlockSequence = this.ExperimentOptions.NumberOfRepetitions;
                 this.blocksToRun = 1;
@@ -70,11 +73,11 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             %-- condition variables ---------------------------------------
             i= 0;
             
-            if (strcmp(this.ExperimentOptions.CenterLocationRange , 'Minus20to30') )
+            if (this.ExperimentOptions.CenterLocationRange == 'Minus20to30') 
                 i = i+1;
                 conditionVars(i).name   = 'CenterLocation';
                 conditionVars(i).values = [-20:10:30];
-            elseif (strcmp(this.ExperimentOptions.CenterLocationRange , 'Minus40to40') )
+            elseif (this.ExperimentOptions.CenterLocationRange == 'Minus40to40')
                 i = i+1;
                 conditionVars(i).name   = 'CenterLocation';
                 conditionVars(i).values = [-40:10:40];
@@ -84,7 +87,7 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             conditionVars(i).name   = 'Side';
             conditionVars(i).values = {'Left' 'Right'};
             
-            if (strcmp(this.ExperimentOptions.InterleaveCalibration , 'Yes') )
+            if (strcmp(this.ExperimentOptions.InterleaveCalibration, 'Yes'))
                 i = i+1;
                 conditionVars(i).name   = 'TypeOfTrial';
                 conditionVars(i).values = {'Rebound' 'Calibration'};
@@ -96,8 +99,14 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             try
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
-               
                 
+                % prepare sound
+                beepSound1 = sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   );
+                beepSound2 = [beepSound1 zeros(size(beepSound1)) beepSound1];
+                beepSound3 = [beepSound1 zeros(size(beepSound1)) beepSound1 zeros(size(beepSound1)) beepSound1];
+                FsSound = 8192;
+                
+                    
                 graph = this.Graph;
                 
                 trialResult = Enum.trialResult.CORRECT;
@@ -108,24 +117,29 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                 
                 %-- add here the trial code
                 
-                if (strcmp(thisTrialData.TypeOfTrial , 'Rebound') )
+                if (thisTrialData.TypeOfTrial == 'Rebound') 
                     totalDuration = this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration + this.ExperimentOptions.CenterDuration;
                 else
                     totalDuration = this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.CenterDuration;
                 end
+                
+                nflashes =  ceil((this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration + this.ExperimentOptions.CenterDuration)/this.ExperimentOptions.FlashingPeriodMs*1000);
+                
                 lastFlipTime        = GetSecs;
                 secondsRemaining    = totalDuration;
-                startLoopTime = lastFlipTime;
+                thisTrialData.TimeStartLoop = lastFlipTime;
                 
                 if ( ~isempty(this.eyeTracker) )
                     thisTrialData.EyeTrackerFrameStartLoop = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_LOOP %d %d', thisTrialData.TrialNumber, thisTrialData.Condition) );
                 end
                 
-                    sound1 = 0;
-                    sound2 = 0;
+                
+                sound1 = 0;
+                sound2 = 0;
+                sound3 = 0;
                 while secondsRemaining > 0
                     
-                    secondsElapsed      = GetSecs - startLoopTime;
+                    secondsElapsed      = GetSecs - thisTrialData.TimeStartLoop;
                     secondsRemaining    = totalDuration - secondsElapsed;
                     
                     
@@ -133,47 +147,68 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                     % --- Drawing of stimulus -----------------------------------------
                     % -----------------------------------------------------------------
                     
-                    initialFixationPeriod = secondsElapsed < this.ExperimentOptions.InitialFixaitonDuration;
-                    if ( strcmp(thisTrialData.TypeOfTrial , 'Rebound') )
-                        eccentricFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration && secondsElapsed < (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
-                        variCenterFixationPeriod = secondsElapsed >= (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
+                    isInitialFixationPeriod = secondsElapsed < this.ExperimentOptions.InitialFixaitonDuration;
+                    if ( thisTrialData.TypeOfTrial == 'Rebound' )
+                        isEccentricFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration && secondsElapsed < (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
+                        isVariCenterFixationPeriod = secondsElapsed >= ( this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
                     else
-                        eccentricFixationPeriod = 0;
-                        variCenterFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration;
+                        isEccentricFixationPeriod = 0;
+                        isVariCenterFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration;
                     end
-                                        
-                    if ( initialFixationPeriod )
-                        xdeg = 0;
-                        ydeg = 0;
-                    elseif ( eccentricFixationPeriod )
+                    
+                    if ( isInitialFixationPeriod )
+                        
+                        thisTrialData.Xdeg = 0;
+                        thisTrialData.Ydeg = 0;
                         
                         if (sound1==0) 
-                            sound(sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   ), 8192);
+                            sound(beepSound1, FsSound);
                             sound1=1;
                         end
                         
-                        switch(thisTrialData.Side)
-                            case 'Left'
-                                xdeg = -this.ExperimentOptions.EccentricPosition;
-                            case 'Right'
-                                xdeg = this.ExperimentOptions.EccentricPosition;
-                        end
-                        
-                        ydeg = 0;
-                    elseif ( variCenterFixationPeriod )
+                    elseif ( isEccentricFixationPeriod )
                         
                         if (sound2==0) 
-                            sound(sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   ), 8192);
+                            sound(beepSound2, FsSound);
                             sound2=1;
+                            if ( ~isempty(this.eyeTracker) )
+                                thisTrialData.EyeTrackerFrameStartEccectric = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_ECCENTRIC %d', thisTrialData.TrialNumber) );
+                            end
+                            thisTrialData.TimeStartEccentric = GetSecs;
                         end
                         
                         switch(thisTrialData.Side)
                             case 'Left'
-                                xdeg = -thisTrialData.CenterLocation;
+                                thisTrialData.Xdeg = -this.ExperimentOptions.EccentricPosition;
                             case 'Right'
-                                xdeg = thisTrialData.CenterLocation;
+                                thisTrialData.Xdeg = this.ExperimentOptions.EccentricPosition;
                         end
-                        ydeg = 0;
+                        
+                        thisTrialData.Ydeg = 0;
+                    
+                    elseif ( isVariCenterFixationPeriod )
+                        
+                        if (sound3==0)
+                            if ( thisTrialData.TypeOfTrial == 'Rebound' )
+                                sound(beepSound3, FsSound);
+                            else
+                                sound(beepSound2, FsSound);
+                            end
+                            sound3=1;
+                            if ( ~isempty(this.eyeTracker) )
+                                thisTrialData.EyeTrackerFrameStartVariCenter = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_VARICENTER %d', thisTrialData.TrialNumber) );
+                            end
+                            thisTrialData.TimeStartVariCenter = GetSecs;
+                        end
+                        
+                        switch(thisTrialData.Side)
+                            case 'Left'
+                                thisTrialData.Xdeg = -thisTrialData.CenterLocation;
+                            case 'Right'
+                                thisTrialData.Xdeg = thisTrialData.CenterLocation;
+                        end
+                        thisTrialData.Ydeg = 0;
+                        
                     end
                     
                     
@@ -186,9 +221,9 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
                         flashCounter = flashCounter +1;
                         
                         [mx, my] = RectCenter(this.Graph.wRect);
-                        xpix = mx + this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(xdeg/180*pi);
+                        xpix = mx + this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(thisTrialData.Xdeg/180*pi);
                         aspectRatio = 1;
-                        ypix = my + this.Graph.pxHeight/this.ExperimentOptions.ScreenHeight * this.ExperimentOptions.ScreenDistance * tan(ydeg/180*pi)*aspectRatio;
+                        ypix = my + this.Graph.pxHeight/this.ExperimentOptions.ScreenHeight * this.ExperimentOptions.ScreenDistance * tan(thisTrialData.Ydeg/180*pi)*aspectRatio;
                         
                         %-- Draw fixation spot
                         targetPix = this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(this.ExperimentOptions.TargetSize/180*pi);
@@ -225,185 +260,310 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
         end        
     end
     
+    methods
+        function trialTable = GetTrialTable(this)
+            % Randomizes the table in a different way
+            trialTable = GetTrialTable@ArumeCore.ExperimentDesign(this);
+            sessions = unique(trialTable.Session);
+            for i=1:length(sessions)
+                session = sessions(i);
+                subtable = trialTable(trialTable.Session==session,:);
+                subtable = subtable(Shuffle(1:sum(trialTable.Session==session)),:);
+                trialTable(trialTable.Session==session,:) = subtable;
+            end
+            trialTable.BlockNumber = trialTable.Session;
+            trialTable.BlockSequenceNumber = trialTable.Session;
+        end
+    end
+    
     % --------------------------------------------------------------------
     %% Analysis methods --------------------------------------------------
     % --------------------------------------------------------------------
     methods
         
-        function trialDataSet = PrepareTrialDataTable( this, ds)
-            trialDataSet = ds;
-            
-             eventFiles = this.Session.currentRun.LinkedFiles.vogEventsFile;
-            if (~iscell(eventFiles) )
-                eventFiles = {eventFiles};
-            end
-            
-            if (strcmp(eventFiles{1}, 'ReboundVariCenter_NGA-2018May22-154031-events.txt'))
-                eventFiles = {'ReboundVariCenter_NGA-2018May22-152034-events.txt' eventFiles{:}};
-            end
-            if (strcmp(eventFiles{1}, 'ReboundVariCenter_KCA-2018May22-134440-events.txt'))
-                eventFiles{end+1} = 'ReboundVariCenter_KCA-2018May22-144011-events.txt';
-            end
-
-            events1 = [];
-            for i=1:length(eventFiles)
-                eventFile = eventFiles{i};
-                disp(eventFile);
-                eventFilesPath = fullfile(this.Session.dataPath, eventFile);
-                text = fileread(eventFilesPath);
-                matches = regexp(text,'[^\n]*new trial[^\n]*','match')';
-                eventsFromFile = struct2table(cell2mat(regexp(matches,'Time=(?<DateTime>[^\s]*) FrameNumber=(?<FrameNumber>[^\s]*)','names')));
-                eventsFromFile.FrameNumber = str2double(eventsFromFile.FrameNumber);
-                eventsFromFile = [eventsFromFile table(string(repmat(eventFile,height(eventsFromFile),1)),repmat(i,height(eventsFromFile),1),'variablenames',{'File' 'FileNumber'})];
-                if ( isempty(events1) )
-                    events1 = eventsFromFile;
-                else
-                    events1 = cat(1,events1,eventsFromFile);
-                end
-            end
-            
-            trialDataSet = [trialDataSet events1];
-            
-            trialData = trialDataSet(trialDataSet.TrialResult==0,:);
-            data = this.Session.samplesDataSet;
-            trialData.Side = categorical(trialData.Side);
-            
-            dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
-                        
-            if (~iscell(dataFiles) )
-                dataFiles = {dataFiles};
-            end
-            
-            if (strcmp(dataFiles{1}, 'ReboundVariCenter_NGA-2018May22-154031.txt'))
-                dataFiles = {'ReboundVariCenter_NGA-2018May22-152034.txt' dataFiles{:}};
-            end
-            if (strcmp(dataFiles{1}, 'ReboundVariCenter_KCA-2018May22-134440.txt'))
-                dataFiles{end+1} = 'ReboundVariCenter_KCA-2018May22-144011.txt';
-            end
-            
-            allRawData = {};
-            for i=1:length(dataFiles)
-                dataFile = dataFiles{i}                
-                dataFilePath = fullfile(this.Session.dataPath, dataFile);
-                
-                % load data
-                rawData = dataset2table(VOG.LoadVOGdataset(dataFilePath));
-                
-                allRawData{i} = rawData;
-            end
-            
-            d = this.ExperimentOptions.EccentricDuration;
-            
-            for i=1:height(trialData)
-                fileNumber = trialData.FileNumber(i);
-                idxInFile = find(data.FileNumber==fileNumber);
-                if ( isempty(idxInFile) )
-                    continue;
-                end
-                b = bins(data.Time(idxInFile)', (allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
-                if ( isempty(b))
-                    continue;
-                end
-                trialData.trialStartSample(i) =  idxInFile(1) + bins(data.Time(idxInFile)', (allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
-                trialData.StartEccentricity(i) = idxInFile(1) + bins(data.Time(idxInFile)', 11+(allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
-                trialData.StartRebound(i) = idxInFile(1) + bins(data.Time(idxInFile)', 11+d+(allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
-                trialData.EndRebound(i) = idxInFile(1) + bins(data.Time(idxInFile)', 31+d+(allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
-            end
-            
-            target = nan(size(data.LeftX));
-            for i=1:height(trialData)
-                if ( trialData.trialStartSample(i) == 0 )
-                    trialData.SPVBaseline(i) = nan;
-                    trialData.SPVBegEcc(i) = nan;
-                    trialData.SPVEndEcc(i) = nan;
-                    trialData.SPVBegRebound(i) = nan;
-                    trialData.SPVEndRebound(i) = nan;
-                    continue;
-                end
-                idx1 = trialData.trialStartSample(i):trialData.StartEccentricity(i);
-                idx2 = trialData.StartEccentricity(i):trialData.StartRebound(i);
-                idx3 = trialData.StartRebound(i):trialData.EndRebound(i);
-                
-                switch(trialData.Side(i))
-                    case 'Left'
-                        ecc = -40;
-                        cen = -trialData.CenterLocation(i);
-                    case 'Right'
-                        ecc = 40;
-                        cen = trialData.CenterLocation(i);
-                end
-                target(idx1) = 0;
-                target(idx2) = ecc;
-                target(idx3) = cen;
-                
-                if ( length(idx3)< 5*500)
-                    trialData.SPVBaseline(i) = nan;
-                    trialData.SPVBegEcc(i) = nan;
-                    trialData.SPVEndEcc(i) = nan;
-                    trialData.SPVBegRebound(i) = nan;
-                    trialData.SPVEndRebound(i) = nan;
-                    continue;
-                end
-                idxBaseline = idx1(end-6*500:end-1*500);
-                idxBegEcc = idx2(1:5*500);
-                idxEndEcc = idx2(end-6*500:end-1*500);
-                idxBegRebound = idx3(1:5*500);
-                idxEndRebound = idx3(end-6*500:end-1*500);
-                trialData.SPVBaseline(i) = nanmedian([data.LeftSPVX(idxBaseline);data.RightSPVX(idxBaseline)]);
-                trialData.SPVBegEcc(i) = nanmedian([data.LeftSPVX(idxBegEcc);data.RightSPVX(idxBegEcc)]);
-                trialData.SPVEndEcc(i) = nanmedian([data.LeftSPVX(idxEndEcc);data.RightSPVX(idxEndEcc)]);
-                trialData.SPVBegRebound(i) = nanmedian([data.LeftSPVX(idxBegRebound);data.RightSPVX(idxBegRebound)]);
-                trialData.SPVEndRebound(i) = nanmedian([data.LeftSPVX(idxEndRebound);data.RightSPVX(idxEndRebound)]);
-            end
-            
-            trialDataSet = trialData;
-            
+        function optionsDlg = GetAnalysisOptionsDialog(this)
+            optionsDlg = GetAnalysisOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
+            optionsDlg.SPV = { {'0' '{1}'} };
         end
         
-        function [samplesDataSet rawDataTable] = PrepareSamplesDataTable(this, trialDataSet, dataFile, calibrationFile)
-            samplesDataSet = [];
-            rawDataTable = [];
+        function [analysisResults, samplesDataTable, trialDataTable, sessionTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable,sessionTable, options)
             
-            dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
-            calibrationFiles = this.Session.currentRun.LinkedFiles.vogCalibrationFile;
-                        
-            if (~iscell(dataFiles) )
-                dataFiles = {dataFiles};
-                calibrationFiles = {calibrationFiles};
-            end
+            [analysisResults, samplesDataTable, trialDataTable, sessionTable] = RunDataAnalyses@ArumeExperimentDesigns.EyeTracking(this, analysisResults, samplesDataTable, trialDataTable,sessionTable, options);
             
-            for i=1:length(dataFiles)
-                dataFile = dataFiles{i}
-                calibrationFile = calibrationFiles{i};
+            if ( options.SPV )
+                analysisResults.SPV = table();
                 
-                dataFilePath = fullfile(this.Session.dataPath, dataFile);
-                calibrationFilePath = fullfile(this.Session.dataPath, calibrationFile);
+                T = samplesDataTable.Properties.UserData.sampleRate;
+                analysisResults.SPV.Time = samplesDataTable.Time;
+                fields = {'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
                 
-                % load data
-                rawData = VOG.LoadVOGdataset(dataFilePath);
+                t = samplesDataTable.Time;
                 
-                % calibrate data
-                [calibratedData leftEyeCal rightEyeCal] = VOG.CalibrateData(rawData, calibrationFilePath);
-                
-                [cleanedData, fileSamplesDataSet] = VOG.ResampleAndCleanData3(calibratedData, 1000);
-                                
-                fileSamplesDataSet = [table(repmat(i,height(fileSamplesDataSet),1),'variablenames',{'FileNumber'}), fileSamplesDataSet];
-
-                                
-                if ( isempty(samplesDataSet) )
-                    samplesDataSet = fileSamplesDataSet;
-                    rawDataTable = rawDataTable;
-                else
-                    samplesDataSet = cat(1,samplesDataSet,fileSamplesDataSet);
-                    rawDataTable = cat(1,rawDataTable,rawDataTable);
+                %
+                % calculate monocular spv
+                %
+                for j =1:length(fields)
+                    
+                    [vmed, xmed] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(fields{j}));
+                    
+                    analysisResults.SPV.(fields{j}) = vmed;
+                    analysisResults.SPV.([fields{j} 'Pos']) = xmed;
                 end
+                
+                %
+                % calculate binocular spv
+                %
+                LRdataVars = {'X' 'Y' 'T'};
+                for j =1:length(LRdataVars)
+                    
+                    [vleft, xleft] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(['Left' LRdataVars{j}]));
+                    [vright, xright] = VOGAnalysis.GetSPV_Simple(t, samplesDataTable.(['Right' LRdataVars{j}]));
+                    
+                    vmed = nanmedfilt(nanmean([vleft, vright],2),T,1/2);
+                    xmed = nanmedfilt(nanmean([xleft, xright],2),T,1/2);
+                    
+                    analysisResults.SPV.(LRdataVars{j}) = vmed;
+                    analysisResults.SPV.([LRdataVars{j} 'Pos']) = xmed;
+                end
+                
+                
+                
+                trialData = this.Session.trialDataTable;
+                data = this.Session.samplesDataTable;
+                dataSPV = analysisResults.SPV;
+                trialData.Side = categorical(trialData.Side);
+                
+                for i=1:height(trialData)
+                    fileNumber = trialData.FileNumber(i);
+                    
+                    if ( trialData.TypeOfTrial(i) == 'Rebound' )
+                        trialData.StartEccentricity(i) = find(data.FileNumber' == trialDataTable.FileNumber(i) & data.RawFrameNumber'== trialData.EyeTrackerFrameStartEccectric(i),1,'first');
+                    else
+                        trialData.StartEccentricity(i) = nan;
+                    end
+                    trialData.StartRebound(i) = find(data.FileNumber' == trialDataTable.FileNumber(i) & data.RawFrameNumber'== trialData.EyeTrackerFrameStartVariCenter(i),1,'first');
+                    trialData.EndRebound(i) = find(data.FileNumber' == trialDataTable.FileNumber(i) & data.RawFrameNumber'== trialData.EyeTrackerFrameNumberTrialStop(i),1,'first');
+                end
+                
+                for i=1:height(trialData)
+                    if ( trialData.TypeOfTrial(i) == 'Rebound' )
+                        idx1 = trialData.SampleStartTrial(i):trialData.StartEccentricity(i);
+                    else
+                        idx1 = trialData.SampleStartTrial(i):trialData.StartRebound(i);
+                    end
+                    idx2 = trialData.StartEccentricity(i):trialData.StartRebound(i);
+                    idx3 = trialData.StartRebound(i):trialData.EndRebound(i);
+                    
+                    switch(trialData.Side(i))
+                        case 'Left'
+                            ecc = -40;
+                            cen = -trialData.CenterLocation(i);
+                        case 'Right'
+                            ecc = 40;
+                            cen = trialData.CenterLocation(i);
+                    end
+                    
+                    idxBaseline = idx1(end-6*500:end-1*500);
+                    if ( trialData.TypeOfTrial(i) == 'Rebound' )
+                        idxBegEcc = idx2(1:5*500);
+                        idxEndEcc = idx2(end-6*500:end-1*500);
+                    end
+                    idxBegRebound = idx3(1:5*500);
+                    idxEndRebound = idx3(end-6*500:end-1*500);
+                    trialData.SPVBaseline(i) = nanmean(dataSPV.X(idxBaseline));
+                    
+                    if ( trialData.TypeOfTrial(i) == 'Rebound' )
+                        trialData.SPVBegEcc(i) = nanmean(dataSPV.X(idxBegEcc));
+                        trialData.SPVEndEcc(i) = nanmean(dataSPV.X(idxEndEcc));
+                    else
+                        trialData.SPVBegEcc(i) = nan;
+                        trialData.SPVEndEcc(i) = nan;
+                    end
+                    trialData.SPVBegRebound(i) = nanmean(dataSPV.X(idxBegRebound));
+                    trialData.SPVEndRebound(i) = nanmean(dataSPV.X(idxEndRebound));
+                end
+                
+                trialDataTable = trialData;
             end
         end
         
-        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
-            trialData = this.Session.trialDataSet;
-            g1 = grpstats(trialData,{'CenterLocation', 'Side'},{'mean'},'DataVars',{'SPVBaseline', 'SPVBegRebound'})
-        end
+        
+        
+%         
+%         function trialDataSet = PrepareTrialDataTable( this, ds)
+%             trialDataSet = ds;
+%             
+%              eventFiles = this.Session.currentRun.LinkedFiles.vogEventsFile;
+%             if (~iscell(eventFiles) )
+%                 eventFiles = {eventFiles};
+%             end
+%             
+%             if (strcmp(eventFiles{1}, 'ReboundVariCenter_NGA-2018May22-154031-events.txt'))
+%                 eventFiles = {'ReboundVariCenter_NGA-2018May22-152034-events.txt' eventFiles{:}};
+%             end
+%             if (strcmp(eventFiles{1}, 'ReboundVariCenter_KCA-2018May22-134440-events.txt'))
+%                 eventFiles{end+1} = 'ReboundVariCenter_KCA-2018May22-144011-events.txt';
+%             end
+% 
+%             events1 = [];
+%             for i=1:length(eventFiles)
+%                 eventFile = eventFiles{i};
+%                 disp(eventFile);
+%                 eventFilesPath = fullfile(this.Session.dataPath, eventFile);
+%                 text = fileread(eventFilesPath);
+%                 matches = regexp(text,'[^\n]*new trial[^\n]*','match')';
+%                 eventsFromFile = struct2table(cell2mat(regexp(matches,'Time=(?<DateTime>[^\s]*) FrameNumber=(?<FrameNumber>[^\s]*)','names')));
+%                 eventsFromFile.FrameNumber = str2double(eventsFromFile.FrameNumber);
+%                 eventsFromFile = [eventsFromFile table(string(repmat(eventFile,height(eventsFromFile),1)),repmat(i,height(eventsFromFile),1),'variablenames',{'File' 'FileNumber'})];
+%                 if ( isempty(events1) )
+%                     events1 = eventsFromFile;
+%                 else
+%                     events1 = cat(1,events1,eventsFromFile);
+%                 end
+%             end
+%             
+%             trialDataSet = [trialDataSet events1];
+%             
+%             trialData = trialDataSet(trialDataSet.TrialResult==0,:);
+%             data = this.Session.samplesDataSet;
+%             trialData.Side = categorical(trialData.Side);
+%             
+%             dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
+%                         
+%             if (~iscell(dataFiles) )
+%                 dataFiles = {dataFiles};
+%             end
+%             
+%             if (strcmp(dataFiles{1}, 'ReboundVariCenter_NGA-2018May22-154031.txt'))
+%                 dataFiles = {'ReboundVariCenter_NGA-2018May22-152034.txt' dataFiles{:}};
+%             end
+%             if (strcmp(dataFiles{1}, 'ReboundVariCenter_KCA-2018May22-134440.txt'))
+%                 dataFiles{end+1} = 'ReboundVariCenter_KCA-2018May22-144011.txt';
+%             end
+%             
+%             allRawData = {};
+%             for i=1:length(dataFiles)
+%                 dataFile = dataFiles{i}                
+%                 dataFilePath = fullfile(this.Session.dataPath, dataFile);
+%                 
+%                 % load data
+%                 rawData = dataset2table(VOG.LoadVOGdataset(dataFilePath));
+%                 
+%                 allRawData{i} = rawData;
+%             end
+%             
+%             d = this.ExperimentOptions.EccentricDuration;
+%             
+%             for i=1:height(trialData)
+%                 fileNumber = trialData.FileNumber(i);
+%                 idxInFile = find(data.FileNumber==fileNumber);
+%                 if ( isempty(idxInFile) )
+%                     continue;
+%                 end
+%                 b = bins(data.Time(idxInFile)', (allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
+%                 if ( isempty(b))
+%                     continue;
+%                 end
+%                 trialData.trialStartSample(i) =  idxInFile(1) + bins(data.Time(idxInFile)', (allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
+%                 trialData.StartEccentricity(i) = idxInFile(1) + bins(data.Time(idxInFile)', 11+(allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
+%                 trialData.StartRebound(i) = idxInFile(1) + bins(data.Time(idxInFile)', 11+d+(allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
+%                 trialData.EndRebound(i) = idxInFile(1) + bins(data.Time(idxInFile)', 31+d+(allRawData{fileNumber}.LeftSeconds(find(allRawData{fileNumber}.LeftFrameNumberRaw==trialData.FrameNumber(i)))-allRawData{fileNumber}.LeftSeconds(1))');
+%             end
+%             
+%             target = nan(size(data.LeftX));
+%             for i=1:height(trialData)
+%                 if ( trialData.trialStartSample(i) == 0 )
+%                     trialData.SPVBaseline(i) = nan;
+%                     trialData.SPVBegEcc(i) = nan;
+%                     trialData.SPVEndEcc(i) = nan;
+%                     trialData.SPVBegRebound(i) = nan;
+%                     trialData.SPVEndRebound(i) = nan;
+%                     continue;
+%                 end
+%                 idx1 = trialData.trialStartSample(i):trialData.StartEccentricity(i);
+%                 idx2 = trialData.StartEccentricity(i):trialData.StartRebound(i);
+%                 idx3 = trialData.StartRebound(i):trialData.EndRebound(i);
+%                 
+%                 switch(trialData.Side(i))
+%                     case 'Left'
+%                         ecc = -40;
+%                         cen = -trialData.CenterLocation(i);
+%                     case 'Right'
+%                         ecc = 40;
+%                         cen = trialData.CenterLocation(i);
+%                 end
+%                 target(idx1) = 0;
+%                 target(idx2) = ecc;
+%                 target(idx3) = cen;
+%                 
+%                 if ( length(idx3)< 5*500)
+%                     trialData.SPVBaseline(i) = nan;
+%                     trialData.SPVBegEcc(i) = nan;
+%                     trialData.SPVEndEcc(i) = nan;
+%                     trialData.SPVBegRebound(i) = nan;
+%                     trialData.SPVEndRebound(i) = nan;
+%                     continue;
+%                 end
+%                 idxBaseline = idx1(end-6*500:end-1*500);
+%                 idxBegEcc = idx2(1:5*500);
+%                 idxEndEcc = idx2(end-6*500:end-1*500);
+%                 idxBegRebound = idx3(1:5*500);
+%                 idxEndRebound = idx3(end-6*500:end-1*500);
+%                 trialData.SPVBaseline(i) = nanmedian([data.LeftSPVX(idxBaseline);data.RightSPVX(idxBaseline)]);
+%                 trialData.SPVBegEcc(i) = nanmedian([data.LeftSPVX(idxBegEcc);data.RightSPVX(idxBegEcc)]);
+%                 trialData.SPVEndEcc(i) = nanmedian([data.LeftSPVX(idxEndEcc);data.RightSPVX(idxEndEcc)]);
+%                 trialData.SPVBegRebound(i) = nanmedian([data.LeftSPVX(idxBegRebound);data.RightSPVX(idxBegRebound)]);
+%                 trialData.SPVEndRebound(i) = nanmedian([data.LeftSPVX(idxEndRebound);data.RightSPVX(idxEndRebound)]);
+%             end
+%             
+%             trialDataSet = trialData;
+%             
+%         end
+%         
+%         function [samplesDataSet rawDataTable] = PrepareSamplesDataTable(this, trialDataSet, dataFile, calibrationFile)
+%             samplesDataSet = [];
+%             rawDataTable = [];
+%             
+%             dataFiles = this.Session.currentRun.LinkedFiles.vogDataFile;
+%             calibrationFiles = this.Session.currentRun.LinkedFiles.vogCalibrationFile;
+%                         
+%             if (~iscell(dataFiles) )
+%                 dataFiles = {dataFiles};
+%                 calibrationFiles = {calibrationFiles};
+%             end
+%             
+%             for i=1:length(dataFiles)
+%                 dataFile = dataFiles{i}
+%                 calibrationFile = calibrationFiles{i};
+%                 
+%                 dataFilePath = fullfile(this.Session.dataPath, dataFile);
+%                 calibrationFilePath = fullfile(this.Session.dataPath, calibrationFile);
+%                 
+%                 % load data
+%                 rawData = VOG.LoadVOGdataset(dataFilePath);
+%                 
+%                 % calibrate data
+%                 [calibratedData leftEyeCal rightEyeCal] = VOG.CalibrateData(rawData, calibrationFilePath);
+%                 
+%                 [cleanedData, fileSamplesDataSet] = VOG.ResampleAndCleanData3(calibratedData, 1000);
+%                                 
+%                 fileSamplesDataSet = [table(repmat(i,height(fileSamplesDataSet),1),'variablenames',{'FileNumber'}), fileSamplesDataSet];
+% 
+%                                 
+%                 if ( isempty(samplesDataSet) )
+%                     samplesDataSet = fileSamplesDataSet;
+%                     rawDataTable = rawDataTable;
+%                 else
+%                     samplesDataSet = cat(1,samplesDataSet,fileSamplesDataSet);
+%                     rawDataTable = cat(1,rawDataTable,rawDataTable);
+%                 end
+%             end
+%         end
+%         
+%         function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
+%             trialData = this.Session.trialDataSet;
+%             g1 = grpstats(trialData,{'CenterLocation', 'Side'},{'mean'},'DataVars',{'SPVBaseline', 'SPVBegRebound'})
+%         end
     end
     
     % ---------------------------------------------------------------------
@@ -412,10 +572,10 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
     methods ( Access = public )
         
         function plotResults = Plot_VOG_SPV(this)
-               
-            data = this.Session.samplesDataSet;
-            trialData = this.Session.trialDataSet;
-           
+            
+            trialData = this.Session.trialDataTable;
+            trialDataCal = trialData(trialData.TypeOfTrial=='Calibration',:);
+            trialData = trialData(trialData.TypeOfTrial=='Rebound',:);
             
             g1 = grpstats(trialData,{'CenterLocation', 'Side'},{'mean'},'DataVars',{'SPVBaseline', 'SPVBegRebound'});
             g2 = grpstats(trialData,{'Side'},{'mean'},'DataVars',{'SPVBegEcc', 'SPVEndEcc'});
@@ -430,6 +590,13 @@ classdef ReboundVariCenter < ArumeCore.ExperimentDesign & ArumeExperimentDesigns
             plot(-40,g2.mean_SPVEndEcc(g2.Side=='Left'),'-o')
             plot(40,g2.mean_SPVEndEcc(g2.Side=='Right'),'-o')
             a=1;
+            
+            
+            g1 = grpstats(trialDataCal,{'CenterLocation'},{'mean'},'DataVars',{'SPVBaseline', 'SPVBegRebound'});
+            plot(g1.CenterLocation,g1.mean_SPVBegRebound,'-o')
+            
+            set(gca,'ylim',max(abs(get(gca,'ylim')))*[-1 1]);
+            line([-40 40],[0 0]);
         end
         
         function plotResults = PlotAggregate_VOG_SPVAvg(this, sessions)

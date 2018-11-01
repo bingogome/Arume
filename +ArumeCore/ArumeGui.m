@@ -709,7 +709,9 @@ classdef ArumeGui < matlab.apps.AppBase
                 SamplesDataTable = this.arumeController.currentSession.samplesDataTable;
                 ProjectDataTable = this.arumeController.currentProject.GetDataTable();
                 analysisResults = this.arumeController.currentSession.analysisResults;
+                currentRun = this.arumeController.currentSession.currentRun;
                 
+                assignin('base','currentRun',currentRun);
                 assignin('base','TrialDataTable',TrialDataTable);
                 assignin('base','SamplesDataTable',SamplesDataTable);
                 assignin('base','AnalysisResults',analysisResults);
