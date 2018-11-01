@@ -83,9 +83,13 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
             end
                 
             variables.EyeTrackerFrameNumberTrialStart = this.eyeTracker.RecordEvent(sprintf('TRIAL_START %d %d', variables.TrialNumber, variables.Condition) );
-            variables.FileNumber = length(this.Session.currentRun.LinkedFiles.vogDataFile)+1;
+            if ( ~isempty( this.Session.currentRun.LinkedFiles) )
+                variables.FileNumber = length(this.Session.currentRun.LinkedFiles.vogDataFile)+1;
+            else
+                variables.FileNumber = 1;
+            end
         end
-        
+         
         function variables = TrialStopCallBack(this, variables)
             if ( ~this.eyeTracker.IsRecording )
                 ME = MException('ArumeHardware.VOG:NotRecording', 'The eye tracker is not recording.');
