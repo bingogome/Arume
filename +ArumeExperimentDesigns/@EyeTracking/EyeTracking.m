@@ -202,8 +202,8 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 % posibilities.
                 fn = cumsum(this.Session.currentRun.pastTrialTable.TrialResult=='QUIT')+1;
                 trialDataTable.FileNumber = fn(this.Session.currentRun.pastTrialTable.TrialResult=='CORRECT');
-                 trialDataTable.FileNumber(11:end) = trialDataTable.FileNumber(11:end) -1;
-                 trialDataTable.FileNumber(45:end) = trialDataTable.FileNumber(45:end) +1;
+%                  trialDataTable.FileNumber(11:end) = trialDataTable.FileNumber(11:end) -1;
+%                  trialDataTable.FileNumber(45:end) = trialDataTable.FileNumber(45:end) +1;
             end
             
             if ( ~isempty( s) )
