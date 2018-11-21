@@ -84,7 +84,11 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 
             variables.EyeTrackerFrameNumberTrialStart = this.eyeTracker.RecordEvent(sprintf('TRIAL_START %d %d', variables.TrialNumber, variables.Condition) );
             if ( ~isempty( this.Session.currentRun.LinkedFiles) )
-                variables.FileNumber = length(this.Session.currentRun.LinkedFiles.vogDataFile)+1;
+                if ( ischar(this.Session.currentRun.LinkedFiles.vogDataFile) )
+                    variables.FileNumber = 2;
+                else
+                    variables.FileNumber = length(this.Session.currentRun.LinkedFiles.vogDataFile)+1;
+                end
             else
                 variables.FileNumber = 1;
             end
