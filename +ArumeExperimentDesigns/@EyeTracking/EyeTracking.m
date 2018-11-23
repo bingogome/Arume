@@ -212,6 +212,15 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                 trialDataTable.FileNumber = fn(this.Session.currentRun.pastTrialTable.TrialResult=='CORRECT');
 %                  trialDataTable.FileNumber(11:end) = trialDataTable.FileNumber(11:end) -1;
 %                  trialDataTable.FileNumber(45:end) = trialDataTable.FileNumber(45:end) +1;
+
+                events = table();
+                for i=1:length(this.Session.currentRun.LinkedFiles.vogEventsFile)
+                    file = fullfile(this.Session.dataPath, this.Session.currentRun.LinkedFiles.vogEventsFile{i});
+                    d = readtable(file,'delimiter',{' ' '=' ','},'ReadVariableNames',0);
+                    t = d(categorical(d.Var5)=='TRIAL_START',:);
+                    
+                    events = vertcat(events, [t(:,'Var6') table(ones(height(t),1))]);
+                end
             end
             
             if ( ~isempty( s) )

@@ -304,57 +304,66 @@ classdef Session < ArumeCore.DataDB
     %
     %% ANALYSIS METHODS
     methods
-        function prepareForAnalysis( this )
+        function prepareForAnalysis( this, options)
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
             if ( isempty(  this.currentRun ) )
                 return;
             end
             
-            %% 0) Create the basic trial dataaset (without custom experiment stuff)
-            trials = this.currentRun.pastTrialTable;
-            % remove errors and aborts for analysis
-            if (~isempty(trials))
-                % just in case for old data
-                if ( ~iscategorical(trials.TrialResult) )
-                    trials.TrialResult = Enum.trialResult.PossibleResults(trials.TrialResult+1);
+            if ( options.Prepare_Samples_Table || options.Prepare_Trial_Table || options.Prepare_Session_Table )
+                %% 0) Create the basic trial dataaset (without custom experiment stuff)
+                trials = this.currentRun.pastTrialTable;
+                % remove errors and aborts for analysis
+                if (~isempty(trials))
+                    % just in case for old data
+                    if ( ~iscategorical(trials.TrialResult) )
+                        trials.TrialResult = Enum.trialResult.PossibleResults(trials.TrialResult+1);
+                    end
+                    if ( ~any(strcmp(trials.Properties.VariableNames,'TrialNumber')) )
+                        tn = cumsum(trials.TrialResult ~= Enum.trialResult.CORRECT)+1;
+                        trials.TrialNumber = [1 tn(1:end-1)];
+                    end
+                    trials(trials.TrialResult ~= Enum.trialResult.CORRECT ,:) = [];
                 end
-                if ( ~any(strcmp(trials.Properties.VariableNames,'TrialNumber')) )
-                    tn = cumsum(trials.TrialResult ~= Enum.trialResult.CORRECT)+1;
-                    trials.TrialNumber = [1 tn(1:end-1)];
-                end
-                trials(trials.TrialResult ~= Enum.trialResult.CORRECT ,:) = [];
-            end
-            this.WriteVariable(trials,'trialDataTable');
-            
-            %% 1) Prepare the sample dataset
-            [samples, rawData] = this.experimentDesign.PrepareSamplesDataTable();
-            
-            if ( ~isempty(samples) )
-                this.WriteVariable(samples,'samplesDataTable');
-            end
-            
-            if ( ~isempty(rawData) )
-                this.WriteVariable(rawData,'rawDataTable');
-            end
-            
-            %% 2) Prepare the trial dataset
-            trials = this.experimentDesign.PrepareTrialDataTable(trials);
-            if ( ~isempty(trials) )
                 this.WriteVariable(trials,'trialDataTable');
             end
             
-            %% 3) Prepare session dataTable
-            newSessionDataTable = this.GetBasicSessionDataTable();
-            newSessionDataTable = this.experimentDesign.PrepareSessionDataTable(newSessionDataTable);
-            if ( ~isempty(newSessionDataTable) )
-                this.WriteVariable(newSessionDataTable,'sessionDataTable');
+            if ( options.Prepare_Samples_Table )
+                %% 1) Prepare the sample dataset
+                [samples, rawData] = this.experimentDesign.PrepareSamplesDataTable();
+                
+                if ( ~isempty(samples) )
+                    this.WriteVariable(samples,'samplesDataTable');
+                end
+                
+                if ( ~isempty(rawData) )
+                    this.WriteVariable(rawData,'rawDataTable');
+                end
+            end
+            
+            if ( options.Prepare_Trial_Table )
+                %% 2) Prepare the trial dataset
+                trials = this.experimentDesign.PrepareTrialDataTable(trials);
+                if ( ~isempty(trials) )
+                    this.WriteVariable(trials,'trialDataTable');
+                end
+            end
+            
+            if ( options.Prepare_Session_Table )
+                %% 3) Prepare session dataTable
+                newSessionDataTable = this.GetBasicSessionDataTable();
+                newSessionDataTable = this.experimentDesign.PrepareSessionDataTable(newSessionDataTable);
+                if ( ~isempty(newSessionDataTable) )
+                    this.WriteVariable(newSessionDataTable,'sessionDataTable');
+                end
             end
         end
         
         function runAnalysis(this, options)
             
-            %% 1) Prepare events datasets
+            this.prepareForAnalysis( options);
+            
             results = this.analysisResults;
             samplesIn = this.samplesDataTable;
             trialsIn = this.trialDataTable;

@@ -757,7 +757,17 @@ classdef ArumeGui < matlab.apps.AppBase
         end
         
         function PrepareAnalysis( this, source, eventdata )
-            this.arumeController.prepareAnalysis();
+            optionsDlg = this.arumeController.getPrepareAnalysisOptions( );
+            if ( ~isempty( optionsDlg) )
+                options = StructDlg(optionsDlg, 'Edit analysis options');
+                if ( isempty( options ) )
+                    return;
+                end
+            else
+                options = [];
+            end
+            
+            this.arumeController.runDataAnalyses(options);
             this.updateGui();
         end
         
@@ -777,7 +787,7 @@ classdef ArumeGui < matlab.apps.AppBase
         end
         
         function PrepareAndRunDataAnalyses( this, source, eventdata )
-            optionsDlg = this.arumeController.getAnalysisOptions( );
+            optionsDlg = this.arumeController.getPrepareAndRunAnalysisOptions( );
             if ( ~isempty( optionsDlg) )
                 options = StructDlg(optionsDlg, 'Edit analysis options');
                 if ( isempty( options ) )
@@ -787,7 +797,6 @@ classdef ArumeGui < matlab.apps.AppBase
                 options = [];
             end
             
-            this.arumeController.prepareAnalysis();
             this.arumeController.runDataAnalyses(options);
             this.updateGui();
         end

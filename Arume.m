@@ -452,13 +452,47 @@ classdef Arume < handle
             options = ArumeCore.ExperimentDesign.GetDefaultExperimentOptions(experiment);
         end
         
+        function dlg = getPrepareAnalysisOptions(this, sessions)
+            if ( ~exist('sessions','var') )
+                sessions = this.selectedSessions;
+            end
+            
+            dlg = this.getPrepareAndRunAnalysisOptions(sessions);
+            
+            f1 = fields(dlg);
+            for i=1:length(f1)
+                isequal(dlg.(f1{i}),{ {'0','{1}'} });
+                dlg.(f1{i}) = { {'{0}','1'} };
+            end
+            
+            dlg.Prepare_Samples_Table = { {'0','{1}'} };
+            dlg.Prepare_Trial_Table = { {'0','{1}'} };
+            dlg.Prepare_Session_Table = { {'0','{1}'} };
+            
+        end
+        
         function dlg = getAnalysisOptions(this, sessions)
+            if ( ~exist('sessions','var') )
+                sessions = this.selectedSessions;
+            end
+            dlg = this.getPrepareAndRunAnalysisOptions(sessions);
+            
+            dlg.Prepare_Samples_Table = { {'{0}','1'} };
+            dlg.Prepare_Trial_Table = { {'{0}','1'} };
+            dlg.Prepare_Session_Table = { {'{0}','1'} };
+        end
+        
+        function dlg = getPrepareAndRunAnalysisOptions(this, sessions)
+            
+            dlg = struct();
+            dlg.Prepare_Samples_Table = { {'0','{1}'} };
+            dlg.Prepare_Trial_Table = { {'0','{1}'} };
+            dlg.Prepare_Session_Table = { {'0','{1}'} };
             
             if ( ~exist('sessions','var') )
                 sessions = this.selectedSessions;
             end
             
-            dlg = struct();
             for session = sessions
                 dlg1 = session.experimentDesign.GetAnalysisOptionsDialog();
                 f1 = fields(dlg);
@@ -469,6 +503,7 @@ classdef Arume < handle
                     end
                 end
             end
+            
         end
         
         function options = getDefaultAnalysisOptions(this, sessions)
