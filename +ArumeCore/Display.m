@@ -75,7 +75,11 @@ classdef Display < handle
                 graph.dlgBackgroundScreenColor = exper.BackgroundColor;
             end
             
+            % FOR OKN
             
+            AssertOpenGL;
+            Screen('BlendFunction', graph.window, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            Priority(MaxPriority(graph.window));
             
             
             %-- font
@@ -84,12 +88,16 @@ classdef Display < handle
             
             %-- frame rate
             graph.frameRate         = Screen('FrameRate', graph.selectedScreen);
+            ifi                                             = Screen('GetFlipInterval', graph.window);
+            if graph.frameRate==0
+                graph.frameRate=1/ifi;
+            end
             graph.nominalFrameRate  = Screen('NominalFrameRate', graph.selectedScreen);
             
             %-- size
             [graph.reportedmmWidth, graph.reportedmmHeight] = Screen('DisplaySize', graph.selectedScreen);
             [graph.pxWidth, graph.pxHeight]                 = Screen('WindowSize', graph.window);
-            graph.windiwInfo                                = Screen('GetWindowInfo',graph.window);
+            graph.windiwInfo                                = Screen('GetWindowInfo',graph.window);           
             %TODO: force resolution and refresh rate
             
             

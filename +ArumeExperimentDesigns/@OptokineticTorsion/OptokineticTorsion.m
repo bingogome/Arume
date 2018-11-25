@@ -18,12 +18,22 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
             dlg.ScreenHeight = { 68 '* (cm)' [1 3000] };
             dlg.ScreenDistance = { 60 '* (cm)' [1 3000] };
             
-            dlg.TargetSize = 0.5;
-            dlg.Sizes = [1 3 5];
-            dlg.Number_of_dots = 1000;
-            dlg.Speeds = [0  10;
+            dlg.Trial_Duration =  { 30 '* (s)' [1 100] };
+            dlg.Max_Speed = { 10 '* (deg/s)' [0 100] };
+            dlg.Number_of_Speeds = {4 '* (N)' [1 100] };
             
-                        
+            dlg.Number_of_Dots = { 2000 '* (deg/s)' [10 10000] };
+            dlg.Max_Radius = { 40 '* (deg)' [1 100] };
+            dlg.Min_Radius = { 1 '* (deg)' [0 100] };
+
+            dlg.Min_Dot_Diam = {0.1  '* (deg)' [0.01 100] };
+            dlg.Max_Dot_Diam = {0.4  '* (deg)' [0.01 100] };
+            dlg.Number_of_Dot_Sizes = {4 '* (N)' [1 100] };
+            
+            dlg.NumberOfRepetitions = {1 '* (N)' [1 100] };
+            
+            dlg.TargetSize = 0.5;
+            
             dlg.BackgroundBrightness = 0;
         end
         
@@ -33,7 +43,7 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
             this.HitKeyBeforeTrial = 1;
             this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness;
             
-            this.trialDuration = 60; %seconds
+            this.trialDuration = this.ExperimentOptions.Trial_Duration; %seconds
             
             % default parameters of any experiment
             this.trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
@@ -41,49 +51,20 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, ...
             
-            if (strcmp(this.ExperimentOptions.InterleaveCalibration, 'Yes'))
-                this.trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-                this.trialsPerSession = 18*6/2;
-                this.trialsBeforeBreak = 11;
-                this.blocksToRun = 3;
-                this.blocks = [ ...
-                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
-                    struct( 'fromCondition', 1,     'toCondition', 18, 'trialsToRun', 18 )...
-                    struct( 'fromCondition', 19,    'toCondition', 36, 'trialsToRun', 18 )];
-                this.numberOfTimesRepeatBlockSequence = ceil(this.ExperimentOptions.NumberOfRepetitions/2);
-            else
-                this.trialSequence = 'Random';	% Sequential, Random, Random with repetition, ...
-                this.trialsPerSession = (this.NumberOfConditions+1)*this.ExperimentOptions.NumberOfRepetitions;
-                this.numberOfTimesRepeatBlockSequence = this.ExperimentOptions.NumberOfRepetitions;
-                this.blocksToRun = 1;
-                this.blocks = [ ...
-                    struct( 'fromCondition', 1, 'toCondition', this.NumberOfConditions, 'trialsToRun', this.NumberOfConditions  )];
-            end
+            this.trialSequence = 'Random';	% Sequential, Random, Random with repetition, ...
+            this.trialsPerSession = this.NumberOfConditions*this.ExperimentOptions.NumberOfRepetitions;
+            this.numberOfTimesRepeatBlockSequence = this.ExperimentOptions.NumberOfRepetitions;
+            this.blocksToRun = 1;
+            this.blocks = struct( 'fromCondition', 1, 'toCondition', this.NumberOfConditions, 'trialsToRun', this.NumberOfConditions  );
         end
         
         function [conditionVars] = getConditionVariables( this )
             %-- condition variables ---------------------------------------
             i= 0;
             
-            if (this.ExperimentOptions.CenterLocationRange == 'Minus20to30') 
-                i = i+1;
-                conditionVars(i).name   = 'CenterLocation';
-                conditionVars(i).values = [-20:10:30];
-            elseif (this.ExperimentOptions.CenterLocationRange == 'Minus40to40')
-                i = i+1;
-                conditionVars(i).name   = 'CenterLocation';
-                conditionVars(i).values = [-40:10:40];
-            end
-            
             i = i+1;
-            conditionVars(i).name   = 'Side';
-            conditionVars(i).values = {'Left' 'Right'};
-            
-            if (strcmp(this.ExperimentOptions.InterleaveCalibration, 'Yes'))
-                i = i+1;
-                conditionVars(i).name   = 'TypeOfTrial';
-                conditionVars(i).values = {'Rebound' 'Calibration'};
-            end
+            conditionVars(i).name   = 'Speed';
+            conditionVars(i).values = this.ExperimentOptions.Max_Speed/this.ExperimentOptions.Number_of_Speeds * [0:this.ExperimentOptions.Number_of_Speeds];
         end
         
         function [trialResult, thisTrialData] = runTrial( this, thisTrialData )
@@ -91,138 +72,82 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
             try
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
-                
-                % prepare sound
-                beepSound1 = sin( (1:round(0.1*8192))  *  (2*pi*500/8192)   );
-                beepSound2 = [beepSound1 zeros(size(beepSound1)) beepSound1];
-                beepSound3 = [beepSound1 zeros(size(beepSound1)) beepSound1 zeros(size(beepSound1)) beepSound1];
-                FsSound = 8192;
-                
-                    
                 graph = this.Graph;
-                
                 trialResult = Enum.trialResult.CORRECT;
                 
-                % flashing control variables
-                flashingTimer  = 100000;
-                flashCounter = 0;
-                
-                %-- add here the trial code
-                
-                if (thisTrialData.TypeOfTrial == 'Rebound') 
-                    totalDuration = this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration + this.ExperimentOptions.CenterDuration;
-                else
-                    totalDuration = this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.CenterDuration;
-                end
-                
-                nflashes =  ceil((this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration + this.ExperimentOptions.CenterDuration)/this.ExperimentOptions.FlashingPeriodMs*1000);
                 
                 lastFlipTime        = GetSecs;
-                secondsRemaining    = totalDuration;
+                secondsRemaining    = this.trialDuration;
                 thisTrialData.TimeStartLoop = lastFlipTime;
+                
+                % prepare dots
+                
+                mon_width   = this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth;   % horizontal dimension of viewable screen (cm)
+                v_dist      = this.ExperimentOptions.ScreenDistance ;   % viewing distance (cm)
+                
+                dot_speed   = thisTrialData.Speed;    % dot speed (deg/sec)
+                ndots       = this.ExperimentOptions.Number_of_Dots; % number of dots
+                
+                max_d       = this.ExperimentOptions.Max_Radius;   % maximum radius of  annulus (degrees)
+                min_d       = this.ExperimentOptions.Min_Radius;    % minumum
+                
+                differentsizes = this.ExperimentOptions.Number_of_Dot_Sizes; % Use different sizes for each point if >= 1. Use one common size if == 0.
+                dot_w       = this.ExperimentOptions.Min_Dot_Diam;  % width of dot (deg)
+                                
+                ppd = pi * (this.Graph.wRect(3)-this.Graph.wRect(1)) / atan(mon_width/v_dist/2) / 360;    % pixels per degree
+                pfs = dot_speed * ppd / this.Graph.frameRate;           % dot speed (pixels/frame)
+                s = dot_w * ppd;                                        % dot size (pixels)
+                
+                rmax = max_d * ppd;	% maximum radius of annulus (pixels from center)
+                rmin = min_d * ppd; % minimum
+                r = rmin + (rmax-rmin) * sqrt(rand(ndots,1));	% r
+                t = 2*pi*rand(ndots,1);                         % theta polar coordinate
+                
+                cs = [cos(t), sin(t)];
+                xy = [r r] .* cs;   % dot positions in Cartesian coordinates (pixels from center)
+                xymatrix = transpose(xy);
+                 
+                mdir = -1;    % motion direction (in or out) for each dot
+                dt = pfs * mdir ./ max(r);                       % change in theta per frame (radians)
+                % Create a vector with different point sizes for each single dot, if
+                % requested:
+                if (differentsizes>0)
+                    s=(1+rand(1, ndots)*(differentsizes-1))*s;
+                end
+                [center(1), center(2)] = RectCenter(this.Graph.wRect);
+                
+                % end prepare dots
                 
                 if ( ~isempty(this.eyeTracker) )
                     thisTrialData.EyeTrackerFrameStartLoop = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_LOOP %d %d', thisTrialData.TrialNumber, thisTrialData.Condition) );
                 end
                 
-                
-                sound1 = 0;
-                sound2 = 0;
-                sound3 = 0;
                 while secondsRemaining > 0
                     
                     secondsElapsed      = GetSecs - thisTrialData.TimeStartLoop;
-                    secondsRemaining    = totalDuration - secondsElapsed;
+                    secondsRemaining    = this.trialDuration - secondsElapsed;
                     
                     
                     % -----------------------------------------------------------------
                     % --- Drawing of stimulus -----------------------------------------
                     % -----------------------------------------------------------------
-                    
-                    isInitialFixationPeriod = secondsElapsed < this.ExperimentOptions.InitialFixaitonDuration;
-                    if ( thisTrialData.TypeOfTrial == 'Rebound' )
-                        isEccentricFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration && secondsElapsed < (this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
-                        isVariCenterFixationPeriod = secondsElapsed >= ( this.ExperimentOptions.InitialFixaitonDuration + this.ExperimentOptions.EccentricDuration);
-                    else
-                        isEccentricFixationPeriod = 0;
-                        isVariCenterFixationPeriod = secondsElapsed >= this.ExperimentOptions.InitialFixaitonDuration;
-                    end
-                    
-                    if ( isInitialFixationPeriod )
-                        
-                        thisTrialData.Xdeg = 0;
-                        thisTrialData.Ydeg = 0;
-                        
-                        if (sound1==0) 
-                            sound(beepSound1, FsSound);
-                            sound1=1;
-                        end
-                        
-                    elseif ( isEccentricFixationPeriod )
-                        
-                        if (sound2==0) 
-                            sound(beepSound2, FsSound);
-                            sound2=1;
-                            if ( ~isempty(this.eyeTracker) )
-                                thisTrialData.EyeTrackerFrameStartEccectric = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_ECCENTRIC %d', thisTrialData.TrialNumber) );
-                            end
-                            thisTrialData.TimeStartEccentric = GetSecs;
-                        end
-                        
-                        switch(thisTrialData.Side)
-                            case 'Left'
-                                thisTrialData.Xdeg = -this.ExperimentOptions.EccentricPosition;
-                            case 'Right'
-                                thisTrialData.Xdeg = this.ExperimentOptions.EccentricPosition;
-                        end
-                        
-                        thisTrialData.Ydeg = 0;
-                    
-                    elseif ( isVariCenterFixationPeriod )
-                        
-                        if (sound3==0)
-                            if ( thisTrialData.TypeOfTrial == 'Rebound' )
-                                sound(beepSound3, FsSound);
-                            else
-                                sound(beepSound2, FsSound);
-                            end
-                            sound3=1;
-                            if ( ~isempty(this.eyeTracker) )
-                                thisTrialData.EyeTrackerFrameStartVariCenter = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_VARICENTER %d', thisTrialData.TrialNumber) );
-                            end
-                            thisTrialData.TimeStartVariCenter = GetSecs;
-                        end
-                        
-                        switch(thisTrialData.Side)
-                            case 'Left'
-                                thisTrialData.Xdeg = -thisTrialData.CenterLocation;
-                            case 'Right'
-                                thisTrialData.Xdeg = thisTrialData.CenterLocation;
-                        end
-                        thisTrialData.Ydeg = 0;
-                        
-                    end
+                    Screen('DrawDots', graph.window, xymatrix, s, WhiteIndex(graph.window), center,1);  % change 1 to 0 to draw square dots
+                    Screen('DrawingFinished', graph.window); % Tell PTB that no further drawing commands will follow before Screen('Flip')
                     
                     
-                    tempFlashingTimer = mod(secondsElapsed*1000,this.ExperimentOptions.FlashingPeriodMs);
-                    if ( tempFlashingTimer < flashingTimer )
-                        flashCounter = 0;
-                    end
-                    flashingTimer = tempFlashingTimer;
-                    if ( flashCounter < this.ExperimentOptions.FlashingOnDurationFrames )
-                        flashCounter = flashCounter +1;
-                        
-                        [mx, my] = RectCenter(this.Graph.wRect);
-                        xpix = mx + this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(thisTrialData.Xdeg/180*pi);
-                        aspectRatio = 1;
-                        ypix = my + this.Graph.pxHeight/this.ExperimentOptions.ScreenHeight * this.ExperimentOptions.ScreenDistance * tan(thisTrialData.Ydeg/180*pi)*aspectRatio;
-                        
-                        %-- Draw fixation spot
-                        targetPix = this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(this.ExperimentOptions.TargetSize/180*pi);
-                        fixRect = [0 0 targetPix targetPix];
-                        fixRect = CenterRectOnPointd( fixRect, xpix, ypix );
-                        Screen('FillOval', graph.window, this.fixColor, fixRect);
-                    end
+                    t = t + dt;                         % update theta
+                    xy = [r r] .* [cos(t), sin(t)];     % compute new positions
+                    xymatrix = transpose(xy);
+                    
+                    
+                    
+                    %-- Draw fixation spot
+                    [mx, my] = RectCenter(this.Graph.wRect);
+                    
+                    targetPix = this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(this.ExperimentOptions.TargetSize/180*pi);
+                    fixRect = [0 0 targetPix targetPix];
+                    fixRect = CenterRectOnPointd( fixRect, mx, my );
+                    Screen('FillOval', graph.window, this.fixColor, fixRect);
                     
                     
                     % -----------------------------------------------------------------
