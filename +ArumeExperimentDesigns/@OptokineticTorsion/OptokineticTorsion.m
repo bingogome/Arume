@@ -20,7 +20,7 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
             
             dlg.Trial_Duration =  { 30 '* (s)' [1 100] };
             dlg.Max_Speed = { 10 '* (deg/s)' [0 100] };
-            dlg.Number_of_Speeds = {4 '* (N)' [1 100] };
+            dlg.Number_of_Speeds = {3 '* (N)' [1 100] };
             
             dlg.Number_of_Dots = { 2000 '* (deg/s)' [10 10000] };
             dlg.Max_Radius = { 40 '* (deg)' [1 100] };
@@ -38,7 +38,7 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
         end
         
         function initExperimentDesign( this  )
-%             this.DisplayVariableSelection = {'TrialNumber' 'TrialResult' 'TypeOfTrial' 'Side' 'CenterLocation' 'TimeFlashes'};
+            this.DisplayVariableSelection = {'TrialNumber' 'TrialResult' 'Speed' 'Stimulus'};
         
             this.HitKeyBeforeTrial = 1;
             this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness;
@@ -46,7 +46,7 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
             this.trialDuration = this.ExperimentOptions.Trial_Duration; %seconds
             
             % default parameters of any experiment
-            this.trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
+            this.trialAbortAction = 'Delay';     % Repeat, Delay, Drop
             
             %%-- Blocking
             this.blockSequence = 'Sequential';	% Sequential, Random, ...
@@ -65,6 +65,10 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
             i = i+1;
             conditionVars(i).name   = 'Speed';
             conditionVars(i).values = this.ExperimentOptions.Max_Speed/this.ExperimentOptions.Number_of_Speeds * [0:this.ExperimentOptions.Number_of_Speeds];
+            
+            i = i+1;
+            conditionVars(i).name   = 'Stimulus';
+            conditionVars(i).values = {'Blank' 'Dots'};
         end
         
         function [trialResult, thisTrialData] = runTrial( this, thisTrialData )
@@ -131,9 +135,10 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
                     % -----------------------------------------------------------------
                     % --- Drawing of stimulus -----------------------------------------
                     % -----------------------------------------------------------------
-                    Screen('DrawDots', graph.window, xymatrix, s, WhiteIndex(graph.window), center,1);  % change 1 to 0 to draw square dots
-                    Screen('DrawingFinished', graph.window); % Tell PTB that no further drawing commands will follow before Screen('Flip')
-                    
+                    switch(thisTrialData.Stimulus)
+                        case 'Dots'
+                            Screen('DrawDots', graph.window, xymatrix, s, WhiteIndex(graph.window), center,1);  % change 1 to 0 to draw square dots
+                    end
                     
                     t = t + dt;                         % update theta
                     xy = [r r] .* [cos(t), sin(t)];     % compute new positions
@@ -148,6 +153,8 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
                     fixRect = [0 0 targetPix targetPix];
                     fixRect = CenterRectOnPointd( fixRect, mx, my );
                     Screen('FillOval', graph.window, this.fixColor, fixRect);
+                    
+                    Screen('DrawingFinished', graph.window); % Tell PTB that no further drawing commands will follow before Screen('Flip')
                     
                     
                     % -----------------------------------------------------------------
