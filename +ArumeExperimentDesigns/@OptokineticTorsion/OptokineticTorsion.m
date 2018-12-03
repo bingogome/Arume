@@ -19,7 +19,7 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
             dlg.ScreenDistance = { 60 '* (cm)' [1 3000] };
             
             dlg.Trial_Duration =  { 30 '* (s)' [1 100] };
-            dlg.Max_Speed = { 10 '* (deg/s)' [0 100] };
+            dlg.Max_Speed = { 30 '* (deg/s)' [0 100] };
             dlg.Number_of_Speeds = {3 '* (N)' [1 100] };
             
             dlg.Number_of_Dots = { 2000 '* (deg/s)' [10 10000] };
@@ -28,9 +28,11 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
 
             dlg.Min_Dot_Diam = {0.1  '* (deg)' [0.01 100] };
             dlg.Max_Dot_Diam = {0.4  '* (deg)' [0.01 100] };
-            dlg.Number_of_Dot_Sizes = {4 '* (N)' [1 100] };
+            dlg.Number_of_Dot_Sizes = {5 '* (N)' [1 100] };
             
-            dlg.NumberOfRepetitions = {1 '* (N)' [1 100] };
+            dlg.NumberOfRepetitions = {8 '* (N)' [1 100] };
+            
+            dlg.Do_Blank = { {'0','{1}'} };
             
             dlg.TargetSize = 0.5;
             
@@ -45,6 +47,8 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
             
             this.trialDuration = this.ExperimentOptions.Trial_Duration; %seconds
             
+            this.trialsBeforeBreak = 15;
+                
             % default parameters of any experiment
             this.trialAbortAction = 'Delay';     % Repeat, Delay, Drop
             
@@ -67,8 +71,16 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
             conditionVars(i).values = this.ExperimentOptions.Max_Speed/this.ExperimentOptions.Number_of_Speeds * [0:this.ExperimentOptions.Number_of_Speeds];
             
             i = i+1;
+            conditionVars(i).name   = 'Direction';
+            conditionVars(i).values = {'CW' 'CCW'};
+            
+            i = i+1;
             conditionVars(i).name   = 'Stimulus';
-            conditionVars(i).values = {'Blank' 'Dots'};
+            if ( this.ExperimentOptions.Do_Blank ) 
+                conditionVars(i).values = {'Blank' 'Dots'};
+            else
+                conditionVars(i).values = {'Dots'};
+            end
         end
         
         function [trialResult, thisTrialData] = runTrial( this, thisTrialData )
@@ -99,7 +111,6 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
                 dot_w       = this.ExperimentOptions.Min_Dot_Diam;  % width of dot (deg)
                                 
                 ppd = pi * (this.Graph.wRect(3)-this.Graph.wRect(1)) / atan(mon_width/v_dist/2) / 360;    % pixels per degree
-                pfs = dot_speed * ppd / this.Graph.frameRate;           % dot speed (pixels/frame)
                 s = dot_w * ppd;                                        % dot size (pixels)
                 
                 rmax = max_d * ppd;	% maximum radius of annulus (pixels from center)
@@ -111,8 +122,11 @@ classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
                 xy = [r r] .* cs;   % dot positions in Cartesian coordinates (pixels from center)
                 xymatrix = transpose(xy);
                  
-                mdir = -1;    % motion direction (in or out) for each dot
-                dt = pfs * mdir ./ max(r);                       % change in theta per frame (radians)
+                mdir = 1;    % motion direction (in or out) for each dot
+                if ( thisTrialData.Direction == 'CCW' )
+                    mdir = -1;
+                end
+                dt = 2*pi/360/this.Graph.frameRate * thisTrialData.Speed*mdir;                       % change in theta per frame (radians)
                 % Create a vector with different point sizes for each single dot, if
                 % requested:
                 if (differentsizes>0)
