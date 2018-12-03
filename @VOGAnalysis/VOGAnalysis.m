@@ -593,6 +593,7 @@ classdef VOGAnalysis < handle
                 cleanedData.FrameNumber     = (1:max(notDroppedFrames))';
                 cleanedData.Time            = (cleanedData.FrameNumber-1)/rawSampleRate;
                 cleanedData.RawFrameNumber  = nan(height(cleanedData), 1);
+                cleanedData.RawCameraFrameNumber         = nan(height(cleanedData), 1);
                 cleanedData.RawTime         = nan(height(cleanedData), 1);
                 cleanedData.RawFrameNumber(notDroppedFrames)        = calibratedData.FrameNumber;
                 cleanedData.RawCameraFrameNumber(notDroppedFrames)  = calibratedData.FrameNumberRaw;
@@ -718,7 +719,7 @@ classdef VOGAnalysis < handle
                     spikest = badDataT & ( boxcar(~badData, 3)*3 >= 2 );
                     
                     % TODO: maybe better than blink span find the first N samples
-                    % around the blink that are wihtin a more stringent criteria
+                    % around the blink that are within a more stringent criteria
                     badData  = boxcar( badData  & ~spikes, round(params.blinkSpan/1000*rawSampleRate))>0;
                     badDataT = boxcar( badDataT & ~spikest, round(params.blinkSpan/1000*rawSampleRate))>0;
                     
@@ -842,7 +843,7 @@ classdef VOGAnalysis < handle
                     xx = data.([eyes{k} eyeSignals{j}]);
                     
                     % velocity
-                    v = [0;diff(xx)]*500;
+                    v = [0;diff(xx)./500];
                     
                     % TODO: think if data should be filtered prior to peak
                     % detection. I think probably yes. To remove
@@ -870,7 +871,7 @@ classdef VOGAnalysis < handle
                     vlp(isnan(v)) = nan;
                     vhp(isnan(v)) = nan;
                     % A band pass filter of the high pass filtered velocity is
-                    % useful to find beginings and ends
+                    % useful to find beginnings and ends
                     vbp = sgolayfilt(vhp,1,7);
                     vhp = vbp;
                     % acceleration
@@ -2218,7 +2219,6 @@ end
 % ----- Local function PARSEATTRIBUTES -----
 function attributes = parseAttributes(theNode)
 % Create attributes structure.
-
 attributes = [];
 if theNode.hasAttributes
     theAttributes = theNode.getAttributes;

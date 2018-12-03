@@ -203,6 +203,9 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
         function trialDataTable = PrepareTrialDataTable( this, trialDataTable)
             s = this.Session.samplesDataTable;
             
+            if ( ~any(strcmp(s.Properties.VariableNames,'FileNumber')) )
+                s.FileNumber = ones(size(s.FrameNumber));
+            end
             if ( ~any(strcmp(trialDataTable.Properties.VariableNames,'FileNumber')) )
                 % Find the file number that corresponds with each trial. Not a
                 % super clean way of doing it.
