@@ -194,6 +194,8 @@ classdef SVV2AFCAdaptiveMultiTilt < ArumeExperimentDesigns.SVV2AFCAdaptive
         end
         
         function PlotAggregate_SVV_Multitilt_Tilt_Torsion_SVV(this, sessions)
+            
+            a=1;
 %             a=1;
 %             figure
 %             
