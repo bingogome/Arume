@@ -1,2 +1,6 @@
 
 *.m~
+*.asv
+/ArumeData/*
+/arumeconf.mat
+/ArumeData 2018-08-13.zip

@@ -843,7 +843,7 @@ classdef VOGAnalysis < handle
                     xx = data.([eyes{k} eyeSignals{j}]);
                     
                     % velocity
-                    v = [0;diff(xx)./500];
+                    v = [0;diff(xx)*500];
                     
                     % TODO: think if data should be filtered prior to peak
                     % detection. I think probably yes. To remove
