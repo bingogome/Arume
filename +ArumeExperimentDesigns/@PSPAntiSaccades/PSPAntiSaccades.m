@@ -1,8 +1,6 @@
 classdef PSPAntiSaccades < ArumeCore.ExperimentDesign
     
     properties
-        eyeTracker
-        
         fixRad = 20;
         fixColor = [255 0 0];
     end
@@ -12,7 +10,7 @@ classdef PSPAntiSaccades < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         function dlg = GetOptionsDialog( this, importing )
-            dlg.UseEyeTracker = { {'{0}' '1'} };
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
             
             dlg.TargetSize = 0.3;
             dlg.FixationMinDuration = 1200;
@@ -21,14 +19,15 @@ classdef PSPAntiSaccades < ArumeCore.ExperimentDesign
             
             dlg.NumberOfRepetitions = 15;
             
-            dlg.ScreenWidth = 121;
-            dlg.ScreenHeight = 68;
-            dlg.ScreenDistance = 60;
+            dlg.ScreenWidth = { 121 '* (cm)' [1 3000] };
+            dlg.ScreenHeight = { 68 '* (cm)' [1 3000] };
+            dlg.ScreenDistance = { 60 '* (cm)' [1 3000] };
             
             dlg.BackgroundBrightness = 50;
         end
         
         function initExperimentDesign( this  )
+            this.DisplayVariableSelection = {'TrialNumber' 'TrialResult' 'TargetLocation' 'TargetSide' 'FixationDuration'};
             
             this.HitKeyBeforeTrial = 0;
             this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness/100*255;
@@ -70,50 +69,15 @@ classdef PSPAntiSaccades < ArumeCore.ExperimentDesign
             conditionVars(i).values = (a:((b-a)/(n-1)):b);    
         end
         
-        function initBeforeRunning( this )
-
-            if ( this.ExperimentOptions.UseEyeTracker )
-                this.eyeTracker = ArumeHardware.VOG();
-                this.eyeTracker.Connect();
-                this.eyeTracker.SetSessionName(this.Session.name);
-                this.eyeTracker.StartRecording();
-            end
-        end
-        
-        function cleanAfterRunning(this)
-            
-            if ( this.ExperimentOptions.UseEyeTracker )
-                this.eyeTracker.StopRecording();
-                
-                disp('Downloading files...');
-                files = this.eyeTracker.DownloadFile();
-                
-                disp(files{1});
-                disp(files{2});
-                disp(files{3});
-                disp('Finished downloading');
-                
-                this.addFile('vogDataFile', files{1});
-                this.addFile('vogCalibrationFile', files{2});
-                this.addFile('vogEventsFile', files{3});
-            end
-        end
-        
-        function trialResult = runPreTrial(this, variables )
-            Enum = ArumeCore.ExperimentDesign.getEnum();
-            
-            trialResult =  Enum.trialResult.CORRECT;
-        end
-        
-        function trialResult = runTrial( this, variables )
+        function [trialResult, thisTrialData] = runTrial( this, thisTrialData )
                        
             try            
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
                 
                 if ( this.ExperimentOptions.UseEyeTracker )
-                    msg = ['new trial [' num2str(variables.TargetLocation) ',' variables.TargetSide ']'];
-                    this.eyeTracker.RecordEvent( msg );
+                    msg = ['new trial [' num2str(thisTrialData.TargetLocation) ',' thisTrialData.TargetSide ']'];
+                    thisTrialData.EyeTrackerFrameStartLoop = this.eyeTracker.RecordEvent( msg );
                     disp(msg);
                 end
                 
@@ -126,7 +90,7 @@ classdef PSPAntiSaccades < ArumeCore.ExperimentDesign
                 
                 lastFlipTime        = GetSecs;
                 
-                fixDuration = (variables.FixationDuration)/1000;
+                fixDuration = (thisTrialData.FixationDuration)/1000;
                 totalDuration = fixDuration + this.ExperimentOptions.EccentricDuration/1000;
                 
                 secondsRemaining    = totalDuration;
@@ -147,8 +111,8 @@ classdef PSPAntiSaccades < ArumeCore.ExperimentDesign
                         xdeg = 0;
                         ydeg = 0;
                     else
-                        xdeg = variables.TargetLocation;
-                        if ( strcmp(variables.TargetSide,'Left') )
+                        xdeg = thisTrialData.TargetLocation;
+                        if ( strcmp(thisTrialData.TargetSide,'Left') )
                             xdeg = -xdeg;
                         end
                         ydeg = 0;

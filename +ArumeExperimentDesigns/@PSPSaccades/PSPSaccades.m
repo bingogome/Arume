@@ -1,8 +1,6 @@
-classdef PSPSaccades < ArumeCore.ExperimentDesign
+classdef PSPSaccades < ArumeExperimentDesigns.EyeTracking
     
     properties
-        eyeTracker
-        
         fixRad = 20;
         fixColor = [255 0 0];
     end
@@ -12,7 +10,7 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         function dlg = GetOptionsDialog( this, importing)
-            dlg.UseEyeTracker = { {'{0}' '1'} };
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
             
             dlg.TargetSize = 0.3;
             dlg.FixationMinDuration = 1200;
@@ -21,15 +19,17 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
             
             dlg.NumberOfRepetitions = 10;
             
-            dlg.ScreenWidth = 121;
-            dlg.ScreenHeight = 68;
-            dlg.ScreenDistance =60;
+            dlg.ScreenWidth = { 121 '* (cm)' [1 3000] };
+            dlg.ScreenHeight = { 68 '* (cm)' [1 3000] };
+            dlg.ScreenDistance = { 60 '* (cm)' [1 3000] };
+            
             
             dlg.BackgroundBrightness = 50;
             dlg.CalibrationMode = { {'{No}' 'Yes'} };
         end
         
         function initExperimentDesign( this  )
+            this.DisplayVariableSelection = {'TrialNumber' 'TrialResult' 'TargetLocation' 'InitialFixationDuration'};
             
             % this shuffles the second column (initial durations) of the
             % condition matrix. This will break the typical characteristics
@@ -80,50 +80,16 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
             end
         end
         
-        function initBeforeRunning( this )
-
-            if ( this.ExperimentOptions.UseEyeTracker )
-                this.eyeTracker = ArumeHardware.VOG();
-                this.eyeTracker.Connect();
-                this.eyeTracker.SetSessionName(this.Session.name);
-                this.eyeTracker.StartRecording();
-            end
-        end
         
-        function cleanAfterRunning(this)
-            
-            if ( this.ExperimentOptions.UseEyeTracker )
-                this.eyeTracker.StopRecording();
-                
-                disp('Downloading files...');
-                files = this.eyeTracker.DownloadFile();
-                
-                disp(files{1});
-                disp(files{2});
-                disp(files{3});
-                disp('Finished downloading');
-                
-                this.addFile('vogDataFile', files{1});
-                this.addFile('vogCalibrationFile', files{2});
-                this.addFile('vogEventsFile', files{3});
-            end
-        end
-        
-        function trialResult = runPreTrial(this, variables )
-            Enum = ArumeCore.ExperimentDesign.getEnum();
-            
-            trialResult =  Enum.trialResult.CORRECT;
-        end  
-        
-        function trialResult = runTrial( this, variables )
+        function [trialResult, thisTrialData] = runTrial( this, thisTrialData )
                        
             try            
                 
                 Enum = ArumeCore.ExperimentDesign.getEnum();
                 
                 if ( this.ExperimentOptions.UseEyeTracker )
-                    msg = ['new trial [' num2str(variables.TargetLocation(1)) ',' num2str(variables.TargetLocation(2)) ']'];
-                    this.eyeTracker.RecordEvent( msg );
+                    msg = ['new trial [' num2str(thisTrialData.TargetLocation(1)) ',' num2str(thisTrialData.TargetLocation(2)) ']'];
+                    thisTrialData.EyeTrackerFrameStartLoop = this.eyeTracker.RecordEvent( msg );
                     disp(msg);
                 end
                 
@@ -136,7 +102,7 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
                 
                 lastFlipTime        = GetSecs;
                 
-                fixDuration = (variables.InitialFixationDuration)/1000;
+                fixDuration = (thisTrialData.InitialFixationDuration)/1000;
                 totalDuration = fixDuration + this.ExperimentOptions.EccentricDuration/1000;
                 
                 secondsRemaining    = totalDuration;
@@ -157,8 +123,8 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
                         xdeg = 0;
                         ydeg = 0;
                     else
-                        xdeg = variables.TargetLocation(1);
-                        ydeg = variables.TargetLocation(2);
+                        xdeg = thisTrialData.TargetLocation(1);
+                        ydeg = thisTrialData.TargetLocation(2);
                     end
                         
                     
@@ -196,16 +162,8 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
                 end
             catch ex
                 rethrow(ex)
-                
-                if ( this.ExperimentOptions.UseEyeTracker )
-                    this.eyeTracker.StopRecording();
-                end
             end
             
-        end
-        
-        function trialOutput = runPostTrial(this)
-            trialOutput = [];   
         end
         
     end
