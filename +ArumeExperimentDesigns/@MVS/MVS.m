@@ -9,6 +9,8 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
             optionsDlg = GetAnalysisOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
             optionsDlg.SPV = { {'0' '{1}'} };
             optionsDlg.SPV_Periods = { {'0' '{1}'} };
+            optionsDlg.MVS_Fixation_Position = { {'0' '{1}'} };
+            optionsDlg.MVS_Time_Constants = { {'0' '{1}'} };
         end
         
         function [analysisResults, samplesDataTable, trialDataTable, sessionTable]  = RunDataAnalyses(this, analysisResults, samplesDataTable, trialDataTable,sessionTable, options)
@@ -97,12 +99,33 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                     case '5min'
                         timeExitMagnet = 7; % min
                         durationAfterEffect = 3; % min
+                        
+                        lightsON = 3; % min
+                        lightsOFF = 6.7; % min
+                        
+                        startHeadMoving = 3; % min
+                        stopHeadMoving = 6.7; % min
+                        
                     case '20min'
                         timeExitMagnet = 22; % min
                         durationAfterEffect = 7; % min
+                        
+                        lightsON = 3; % min
+                        lightsOFF = 21.5; % min
+                        
+                        startHeadMoving = 3; % min
+                        stopHeadMoving = 21.5; % min
+                        
                     case '60min'
                         timeExitMagnet = 62; % min
                         durationAfterEffect = 7; % min
+                         
+                        lightsON = 3; % min
+                        lightsOFF = 61.5; % min
+                        
+                        startHeadMoving = 3; % min
+                        stopHeadMoving = 61.5; % min
+                        
                 end
                 
                 periods.Baseline        = 2 + [-1.5     -0.2];
@@ -111,53 +134,25 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                 periods.BeforeExit      = timeExitMagnet + [-0.1    0.1];
 
                 % add periods for light conditions
-                if ( isfield( this.ExperimentOptions.Events, 'LightsOn' ) )
-                    switch(categorical(sessionTable.Option_Duration))
-                        case '5min'
-                            lightsON = 3; % min
-                            lightsOFF = 6.7; % min
-                        case '20min'
-                            lightsON = 3; % min
-                            lightsOFF = 21.5; % min
-                        case '60min'
-                            lightsON = 3; % min
-                            lightsOFF = 61.5; % min
-                    end
-                    
-                    periods.AfterLightsON      = lightsON   + [0.3 1.3];
-                    periods.BeforeLightsOFF    = lightsOFF  + [-1.3 -0.3];
-                    
-                end
+                periods.DuringLightsON      = [lightsON lightsOFF];
+                periods.AfterLightsON       = lightsON   + [0.3 1.3];
+                periods.BeforeLightsOFF     = lightsOFF  + [-1.3 -0.3];
                 
                 % add periods for head moving conditions
-                if ( isfield( this.ExperimentOptions.Events, 'StartHeadMov' ) )
-                    switch(categorical(sessionTable.Option_Duration))
-                        case '5min'
-                            startHeadMoving = 3; % min
-                            stopHeadMoving = 6.7; % min
-                        case '20min'
-                            startHeadMoving = 3; % min
-                            stopHeadMoving = 21.5; % min
-                        case '60min'
-                            startHeadMoving = 3; % min
-                            stopHeadMoving = 61.5; % min
-                    end
-                    
-                    periods.AfterStartHeadMoving	= startHeadMoving   + [0.3 1.3];
-                    periods.BeforeStopHeadMoving	= stopHeadMoving  + [-1.3 -0.3];
-                    
-                end
+                periods.AfterStartHeadMoving	= startHeadMoving   + [0.3 1.3];
+                periods.BeforeStopHeadMoving	= stopHeadMoving  + [-1.3 -0.3];
                 
                 fields = {'X' 'Y' 'T' 'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
                 periodNames = fieldnames(periods);
                 
-                for j =1:length(fields)
-                    for k = 1:length(periodNames)
-                        periodName = periodNames{k};
-                        periodMin = periods.(periodName);
-                        sessionTable.([periodName 'StartMin']) = periodMin(1);
-                        sessionTable.([periodName 'StopMin']) = periodMin(2);
-                        
+                for k = 1:length(periodNames)
+                    periodName = periodNames{k};
+                    periodMin = periods.(periodName);
+                    sessionTable.([periodName 'StartMin']) = periodMin(1);
+                    sessionTable.([periodName 'StopMin']) = periodMin(2);
+                    idx = sessionTable.([periodName 'StartMin'])*60:sessionTable.([periodName 'StopMin'])*60;
+                    
+                    for j =1:length(fields)
                         sessionTable.(['SPV_' fields{j} '_' periodName]) = nan;
                         sessionTable.(['SPVNorm_' fields{j} '_' periodName]) = nan;
                         sessionTable.(['SPV_' fields{j} '_' periodName '_Peak']) = nan;
@@ -170,7 +165,6 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                         xNorm = analysisResults.SPVNormalized.(fields{j});
                         
                         if ( ~isnan(sessionTable.([periodName 'StartMin'])))
-                            idx = sessionTable.([periodName 'StartMin'])*60:sessionTable.([periodName 'StopMin'])*60;
                             xidx = idx(~isnan(x(idx)));
                             xnormidx = idx(~isnan(xNorm(idx)));
                             % important! measure area under the curve to be
@@ -189,12 +183,86 @@ classdef MVS < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
                             sessionTable.(['SPV_' fields{j} '_' periodName '_PeakTime']) = t(idx(maxIdx));
                             sessionTable.(['SPVNorm_' fields{j} '_' periodName '_Peak']) = xNorm(idx(maxIdx));
                             sessionTable.(['SPVNorm_' fields{j} '_' periodName '_PeakTime']) = t(idx(maxIdx));
-                        end
+                            
+                            sessionTable.(['SPVTimeConstant_' fields{j} '_' periodName]) = nan;
+                            sessionTable.(['SPVTimeConstantA_' fields{j} '_' periodName]) = nan;
+                            
+                            fitIdx = idx(maxIdx):idx(end);
+                            fitIdx = fitIdx(~isnan(x(fitIdx)));
+                            if ( length(fitIdx) > 10 )
+                                tfit = t(fitIdx)-t(fitIdx(1));
+                                xfit = x(fitIdx);
+                                
+                                f = fit(tfit,xfit,'exp1');
+                                sessionTable.(['SPVTimeConstant_' fields{j} '_' periodName]) = -1/f.b;
+                                sessionTable.(['SPVTimeConstantA_' fields{j} '_' periodName]) = f.a;
+                            end
+                        end 
                     end
                 end
-                
-                
             end
+            
+            if ( options.MVS_Fixation_Position )
+                idx = samplesDataTable.Time>(sessionTable.Option_Events.LightsOn*60) & samplesDataTable.Time<(sessionTable.Option_Events.LightsOff*60);
+                
+                fields = {'LeftX', 'LeftY' 'LeftT' 'RightX' 'RightY' 'RightT'};
+                
+                for j =1:length(fields)
+                    x = samplesDataTable.(fields{j});
+                    x = x(idx);
+                    xzero = x - nanmedian(x);
+                    sessionTable.(['DuringFixation_PositionSTD_' fields{j}]) = nanstd(x);
+                    sessionTable.(['DuringFixation_PositionWithin1Deg_' fields{j}]) = mean(abs(xzero)<1)*100;
+                    sessionTable.(['DuringFixation_PositionWithin2Deg_' fields{j}]) = mean(abs(xzero)<2)*100;
+                    sessionTable.(['DuringFixation_PositionWithin3Deg_' fields{j}]) = mean(abs(xzero)<2)*100;
+                end
+                
+                xl = samplesDataTable.LeftX(idx)    - nanmedfilt(samplesDataTable.LeftX(idx), 500*60*5, 0.5);
+                xr = samplesDataTable.RightX(idx)   - nanmedfilt(samplesDataTable.RightX(idx), 500*60*5, 0.5);
+                yl = samplesDataTable.LeftY(idx)    - nanmedfilt(samplesDataTable.LeftY(idx), 500*60*5, 0.5);
+                yr = samplesDataTable.RightY(idx)   - nanmedfilt(samplesDataTable.RightY(idx), 500*60*5, 0.5);
+                
+                leftIsInside = abs(xl)<1 & abs(yl)<1;
+                rightIsInside = abs(xr)<1 & abs(yr)<1;
+                leftIsGood = ~isnan(xl) & ~isnan(yl);
+                rightIsGood = ~isnan(xr) & ~isnan(yr);
+                
+                sessionTable.DuringFixation_PositionWithin1Deg_Left     = sum(leftIsInside)/sum(leftIsGood)*100;
+                sessionTable.DuringFixation_PositionWithin1Deg_Right    = sum(rightIsInside)/sum(rightIsGood)*100;
+                sessionTable.DuringFixation_PositionWithin1Deg = sum( (leftIsInside & rightIsInside) | (leftIsInside & ~rightIsGood) | (rightIsInside & ~leftIsGood)) / sum(leftIsGood | rightIsGood)*100;
+                
+                leftIsInside = abs(xl)<2 & abs(yl)<2;
+                rightIsInside = abs(xr)<2 & abs(yr)<2;
+                leftIsGood = ~isnan(xl) & ~isnan(yl);
+                rightIsGood = ~isnan(xr) & ~isnan(yr);
+                
+                sessionTable.DuringFixation_PositionWithin2Deg_Left = sum(leftIsInside)/sum(leftIsGood)*100;
+                sessionTable.DuringFixation_PositionWithin2Deg_Right = sum(rightIsInside)/sum(rightIsGood)*100;
+                sessionTable.DuringFixation_PositionWithin2Deg =  sum( (leftIsInside & rightIsInside) | (leftIsInside & ~rightIsGood) | (rightIsInside & ~leftIsGood)) / sum(leftIsGood | rightIsGood)*100;
+                
+                
+                leftIsInside = abs(xl)<1;
+                rightIsInside = abs(xr)<1;
+                leftIsGood = ~isnan(xl);
+                rightIsGood = ~isnan(xr);
+                
+                sessionTable.DuringFixation_PositionWithin1Deg_LeftX     = sum(leftIsInside)/sum(leftIsGood)*100;
+                sessionTable.DuringFixation_PositionWithin1Deg_RightX    = sum(rightIsInside)/sum(rightIsGood)*100;
+                sessionTable.DuringFixation_PositionWithin1Deg_X = sum( (leftIsInside & rightIsInside) | (leftIsInside & ~rightIsGood) | (rightIsInside & ~leftIsGood)) / sum(leftIsGood | rightIsGood)*100;
+                
+                leftIsInside = abs(xl)<2;
+                rightIsInside = abs(xr)<2;
+                leftIsGood = ~isnan(xl);
+                rightIsGood = ~isnan(xr);
+                
+                sessionTable.DuringFixation_PositionWithin2Deg_LeftX = sum(leftIsInside)/sum(leftIsGood)*100;
+                sessionTable.DuringFixation_PositionWithin2Deg_RightX = sum(rightIsInside)/sum(rightIsGood)*100;
+                sessionTable.DuringFixation_PositionWithin2Deg_X =  sum( (leftIsInside & rightIsInside) | (leftIsInside & ~rightIsGood) | (rightIsInside & ~leftIsGood)) / sum(leftIsGood | rightIsGood)*100;
+                
+                sessionTable.DuringFixation_DisparitySTD_X = nanstd(xl-xr);
+                sessionTable.DuringFixation_DisparitySTD_Y = nanstd(yl-yr);
+            end
+            
         end
         
     end

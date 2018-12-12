@@ -71,7 +71,7 @@ classdef EyeTracking  < ArumeCore.ExperimentDesign
                         this.Session.addFile('vogEventsFile', files{3});
                     end
                 else
-                disp('No eye tracking files downloaded!');
+                    disp('No eye tracking files downloaded!');
                 end
             end
         end
