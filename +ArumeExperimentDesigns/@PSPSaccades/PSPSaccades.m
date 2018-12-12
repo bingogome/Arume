@@ -26,6 +26,7 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
             dlg.ScreenDistance =60;
             
             dlg.BackgroundBrightness = 50;
+            dlg.CalibrationMode = { {'{No}' 'Yes'} };
         end
         
         function initExperimentDesign( this  )
@@ -61,14 +62,22 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
             
             i = i+1;
             conditionVars(i).name   = 'TargetLocation';
-            conditionVars(i).values = {[2,0], [-2,0], [5,0], [-5,0], [8,0], [-8,0], [10,0], [-10,0], [0,2], [0,-2], [0,5], [0,-5], [0,8], [0,-8], [0,10], [0,-10]};
-            
+            if (~isfield(this.ExperimentOptions, 'CalibrationMode') || strcmp(this.ExperimentOptions.CalibrationMode, 'No'))
+                conditionVars(i).values = {[2,0], [-2,0], [5,0], [-5,0], [8,0], [-8,0], [10,0], [-10,0], [0,2], [0,-2], [0,5], [0,-5], [0,8], [0,-8], [0,10], [0,-10]};
+            else
+                conditionVars(i).values = {[5,0], [-5,0], [10,0], [-10,0], [0,5], [0,-5], [0,10], [0,-10]};
+            end
+
             i = i+1;
             conditionVars(i).name   = 'InitialFixationDuration';
             a = this.ExperimentOptions.FixationMaxDuration;
             b = this.ExperimentOptions.FixationMinDuration;
             n = this.ExperimentOptions.NumberOfRepetitions;
-            conditionVars(i).values = (a:((b-a)/(n-1)):b);
+            if ( n> 1 )
+                conditionVars(i).values = (a:((b-a)/(n-1)):b);
+            else
+                conditionVars(i).values = (a+b)/2;
+            end
         end
         
         function initBeforeRunning( this )

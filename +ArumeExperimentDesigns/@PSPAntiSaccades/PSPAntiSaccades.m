@@ -30,18 +30,13 @@ classdef PSPAntiSaccades < ArumeCore.ExperimentDesign
         
         function initExperimentDesign( this  )
             
-            % this shuffles the second column (initial durations) of the
-            % condition matrix. This will break the typical characteristics
-            % of a condition matrix
-            this.shuffleConditionMatrix(2);
-            
             this.HitKeyBeforeTrial = 0;
             this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness/100*255;
             
             this.trialDuration = 3; %seconds
             
             % default parameters of any experiment
-            this.trialSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
+            this.trialSequence = 'Random';	% Sequential, Random, Random with repetition, ...
             
             this.trialAbortAction = 'Repeat';     % Repeat, Delay, Drop
             this.trialsPerSession = (this.NumberOfConditions);
