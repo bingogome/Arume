@@ -1,4 +1,4 @@
-classdef SVV2AFC < ArumeCore.ExperimentDesign
+classdef SVV2AFC < ArumeCore.ExperimentDesign & ArumeExperimentDesigns.EyeTracking
     %SVV2AFC Parent experiment design for designs of SVV experiments
     % using 2AFC two alternative forced choice task
     % all the experiments will have a variable called angle which is the
@@ -6,17 +6,12 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     % can 'R' or 'L'.
     
     properties
-        eyeTracker = [];
         gamePad = [];
         biteBarMotor = [];
-        
-        lastResponse = '';
-        reactionTime = '';
         
         fixColor = [255 0 0];
         
         targetColor = [255 0 0];
-        
     end
     
     % ---------------------------------------------------------------------
@@ -24,95 +19,195 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         
-        function dlg = GetOptionsDialog( this )
+        function dlg = GetOptionsDialog( this, importing)
+            if( ~exist( 'importing', 'var' ) )
+                importing = 0;
+            end
             
-            dlg.SubjectHandedness = { {'{Unknown}','LeftHanded', 'RightHanded', 'Ambidextrous'} };
-            dlg.Task = { {'{SubjectiveVisualHead}','SubjectiveVisualHead'} };
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this, importing);
             
-            dlg.UseEyeTracker = { {'{0}','1'} };
-            dlg.UseGamePad = { {'0','{1}'} };
+            dlg.UseGamePad = { {'{0}','1'} };
             dlg.UseMouse = { {'{0}','1'} };
+            dlg.UseBiteBarMotor = { {'0','{1}'} };
             
+            dlg.TiltHeadAtBegining = { {'0','{1}'} };
+            dlg.HeadAngle = { 0 '* (deg)' [-40 40] };
             
-            dlg.Type_of_line = { {'{Radius}','Diameter'} };
-            dlg.Length_of_line = 300;
-            dlg.FixationDiameter = { 12.5 '* (pix)' [3 50] };
-            
-            dlg.TargetDiameter = { 12.5 '* (pix)' [3 50] };
-            dlg.targetDistance = { 125 '* (pix)' [10 500] };
+            dlg.Type_of_line = { '{Radius}|Diameter'} ;
+            dlg.Length_of_line = { 300 '* (pix)' [10 1000] };
             
             dlg.fixationDuration = { 1000 '* (ms)' [1 3000] };
             dlg.targetDuration = { 300 '* (ms)' [100 30000] };
+            dlg.Target_On_Until_Response = { {'0','{1}'} }; 
             dlg.responseDuration = { 1500 '* (ms)' [100 3000] };
             
-            dlg.UseBiteBarMotor = { {'0','{1}'} };
-            dlg.HeadAngle = { 0 '* (deg)' [-40 40] };
-            dlg.TiltHeadAtBegining = { {'0','{1}'} };
-            
-            dlg.offset = {0 '* (deg)' [-20 20] };
         end
         
-        function initBeforeRunning( this )
+        function initExperimentDesign( this  )
+            this.DisplayVariableSelection = {'TrialNumber' 'TrialResult' 'Angle' 'Response' 'ReactionTime'};
+        
+            this.trialDuration = this.ExperimentOptions.fixationDuration/1000 ...
+                + this.ExperimentOptions.targetDuration/1000 ...
+                + this.ExperimentOptions.responseDuration/1000 ; %seconds
+            
+            % default parameters of any experiment
+            this.trialSequence      = 'Random';      % Sequential, Random, Random with repetition, ...
+            this.trialAbortAction   = 'Delay';    % Repeat, Delay, Drop
+            this.trialsPerSession   = 10000;
+            this.trialsBeforeBreak  = 10000;
+            
+            %%-- Blocking
+            this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
+            this.numberOfTimesRepeatBlockSequence = ceil(this.ExperimentOptions.TotalNumberOfTrials/22);
+            this.blocksToRun = 1;
+            this.blocks = [ struct( 'fromCondition', 1, 'toCondition', 22, 'trialsToRun', 22) ];
+        end
+        
+        function [conditionVars] = getConditionVariables( this )
+            %-- condition variables ---------------------------------------
+            i= 0;
+            
+            i = i+1;
+            conditionVars(i).name   = 'Angle';
+            conditionVars(i).values = -10:2:10;
+            
+            i = i+1;
+            conditionVars(i).name   = 'Position';
+            conditionVars(i).values = {'Up' 'Down'};
+        end
+        
+        function shouldContinue = initBeforeRunning( this )
+            shouldContinue = 1;
+            
+            % Initialize eyetracker
+            initBeforeRunning@ArumeExperimentDesigns.EyeTracking(this);
             
             % Initialize gamepad
             if ( this.ExperimentOptions.UseGamePad )
-                
                 this.gamePad = ArumeHardware.GamePad();
-                
-            end
-            
-            % Initialize eyetracker
-            if ( this.ExperimentOptions.UseEyeTracker )
-                
-                this.eyeTracker = ArumeHardware.VOG();
-                this.eyeTracker.Connect();
-                
-                this.eyeTracker.SetSessionName(this.Session.name);
-                this.eyeTracker.StartRecording();
             end
             
             % Initialize bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor)
-                clear this.biteBarMotor;
                 this.biteBarMotor = ArumeHardware.BiteBarMotor();
-                
-                if ( this.ExperimentOptions.TiltHeadAtBegining )
-                    if ( length(this.Session.currentRun.pastConditions) == 0 )
-                        this.biteBarMotor.SetTiltAngle(this.ExperimentOptions.HeadAngle);
-                        pause(2);
-                        disp('30 s pause');
-                        pause(30);
-                        disp('done');
-                    end
-                end
             end
             
-            if ( 0) % this was for the EEG experiment to output something with the parallel port
-                %initialize the inpoutx64 low-level I/O driver
-                config_io;
-                %optional step: verify that the inpoutx64 driver was successfully installed
-                global cogent;
-                if( cogent.io.status ~= 0 )
-                    error('inp/outp installation failed');
+%             if ( 0) % this was for the EEG experiment to output something with the parallel port
+%                 %initialize the inpoutx64 low-level I/O driver
+%                 config_io;
+%                 %optional step: verify that the inpoutx64 driver was successfully installed
+%                 global cogent;
+%                 if( cogent.io.status ~= 0 )
+%                     error('inp/outp installation failed');
+%                 end
+%             end
+            
+        end
+        
+        function [trialResult, thisTrialData] = runPreTrial( this, thisTrialData )
+            Enum = ArumeCore.ExperimentDesign.getEnum();
+            trialResult = Enum.trialResult.CORRECT;
+            if ( isempty(this.Session.currentRun.pastTrialTable) && this.ExperimentOptions.HeadAngle ~= 0 )
+                [trialResult, thisTrialData] = this.TiltBiteBar(this.ExperimentOptions.HeadAngle, thisTrialData);
+            end
+        end
+        
+        function [trialResult, thisTrialData] = runTrial( this, thisTrialData )
+            
+            Enum = ArumeCore.ExperimentDesign.getEnum();
+            graph = this.Graph;
+            
+            %-- add here the trial code
+            Screen('FillRect', graph.window, 0);
+            
+            % SEND TO PARALEL PORT TRIAL NUMBER
+            %write a value to the default LPT1 printer output port (at 0x378)
+            %nCorrect = sum(this.Session.currentRun.pastConditions(:,Enum.pastConditions.trialResult) ==  Enum.trialResult.CORRECT );
+            %outp(hex2dec('378'),rem(nCorrect,100)*2);
+            
+            lastFlipTime                        = Screen('Flip', graph.window);
+            secondsRemaining                    = this.trialDuration;
+            thisTrialData.TimeStartLoop         = lastFlipTime;
+            if ( ~isempty(this.eyeTracker) )
+                thisTrialData.EyeTrackerFrameStartLoop = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_LOOP %d %d', thisTrialData.TrialNumber, thisTrialData.Condition) );
+            end
+            while secondsRemaining > 0
+                
+                secondsElapsed      = GetSecs - thisTrialData.TimeStartLoop;
+                secondsRemaining    = this.trialDuration - secondsElapsed;
+                
+                % -----------------------------------------------------------------
+                % --- Drawing of stimulus -----------------------------------------
+                % -----------------------------------------------------------------
+                
+                %-- Find the center of the screen
+                [mx, my] = RectCenter(graph.wRect);
+                
+                t1 = this.ExperimentOptions.fixationDuration/1000;
+                t2 = this.ExperimentOptions.fixationDuration/1000 +this.ExperimentOptions.targetDuration/1000;
+                
+                if ( secondsElapsed > t1 && (this.ExperimentOptions.Target_On_Until_Response || secondsElapsed < t2) )
+                    %-- Draw target
+                    
+                    this.DrawLine(thisTrialData.Angle, thisTrialData.Position, this.ExperimentOptions.Type_of_line);
+                    
+                    % SEND TO PARALEL PORT TRIAL NUMBER
+                    %write a value to the default LPT1 printer output port (at 0x378)
+                    %outp(hex2dec('378'),7);
                 end
+                
+                fixRect = [0 0 10 10];
+                fixRect = CenterRectOnPointd( fixRect, mx, my );
+                Screen('FillOval', graph.window,  this.targetColor, fixRect);
+                
+                this.Graph.Flip(this, thisTrialData, secondsRemaining);
+                % -----------------------------------------------------------------
+                % --- END Drawing of stimulus -------------------------------------
+                % -----------------------------------------------------------------
+                
+                
+                % -----------------------------------------------------------------
+                % --- Collecting responses  ---------------------------------------
+                % -----------------------------------------------------------------
+                
+                if ( secondsElapsed > max(t1,0.200)  )
+                    reverse = thisTrialData.Position == 'Down';
+                    response = this.CollectLeftRightResponse(reverse);
+                    if ( ~isempty( response) )
+                        thisTrialData.Response = response;
+                        thisTrialData.ResponseTime = GetSecs;
+                        thisTrialData.ReactionTime = thisTrialData.ResponseTime - thisTrialData.TimeStartLoop - t1;
+                        
+                        % SEND TO PARALEL PORT TRIAL NUMBER
+                        %write a value to the default LPT1 printer output port (at 0x378)
+                        %outp(hex2dec('378'),9);
+                        
+                        break;
+                    end
+                end
+                
+                % -----------------------------------------------------------------
+                % --- END Collecting responses  -----------------------------------
+                % -----------------------------------------------------------------
+                
+            end
+            
+            if ( isempty(response) )
+                trialResult = Enum.trialResult.ABORT;
+            else
+                trialResult = Enum.trialResult.CORRECT;
             end
         end
         
         function cleanAfterRunning(this)
             
-            % ose gamepad
+            % Close eyetracker
+            cleanAfterRunning@ArumeExperimentDesigns.EyeTracking(this);
+            
+            % close gamepad
             if ( this.ExperimentOptions.UseGamePad )
             end
-            
-            % Close eyetracker
-            if ( this.ExperimentOptions.UseEyeTracker )
-                if ( ~isempty(this.eyeTracker))
-                    if ( this.eyeTracker.IsRecording)
-                        this.eyeTracker.StopRecording();
-                    end
-                end
-            end
-            
+                        
             % Close bitebar
             if ( this.ExperimentOptions.UseBiteBarMotor ~= 0 )
                 if ( ~isempty(this.biteBarMotor))
@@ -122,24 +217,67 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             end
         end
         
+        function [trialResult, thisTrialData] = TiltBiteBar(this, tiltAngle, thisTrialData)
+            
+            Enum = ArumeCore.ExperimentDesign.getEnum();
+            trialResult = Enum.trialResult.CORRECT;
+                        
+            result = 'n';
+            while( result ~= 'y' )
+                result = this.Graph.DlgSelect( ...
+                    sprintf('Bite bar is going to tilt to %d degrees. Continue?',tiltAngle), ...
+                    { 'y' 'n'}, ...
+                    { 'Yes'  'No'} , [],[]);
+                if ( result ~= 'y' )
+                    result = this.Graph.DlgSelect( ...
+                        'Do you want to interrupt the experiment?', ...
+                        { 'y' 'n'}, ...
+                        { 'Yes'  'No'} , [],[]);
+                    if ( result ~= 'n' )
+                        trialResult = Enum.trialResult.QUIT;
+                        return;
+                    end
+                end
+            end
+            
+            [mx, my] = RectCenter(this.Graph.wRect);
+            fixRect = [0 0 10 10];
+            fixRect = CenterRectOnPointd( fixRect, mx, my );
+            Screen('FillOval', this.Graph.window,  255, fixRect);
+            Screen('Flip', this.Graph.window);
+            
+            thisTrialData.TimeStartMotorMove = GetSecs;
+            pause(2);
+            this.biteBarMotor.SetTiltAngle(tiltAngle);
+            thisTrialData.TimeEndMotorMove = GetSecs;
+            disp('30 s pause');
+            result = this.Graph.DlgTimer('Waiting 30s...',30);
+            if ( result < 0 )
+                trialResult =  Enum.trialResult.ABORT;
+                return;
+            end
+            thisTrialData.TimeEndMotorMovePause = GetSecs;
+            disp('done with pause');
+        end
+        
         function response = CollectLeftRightResponse(this, reverse)
+            if ( ~exist( 'reverse','var') )
+                reverse = 0;
+            end
+            
             response = [];
             
-            if ( this.ExperimentOptions.UseMouse )
-                [x,y,buttons] = GetMouse();
-%                 if any(buttons) %wait for release
-%                     if (buttons(1) ==1 && buttons(3)==1)
-%                         disp('both buttons pressed');
-%                     end
-                    if any(buttons) % wait for release
-                        if buttons(1) == 1
-                            response = 'L';
-                        elseif  buttons(3) == 1
-                            response = 'R';
-                        end
+            if ( isfield(this.ExperimentOptions,'UseMouse') && this.ExperimentOptions.UseMouse )
+                [~,~,buttons] = GetMouse();
+                if any(buttons) % wait for release
+                    if buttons(1) == 1
+                        response = 'L';
+                    elseif  buttons(3) == 1
+                        response = 'R';
                     end
-                elseif ( this.ExperimentOptions.UseGamePad )
-                [d, l, r] = this.gamePad.Query();
+                end
+            elseif ( isfield(this.ExperimentOptions,'UseGamePad') && this.ExperimentOptions.UseGamePad )
+                [~, l, r] = this.gamePad.Query();
                 if ( l == 1)
                     response = 'L';
                 elseif( r == 1)
@@ -177,26 +315,30 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                     end
                 case 'Diameter'
             end
+            
+            if ( ~isempty( response) )
+                response = categorical(cellstr(response));
+            end
         end
         
-        function DrawLine(this,variables)
+        function DrawLine(this, angle, position, typeOfLine)
             
-            switch(this.ExperimentOptions.Type_of_line)
+            switch(typeOfLine)
                 case 'Radius'
                     lineLength = this.ExperimentOptions.Length_of_line;
                     [mx, my] = RectCenter(this.Graph.wRect);
-                    
-                    switch(variables.Position)
+                     
+                    switch(position)
                         case 'Up'
                             fromH = mx;
                             fromV = my;
-                            toH = mx + lineLength*sin(this.currentAngle/180*pi);
-                            toV = my - lineLength*cos(this.currentAngle/180*pi);
+                            toH = mx + lineLength*sin(angle/180*pi);
+                            toV = my - lineLength*cos(angle/180*pi);
                         case 'Down'
                             fromH = mx;
                             fromV = my;
-                            toH = mx - lineLength*sin(this.currentAngle/180*pi);
-                            toV = my + lineLength*cos(this.currentAngle/180*pi);
+                            toH = mx - lineLength*sin(angle/180*pi);
+                            toV = my + lineLength*cos(angle/180*pi);
                     end
                     
                     Screen('DrawLine', this.Graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
@@ -204,10 +346,10 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
                     lineLength = this.ExperimentOptions.Length_of_line;
                     [mx, my] = RectCenter(this.Graph.wRect);
                     
-                    fromH = mx - lineLength*sin(this.currentAngle/180*pi);
-                    fromV = my + lineLength*cos(this.currentAngle/180*pi);
-                    toH = mx + lineLength*sin(this.currentAngle/180*pi);
-                    toV = my - lineLength*cos(this.currentAngle/180*pi);
+                    fromH = mx - lineLength*sin(angle/180*pi);
+                    fromV = my + lineLength*cos(angle/180*pi);
+                    toH = mx + lineLength*sin(angle/180*pi);
+                    toV = my - lineLength*cos(angle/180*pi);
                     
                     Screen('DrawLine', this.Graph.window, this.targetColor, fromH, fromV, toH, toV, 4);
             end
@@ -219,37 +361,79 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
     % ---------------------------------------------------------------------
     methods ( Access = public )
         
-        function trialDataSet = PrepareTrialDataSet( this, ds)
+        function trialDataTable = PrepareTrialDataTable( this, ds, options)
             % Every class inheriting from SVV2AFC should override this
             % method and add the proper PresentedAngle and
             % LeftRightResponse variables
             
-            trialDataSet = this.PrepareTrialDataSet@ArumeCore.ExperimentDesign(ds);
+            trialDataTable = this.PrepareTrialDataTable@ArumeCore.ExperimentDesign(ds);
             
-            trialDataSet.PresentedAngle = trialDataSet.Angle;
-            trialDataSet.LeftRightResponse = trialDataSet.Response;
+            trialDataTable.PresentedAngle = trialDataTable.Angle;
+            trialDataTable.LeftRightResponse = trialDataTable.Response;
+        end
+        
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable, options)
+            
+            
+            angles = this.GetAngles();
+            angles(this.Session.trialDataTable.TrialResult>0) = [];
+            
+            respones = this.GetLeftRightResponses();
+            respones(this.Session.trialDataTable.TrialResult>0) = [];
+            
+%             angles = angles(101:201);
+%             respones = respones(101:201);
+            [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
+            
+            
+            data = sessionDataTable;
+            if ( contains(this.Session.sessionCode,'LED') )
+                data.TiltSide = 'LeftTilt';
+            elseif (contains(this.Session.sessionCode,'RED'))
+                data.TiltSide = 'RightTilt';
+            elseif (contains(this.Session.sessionCode,'Upright'))
+                data.TiltSide = 'Upright';
+            end
+            data.TiltSide =categorical(cellstr(data.TiltSide));
+            
+            data.SVV = SVV;
+            data.SVVth = SVVth;
+            
+            sessionDataTable = data;
         end
         
         % Function that gets the angles of each trial with 0 meaning
         % upright, positive tilted CW and negative CCW.
         function angles = GetAngles( this )
-            angles = this.Session.trialDataSet.Angle;
+            if ( ~isempty(this.Session.trialDataTable) )
+                angles = this.Session.trialDataTable.Angle;
+            else
+                angles = [];
+            end
         end
         
         % Function that gets the left and right responses with 1 meaning
         % right and 0 meaning left.
         function responses = GetLeftRightResponses( this )
-            responses = this.Session.trialDataSet.Response;
+            if ( ~isempty(this.Session.trialDataTable) )
+                responses = this.Session.trialDataTable.Response;
+            else
+                responses = [];
+            end
         end
         
-        
-        function plotResults = Plot_Sigmoid(this)
+    end
+    % ---------------------------------------------------------------------
+    % Plot methods
+    % ---------------------------------------------------------------------
+    methods ( Access = public )
+        function plotResults = Plot_SVV_Sigmoid(this)
             
             angles = this.GetAngles();
-            angles(this.Session.trialDataSet.TrialResult>0) = [];
+            angles(this.Session.trialDataTable.TrialResult~='CORRECT') = [];
             
             respones = this.GetLeftRightResponses();
-            respones(this.Session.trialDataSet.TrialResult>0) = [];
+            respones(this.Session.trialDataTable.TrialResult~='CORRECT') = [];
             
 %             angles = angles(101:201);
 %             respones = respones(101:201);
@@ -261,7 +445,7 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             ax1 = gca;
             set(ax1,'nextplot','add', 'fontsize',12);
             
-%             bar(allAngles, trialCounts/sum(trialCounts)*100, 'edgecolor','none','facecolor',[0.8 0.8 0.8])
+             bar(allAngles, trialCounts/sum(trialCounts)*100, 'edgecolor','none','facecolor',[0.8 0.8 0.8])
             
             plot( allAngles, allResponses,'o', 'color', [0.4 0.4 0.4], 'markersize',15,'linewidth',2, 'markerfacecolor', [0.7 0.7 0.7])
             plot(a,p, 'color', 'k','linewidth',3);
@@ -281,60 +465,11 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             xlabel('Angle (deg)', 'fontsize',16);
         end
         
-        function plotResults = Plot_Sigmoid_Tilt_Aftereffect(this)
-            angles = this.GetAngles();
-            
-            dangles = diff(angles);
-            
-            angles = angles(2:end);
-            angles1 = angles(dangles>0);
-            angles2 = angles(dangles<0);
-            
-            respones = this.GetLeftRightResponses();
-            respones = respones(2:end);
-            respones1 = respones(dangles>0);
-            respones2 = respones(dangles<0);
-            
-            
-            figure('position',[400 400 1000 400],'color','w','name',this.Session.name)
-            ax1=axes('nextplot','add', 'fontsize',12);
-            
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles1, respones1);
-            plot( allAngles, allResponses,'o', 'color', [1 0 0], 'markersize',10,'linewidth',2,'markerfacecolor',[1 0.7 0.7])
-            plot(a,p, 'color', [1 0 0],'linewidth',2);
-            line([SVV, SVV], [0 100], 'color',[1 0 0],'linewidth',2);
-            
-            %xlabel('Angle (deg)', 'fontsize',16);
-            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(30, 80, sprintf('SVV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
-            
-            set(gca,'xlim',[-30 30],'ylim',[-10 110])
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xticklabel',[])
-            
-            [SVV, a, p, allAngles, allResponses,trialCounts] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles2, respones2);
-            plot( allAngles, allResponses,'o', 'color', [0 0 1], 'markersize',10,'linewidth',2,'markerfacecolor',[0.7 0.7 1])
-            plot(a,p, 'color', [0 0 1],'linewidth',2);
-            line([SVV, SVV], [0 100], 'color',[0 0 1],'linewidth',2);
-            
-            %xlabel('Angle (deg)', 'fontsize',16);
-            ylabel({'Percent answered' 'tilted right'}, 'fontsize',16);
-            text(30, 60, sprintf('SVV: %0.2f°',SVV), 'fontsize',16,'HorizontalAlignment','right');
-            
-            set(gca,'xlim',[-30 30],'ylim',[-10 110])
-            set(gca,'xgrid','on')
-            set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-            set(gca,'xticklabel',[])
-            
-        end
-        
-        function plotResults = Plot_SigmoidUpDown(this)
+        function plotResults = Plot_SVV_SigmoidUpDown(this)
             analysisResults = 0;
             
-            ds = this.Session.trialDataSet;
+            ds = this.Session.trialDataTable;
             ds(ds.TrialResult>0,:) = [];
-            ds(ds.Response<0,:) = [];
             
             figure('position',[400 100 1000 600],'color','w','name',this.Session.name)
             
@@ -373,56 +508,8 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             set(gca,'xlim',[-30 30],'ylim',[-10 110])
             set(gca,'xgrid','on')
             set(gca,'xcolor',[0.3 0.3 0.3],'ycolor',[0.3 0.3 0.3]);
-        end
-        
-        
+        end 
     end
-    
-    
-    % ---------------------------------------------------------------------
-    % Data Analysis methods
-    % ---------------------------------------------------------------------
-    methods ( Access = public )
-        
-        function analysisResults = Analysis_SVV(this)
-            analysisResults = 0;
-        end
-        
-        function analysisResults = Analysis_SVVUpDown(this)
-            analysisResults=4;
-        end
-        
-        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
-            
-            
-            angles = this.GetAngles();
-            angles(this.Session.trialDataSet.TrialResult>0) = [];
-            
-            respones = this.GetLeftRightResponses();
-            respones(this.Session.trialDataSet.TrialResult>0) = [];
-            
-%             angles = angles(101:201);
-%             respones = respones(101:201);
-            [SVV, a, p, allAngles, allResponses,trialCounts, SVVth] = ArumeExperimentDesigns.SVV2AFC.FitAngleResponses( angles, respones);
-            
-            
-            data = sessionDataTable;
-            if ( contains(this.Session.sessionCode,'LED') )
-                data.TiltSide = 'LeftTilt';
-            elseif (contains(this.Session.sessionCode,'RED'))
-                data.TiltSide = 'RightTilt';
-            elseif (contains(this.Session.sessionCode,'Upright'))
-                data.TiltSide = 'Upright';
-            end
-            data.TiltSide =categorical(cellstr(data.TiltSide));
-            
-            data.SVV = SVV;
-            data.SVVth = SVVth;
-            
-            sessionDataTable = data;
-        end
-    end
-    
     
     % ---------------------------------------------------------------------
     % Utility methods
@@ -432,29 +519,34 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             
             % add values in the extremes to "support" the logistic fit
             
+            if ( iscell(responses) )
+                % fix for new tables. Usually responses will come as a cell
+                responses = cell2mat(responses);
+            end
+            
             ds = dataset;
-            if ( max(responses)>10)
+            if ( iscategorical(responses) || max(responses)>10)
                 n = length(angles);
-                angles(end+1) = -40;
-                angles(end+1) = 40;
-                angles(end+1) = -40;
-                angles(end+1) = 40;
+                angles(end+1,1) = -40;
+                angles(end+1,1) = 40;
+                angles(end+1,1) = -40;
+                angles(end+1,1) = 40;
                 
-                responses(end+1) = 'L';
-                responses(end+1) = 'R';
-                responses(end+1) = 'L';
-                responses(end+1) = 'R';
+                responses(end+1,1) = 'L';
+                responses(end+1,1) = 'R';
+                responses(end+1,1) = 'L';
+                responses(end+1,1) = 'R';
                 ds.Response = responses=='R';
             else
-                angles(end+1) = -40;
-                angles(end+1) = 40;
-                angles(end+1) = -40;
-                angles(end+1) = 40;
+                angles(end+1,1) = -40;
+                angles(end+1,1) = 40;
+                angles(end+1,1) = -40;
+                angles(end+1,1) = 40;
 
-                responses(end+1) = 0;
-                responses(end+1) = 1;
-                responses(end+1) = 0;
-                responses(end+1) = 1;
+                responses(end+1,1) = 0;
+                responses(end+1,1) = 1;
+                responses(end+1,1) = 0;
+                responses(end+1,1) = 1;
                 ds.Response = responses;
             end
             ds.Angle = angles;
@@ -513,7 +605,6 @@ classdef SVV2AFC < ArumeCore.ExperimentDesign
             end
             
         end
-        
         
         function drawFrame( graph, angle, color)
             

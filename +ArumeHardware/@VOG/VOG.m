@@ -13,20 +13,29 @@ classdef VOG  < handle
             if ( ~exist('port','var') )
                 port = 9000;
             end
-            
-%             if ( exist('C:\secure\Code\EyeTracker\bin\x64\Debug','file') )
-%                 asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\x64\Debug\EyeTrackerRemoteClient.dll');
-% 
-%                 if ( ~exist('ip','var') )
-%                     ip = '127.0.0.1';
-%                 end
-%             else
+                        
+            if ( exist('C:\secure\Code\EyeTracker\bin\x64\Debug','file') )
+                asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\x64\Debug\EyeTrackerRemoteClient.dll');
+                if ( ~exist('ip','var') )
+                    ip = fileread('C:\secure\Code\EyeTracker\bin\x64\Debug\IP.txt');
+                end
+            elseif exist('C:\secure\EyeTracker Debug 2018-22-08\EyeTrackerRemoteClient.dll')
+                asm = NET.addAssembly('C:\secure\EyeTracker Debug 2018-22-08\EyeTrackerRemoteClient.dll');
+                if ( ~exist('ip','var') )
+                    ip = fileread('C:\secure\EyeTracker Debug 2018-22-08\IP.txt');
+                end
+            elseif exist('C:\Secure\EyeTracker\Debug\EyeTrackerRemoteClient.dll')
+                asm = NET.addAssembly('C:\Secure\EyeTracker\Debug\EyeTrackerRemoteClient.dll');
+                if ( ~exist('ip','var') )
+                    ip = fileread('C:\Secure\EyeTracker\Debug\IP.txt');
+                end
+            else
                 asm = NET.addAssembly('C:\secure\code\Debug\EyeTrackerRemoteClient.dll');
                 
                 if ( ~exist('ip','var') )
-                     ip = '127.0.0.1';
+                    ip = fileread('C:\secure\code\Debug\IP.txt');
                 end
-%             end
+            end
             
             this.eyeTracker = VORLab.VOG.Remote.EyeTrackerClient(ip, port);
         end
@@ -54,9 +63,11 @@ classdef VOG  < handle
             end
         end
         
-        function RecordEvent(this, message)
+        function frameNumber = RecordEvent(this, message)
+            frameNumber = [];
             if ( ~isempty( this.eyeTracker) )
-                this.eyeTracker.RecordEvent([num2str(GetSecs) ' ' message]);
+                frameNumber = this.eyeTracker.RecordEvent([num2str(GetSecs) ' ' message]);
+                frameNumber = double(frameNumber);
             end
         end
         
@@ -71,7 +82,6 @@ classdef VOG  < handle
                 files = cell(files.ToArray)';
             end
         end
-                
     end
     
     methods(Static = true)

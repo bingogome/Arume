@@ -55,17 +55,6 @@ classdef VH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             conditionVars(i).values = ([-10:10/2.5:10-10/5]+10/5);
         end
         
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
-        end
-        
-        function staircaseVars = getStaircaseVariables( this )
-            i= 0;
-            
-            i = i+1;
-            staircaseVars = [];
-        end
-        
         function trialResult = runPreTrial(this, variables )
             Enum = ArumeCore.ExperimentDesign.getEnum();
             % Add stuff here
@@ -125,14 +114,6 @@ classdef VH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
             this.currentAngle = round(this.currentAngle);
             
             disp(['CURRENT: ' num2str(this.currentAngle) ' Percent: ' num2str(variables.AnglePercentRange) ' Block: ' num2str(N) ' SHV : ' num2str(this.currentCenterRange) ' RANGE: ' num2str(this.currentRange)]);
-            
-            if ( ~isempty(this.eyeTracker) )
-                if ( ~this.eyeTracker.IsRecording())
-                    this.eyeTracker.StartRecording();
-                    pause(1);
-                end
-                this.eyeTracker.RecordEvent(num2str(size(this.Session.currentRun.pastConditions,1)));
-            end
             
             trialResult =  Enum.trialResult.CORRECT;
         end
@@ -299,9 +280,6 @@ classdef VH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
                     % -----------------------------------------------------------------
                 end
             catch ex
-                if ( ~isempty( this.eyeTracker ) )
-                    %                     this.eyeTracker.StopRecording();
-                end
                 rethrow(ex)
             end
             
@@ -312,14 +290,6 @@ classdef VH2AFCAdaptive < ArumeExperimentDesigns.SVH2AFC
         end
         
         function trialOutput = runPostTrial(this)
-            
-            if ( ~isempty( this.eyeTracker ) )
-                
-                if ( length(this.Session.currentRun.futureConditions) == 0 )
-                    this.eyeTracker.StopRecording();
-                end
-            end
-            
             trialOutput = [];
             trialOutput.Response = this.lastResponse;
             trialOutput.ReactionTime = this.reactionTime;

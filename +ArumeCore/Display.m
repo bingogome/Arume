@@ -11,8 +11,8 @@ classdef Display < handle
         black = [];
         white = [];
         
-        dlgTextColor = [];
-        dlgBackgroundScreenColor = [];
+        dlgTextColor = [255 255 255];
+        dlgBackgroundScreenColor = [0 0 0];
         
         frameRate = [];
         nominalFrameRate = [];
@@ -31,8 +31,9 @@ classdef Display < handle
         
         distanceToMonitor = [];
         
-        fliptimes = {};
         NumFlips = 0;
+        NumSlowFlips = 0;
+        NumSuperSlowFlips = 0;
     end
     
     properties(Access=private)
@@ -47,29 +48,38 @@ classdef Display < handle
         
         function Init( graph, exper)
             
+            %           Screen('Preference', 'VisualDebugLevel', 3);
             Screen('Preference', 'SkipSyncTests', 1);
             Screen('Preference', 'VisualDebugLevel', 0);
             
             %-- screens
             
             graph.screens = Screen('Screens');
-            screens=Screen('Screens');
-%         	graph.selectedScreen=max(screens);
-          	graph.selectedScreen=1;
-    
+            graph.selectedScreen=max(graph.screens);
+            
             %-- window
-            [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
-%             [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0);
-         
+            Screen('Preference', 'ConserveVRAM', 64);
+            if (~exper.ExperimentOptions.Debug || max(graph.screens)<2)
+                [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [], [], [], 0, 10);
+            else
+                [graph.window, graph.wRect] = Screen('OpenWindow', graph.selectedScreen, 0, [10 10 900 600], [], [], 0, 10);
+            end
+            
             %-- color
             
             graph.black = BlackIndex( graph.window );
             graph.white = WhiteIndex( graph.window );
             
-            graph.dlgTextColor = exper.ForegroundColor;
-            graph.dlgBackgroundScreenColor = exper.BackgroundColor;
+            if ( exist('exper','var') && ~isempty(exper) )
+                graph.dlgTextColor = exper.ForegroundColor;
+                graph.dlgBackgroundScreenColor = exper.BackgroundColor;
+            end
             
+            % FOR OKN
             
+            AssertOpenGL;
+            Screen('BlendFunction', graph.window, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            Priority(MaxPriority(graph.window));
             
             
             %-- font
@@ -78,38 +88,29 @@ classdef Display < handle
             
             %-- frame rate
             graph.frameRate         = Screen('FrameRate', graph.selectedScreen);
+            ifi                                             = Screen('GetFlipInterval', graph.window);
+            if graph.frameRate==0
+                graph.frameRate=1/ifi;
+            end
             graph.nominalFrameRate  = Screen('NominalFrameRate', graph.selectedScreen);
             
             %-- size
             [graph.reportedmmWidth, graph.reportedmmHeight] = Screen('DisplaySize', graph.selectedScreen);
             [graph.pxWidth, graph.pxHeight]                 = Screen('WindowSize', graph.window);
-            graph.windiwInfo                                = Screen('GetWindowInfo',graph.window);
+            graph.windiwInfo                                = Screen('GetWindowInfo',graph.window);           
             %TODO: force resolution and refresh rate
             
             
-            if ( ~isempty( exper ) )
-                
+            if ( exist('exper','var') && ~isempty(exper) )
                 %-- physical dimensions
-                graph.mmWidth           = exper.Config.Graphical.mmMonitorWidth;
-                graph.mmHeight          = exper.Config.Graphical.mmMonitorHeight;
-                graph.distanceToMonitor = exper.Config.Graphical.mmDistanceToMonitor; % mm
+                graph.mmWidth           = exper.ExperimentOptions.ScreenWidth;
+                graph.mmHeight          = exper.ExperimentOptions.ScreenHeight;
+                graph.distanceToMonitor = exper.ExperimentOptions.ScreenDistance;
                 
                 
                 %-- scale
                 horPixPerDva = graph.pxWidth/2 / (atan(graph.mmWidth/2/graph.distanceToMonitor)*180/pi);
                 verPixPerDva = graph.pxHeight/2 / (atan(graph.mmHeight/2/graph.distanceToMonitor)*180/pi);
-                
-                
-                
-                %-- if we are resuming an experiment, test if graph set up is the same
-                
-                if ( ~isempty( exper.Graph ) )
-                    
-                    % TODO improve
-                    if ( graph.wRect(3) ~= exper.Graph.wRect(3) || graph.wRect(4) ~= exper.Graph.wRect(4) )
-                        error( 'monitor resoluting is different from the first run, recommended to change settings or to restart the experiment');
-                    end
-                end
             end
             
             
@@ -123,43 +124,64 @@ classdef Display < handle
         
         function ResetBackground( this )
             Screen('FillRect', this.window, this.dlgBackgroundScreenColor);
+            Screen('Flip', graph.window);
+        end
+        
+        function ResetFlipTimes(this)
+            this.NumFlips = 0;
+            this.NumSlowFlips = 0;
+            this.NumSuperSlowFlips = 0;
         end
         
         %% Flip
         %--------------------------------------------------------------------------
-        function fliptime = Flip( this, exper, trial )
+        function fliptime = Flip( this, exper, thisTrialData, secondsRemaining )
             
             Enum = ArumeCore.ExperimentDesign.getEnum();
             
+            if ( nargin == 4)
+                if ( exper.ExperimentOptions.Debug )
+                    Screen('DrawText', this.window, sprintf('%i seconds remaining...', round(secondsRemaining)), 20, 50, this.white);
+                    currentline = 50 + 25;
+                    vNames = thisTrialData.Properties.VariableNames;
+                    for iVar = 1:length(vNames)
+                        if ( ischar(thisTrialData.(vNames{iVar})) )
+                            s = sprintf( '%s = %s',vNames{iVar},thisTrialData.(vNames{iVar}) );
+                        elseif ( isnumeric(thisTrialData.(vNames{iVar})) )
+                            s = sprintf( '%s = %s',vNames{iVar},num2str(thisTrialData.(vNames{iVar})) );
+                        else
+                            s = sprintf( '%s = -',vNames{iVar});
+                        end
+                        Screen('DrawText', this.window, s, 20, currentline, this.white);
+                        
+                        currentline = currentline + 25;
+                    end
+                    %
+                    %                             if ( ~isempty( this.EyeTracker ) )
+                    %                                 draweye( this.EyeTracker.eyelink, graph)
+                    %                             end
+                end
+            end
+            
             fliptime = Screen('Flip', this.window);
+            this.NumFlips = this.NumFlips +1;
+            if ( this.lastfliptime>0 && fliptime-this.lastfliptime > 1.5/this.frameRate)
+                this.NumSlowFlips = this.NumSlowFlips + 1;
+            end
+            if ( this.lastfliptime>0 && fliptime-this.lastfliptime > 10/this.frameRate)
+                this.NumSuperSlowFlips = this.NumSuperSlowFlips + 1;
+            end
+            this.lastfliptime = fliptime;
             
             %-- Check for keyboard press
             [keyIsDown,secs,keyCode] = KbCheck;
             if keyCode(Enum.keys.ESCAPE)
-                if nargin == 2
+                if nargin >1
                     exper.abortExperiment();
-                elseif nargin == 3
-                    exper.abortExperiment(trial);
                 else
                     throw(MException('PSYCORTEX:USERQUIT', ''));
                 end
             end
-            
-            this.NumFlips = this.NumFlips + 1;
-           % this.fliptimes{end}(this.NumFlips) = fliptime;
-            %             this.fliptimes{end} = this.fliptimes{end} + histc(fliptime-this.lastfliptime,0:.005:.100);
-            %             fliptime-this.lastfliptime
-            %             this.lastfliptime = fliptime;
-            
-        end
-        
-        %% Make hist of flips
-        function hist_of_flips = flips_hist(this)
-            
-            hist_of_flips =  histc(diff(this.fliptimes{end}(1:this.NumFlips)),0:.005:.100);
-            %             this.fliptime_hist = hist_of_flips;
-            
-            
         end
         
         %% dva2pix
@@ -247,14 +269,19 @@ classdef Display < handle
             
             DrawFormattedText( this.window, message, varargin{:} );
             Screen('Flip', this.window);
-            disp( sprintf(['\n' message]));
+            cprintf('blue','\n---------------------------------------------------------\n');
+            cprintf('blue','---------------------------------------------------------\n');
+            cprintf('blue',[ message '\n']);
+            cprintf('blue','---------------------------------------------------------\n');
+            cprintf('blue','---------------------------------------------------------\n');
             
+            KeyNotDown = 0;
             while(1)
                 
                 try
                     g = ArumeHardware.GamePad();
                     [ direction, left, right, a, b, x, y] = g.Query;
-
+                    
                     if ( a | b | x | y)
                         result = char('a');
                         break;
@@ -273,24 +300,30 @@ classdef Display < handle
                 
                 [keyIsDown, secs, keyCode, deltaSecs] = KbCheck();
                 if ( keyIsDown )
-                    keys = find(keyCode);
-                    result = keyCode(keys(1));
-                    break;
+                    if ( KeyNotDown )
+                        keys = find(keyCode);
+                        result = keyCode(keys(1));
+                        break;
+                    end
+                else
+                    % at some point it has to be not clicked before it is
+                    % clicked
+                    KeyNotDown = 1;
                 end
                 
                 
             end
             
-%             char = GetChar;
-%             switch(char)
-%                 
-%                 case ESCAPE
-%                     result = 0;
-%                     
-%                 otherwise
-%                     result = char;
-%             end
-%             
+            %             char = GetChar;
+            %             switch(char)
+            %
+            %                 case ESCAPE
+            %                     result = 0;
+            %
+            %                 otherwise
+            %                     result = char;
+            %             end
+            %
             
             Screen( 'TextColor', this.window, oldDefaultColor); % recover previous default color
         end
@@ -368,7 +401,13 @@ classdef Display < handle
             
             DrawFormattedText(this.window, [message ' ' yesText ' (enter), ' noText ' (escape)'], varargin{:});
             Screen('Flip', this.window);
-            disp( sprintf( ['\n' message ' ' yesText ' (enter), ' noText ' (escape)']));
+            
+            cprintf('blue','\n---------------------------------------------------------\n');
+            cprintf('blue','---------------------------------------------------------\n');
+            cprintf('blue', [ message ' ' yesText ' (enter), ' noText ' (escape)\n']);
+            cprintf('blue','---------------------------------------------------------\n');
+            cprintf('blue','---------------------------------------------------------\n');
+            
             
             while(1)
                 char = GetChar;
@@ -392,6 +431,7 @@ classdef Display < handle
         function result = DlgTimer( this, message, maxTime, varargin )
             % DlgTimer(window, message [, maxTime][, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical])
             
+            result = 0;
             
             if nargin < 1
                 error('DlgHitKey: Must provide at least the first argument.');
@@ -406,7 +446,7 @@ classdef Display < handle
             end
             
             oldDefaultColor = Screen( 'TextColor', this.window); % recover previous default color
-            Screen( 'TextColor', this.window, this.dlgTextColor);
+            Screen( 'TextColor', this.window, 255);
             
             % relevant keycodes
             ESCAPE = 27;
@@ -414,10 +454,18 @@ classdef Display < handle
             % remove previous key presses
             FlushEvents('keyDown');
             
-            tini = getSecs;
+            tini = GetSecs;
             while(1)
-                t = getSecs-tini;
-                DrawFormattedText( this.window, sprintf('%s - %d'' %4.1f seconds',message,floor(t/60),mod(t,60)), varargin{:} );
+                t = GetSecs-tini;
+                DrawFormattedText( this.window, sprintf('%s - %4.1f seconds',message,maxTime-t), varargin{:} );
+                
+                % draw a fixation spot in the center;
+                [mx, my] = RectCenter(this.wRect);
+                fixRect = [0 0 10 10];
+                fixRect = CenterRectOnPointd( fixRect, mx, my );
+                Screen('FillOval', this.window,  255, fixRect);
+                fliptime = Screen('Flip', this.window);
+                
                 Screen('Flip', this.window);
                 
                 if ( CharAvail )
@@ -425,11 +473,11 @@ classdef Display < handle
                     switch(char)
                         
                         case ESCAPE
-                            result = 0;
+                            result = -1;
                             break;
                     end
                 end
-                if ( maxTime > 0 && (getSecs-tini> maxTime ) )
+                if ( maxTime > 0 && (GetSecs-tini> maxTime ) )
                     break
                 end
             end
@@ -473,7 +521,12 @@ classdef Display < handle
             selection = 0;
             DrawFormattedText( this.window, text, varargin{:} );
             Screen('Flip', this.window);
-            disp( sprintf(['\n'  text]));
+            
+            cprintf('blue','\n---------------------------------------------------------\n');
+            cprintf('blue','---------------------------------------------------------\n');
+            cprintf('blue', [  text '\n']);
+            cprintf('blue','---------------------------------------------------------\n');
+            cprintf('blue','---------------------------------------------------------\n');
             
             while(1) % while no valid key is pressed
                 

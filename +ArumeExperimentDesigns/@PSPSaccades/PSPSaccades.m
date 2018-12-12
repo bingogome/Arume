@@ -11,7 +11,7 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
     % Experiment design methods
     % ---------------------------------------------------------------------
     methods ( Access = protected )
-        function dlg = GetOptionsDialog( this )
+        function dlg = GetOptionsDialog( this, importing)
             dlg.UseEyeTracker = { {'{0}' '1'} };
             
             dlg.TargetSize = 0.3;
@@ -215,50 +215,8 @@ classdef PSPSaccades < ArumeCore.ExperimentDesign
     % --------------------------------------------------------------------
     methods
         
-        function trialDataSet = PrepareTrialDataSet( this, ds)
-            trialDataSet = ds;
-        end
-            
-        function samplesDataSet = PrepareSamplesDataSet(this, trialDataSet, dataFile, calibrationFile)
-            if ( ~exist('dataFile','var') || ~exist('calibrationFile', 'var') )
-                res = questdlg('Do you want to import the eye data?', 'Import data', 'Yes', 'No', 'Yes');
-                if ( streq(res,'No'))
-                    return;
-                end
-            end
-            
-            S = [];
-            
-            if ( ~exist('dataFile', 'var') )
-                S.Data_File = { {'uigetfile(''*.txt'')'} };
-            end
-            
-            if ( ~exist('calibrationFile', 'var') )
-                S.Calibration_File = { {'uigetfile(''*.cal'')'} };
-            end
-            
-            S = StructDlg(S,'Select data file',[]);
-            if ( isempty(S) )
-                return;
-            end
-            
-            if ( ~exist('dataFile', 'var') )
-                dataFile = S.Data_File;
-            end
-            
-            if ( ~exist('calibrationFile', 'var') )
-                calibrationFile = S.Calibration_File;
-            end
-            
-            sessionVogDataFile = fullfile(this.Session.dataRawPath,[this.Session.name '_VOGData.txt']);
-            sessionVogCalibrationFile = fullfile(this.Session.dataRawPath,[this.Session.name '_VOGCalibration.cal']);
-            
-            copyfile(dataFile, sessionVogDataFile);
-            copyfile(calibrationFile, sessionVogCalibrationFile);
-            
-            dataset = GetCalibratedData(sessionVogDataFile, sessionVogCalibrationFile, 1);
-            
-            samplesDataSet = dataset;
+        function trialDataTable = PrepareTrialDataTable( this, ds)
+            trialDataTable = ds;
         end
     end
     

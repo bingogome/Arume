@@ -1,76 +1,65 @@
-classdef OptokineticTorsion < ArumeCore.ExperimentDesign
+classdef OptokineticTorsion < ArumeExperimentDesigns.EyeTracking
     %OPTOKINETICTORSION Summary of this class goes here
     %   Detailed explanation goes here
     
     properties
-        checkerBoardImg = [];
-        checkerBoardTexture = [];
-        
-        eyeTracker = [];
-        
-        
-        fixRad
-        fixColor
+        fixRad = 20;
+        fixColor = [255 0 0];
     end
     
     % ---------------------------------------------------------------------
-    % Options to set at runtime
+    % Experiment design methods
     % ---------------------------------------------------------------------
-    methods ( Static = true )
-    end
-    
     methods ( Access = protected )
-        
-        function dlg = GetOptionsDialog( this )
-            dlg.UseEyeTracker = { {'{0}' '1'} };
-            dlg.TrialDuration = { 30 '* (seconds)' [1 100] };
-            dlg.OKNStimulus = { {'{Wedges}' 'Dots'}};
-        end
+        function dlg = GetOptionsDialog( this, importing )
+            dlg = GetOptionsDialog@ArumeExperimentDesigns.EyeTracking(this);
+            
+            dlg.ScreenWidth = { 121 '* (cm)' [1 3000] };
+            dlg.ScreenHeight = { 68 '* (cm)' [1 3000] };
+            dlg.ScreenDistance = { 60 '* (cm)' [1 3000] };
+            
+            dlg.Trial_Duration =  { 30 '* (s)' [1 100] };
+            dlg.Max_Speed = { 30 '* (deg/s)' [0 100] };
+            dlg.Number_of_Speeds = {3 '* (N)' [1 100] };
+            
+            dlg.Number_of_Dots = { 2000 '* (deg/s)' [10 10000] };
+            dlg.Max_Radius = { 40 '* (deg)' [1 100] };
+            dlg.Min_Radius = { 1 '* (deg)' [0 100] };
 
-        function initNewCreatedSession( this  )
+            dlg.Min_Dot_Diam = {0.1  '* (deg)' [0.01 100] };
+            dlg.Max_Dot_Diam = {0.4  '* (deg)' [0.01 100] };
+            dlg.Number_of_Dot_Sizes = {5 '* (N)' [1 100] };
             
-            if ( ~isfield( this.ExperimentOptions, 'TrialDuration') )
-                this.trialDuration = 20; %seconds
-            else
-                this.trialDuration = this.ExperimentOptions.TrialDuration; %seconds
-            end
+            dlg.NumberOfRepetitions = {8 '* (N)' [1 100] };
             
+            dlg.Do_Blank = { {'0','{1}'} };
+            
+            dlg.TargetSize = 0.5;
+            
+            dlg.BackgroundBrightness = 0;
+        end
+        
+        function initExperimentDesign( this  )
+            this.DisplayVariableSelection = {'TrialNumber' 'TrialResult' 'Speed' 'Stimulus'};
+        
+            this.HitKeyBeforeTrial = 1;
+            this.BackgroundColor = this.ExperimentOptions.BackgroundBrightness;
+            
+            this.trialDuration = this.ExperimentOptions.Trial_Duration; %seconds
+            
+            this.trialsBeforeBreak = 15;
+                
             % default parameters of any experiment
-            this.trialSequence = 'Sequential';      % Sequential, Random, Random with repetition, ...
-            this.trialAbortAction = 'Repeat';    % Repeat, Delay, Drop
-            this.trialsPerSession = this.NumberOfConditions;
+            this.trialAbortAction = 'Delay';     % Repeat, Delay, Drop
             
             %%-- Blocking
-            this.blockSequence = 'Sequential';	% Sequential, Random, Random with repetition, ...
-            this.numberOfTimesRepeatBlockSequence = 1;
-            this.blocksToRun              = 1;
-            this.blocks(1).fromCondition  = 1;
-            this.blocks(1).toCondition    = this.NumberOfConditions;
-            this.blocks(1).trialsToRun    = this.NumberOfConditions;
-                        
-            this.fixRad   = 20;
-            this.fixColor = [255 0 0];
+            this.blockSequence = 'Sequential';	% Sequential, Random, ...
             
-            this.HitKeyBeforeTrial =1;
-        end
-        
-        %% run initialization before the first trial is run
-        function initBeforeRunning( this )
-            
-            if ( this.ExperimentOptions.UseEyeTracker )
-                if ( exist('C:\secure\Code\EyeTracker\bin\Debug','file') )
-                    asm = NET.addAssembly('C:\secure\Code\EyeTracker\bin\Debug\EyeTrackerRemoteClient.dll');
-                    this.eyeTracker = ArumeHardware.VOG();
-                    this.eyeTracker.Connect('127.0.0.1', 9000);
-                else
-                    asm = NET.addAssembly('D:\Code\Debug\EyeTrackerRemoteClient.dll');
-                    this.eyeTracker = ArumeHardware.VOG();
-                    this.eyeTracker.Connect('10.17.101.57', 9000);
-                end
-                
-                this.eyeTracker.SetSessionName(this.Session.name);
-            end
-            
+            this.trialSequence = 'Random';	% Sequential, Random, Random with repetition, ...
+            this.trialsPerSession = this.NumberOfConditions*this.ExperimentOptions.NumberOfRepetitions;
+            this.numberOfTimesRepeatBlockSequence = this.ExperimentOptions.NumberOfRepetitions;
+            this.blocksToRun = 1;
+            this.blocks = struct( 'fromCondition', 1, 'toCondition', this.NumberOfConditions, 'trialsToRun', this.NumberOfConditions  );
         end
         
         function [conditionVars] = getConditionVariables( this )
@@ -79,267 +68,134 @@ classdef OptokineticTorsion < ArumeCore.ExperimentDesign
             
             i = i+1;
             conditionVars(i).name   = 'Speed';
-            conditionVars(i).values = [30 30 20 10 0];
+            conditionVars(i).values = this.ExperimentOptions.Max_Speed/this.ExperimentOptions.Number_of_Speeds * [0:this.ExperimentOptions.Number_of_Speeds];
             
             i = i+1;
             conditionVars(i).name   = 'Direction';
-            conditionVars(i).values = {'ClockWise'  'CounterClockWise'};
-        end
-        
-        function [ randomVars] = getRandomVariables( this )
-            randomVars = {};
-        end
-        
-        function trialResult = runPreTrial(this, variables )
-            Enum = ArumeCore.ExperimentDesign.getEnum();
+            conditionVars(i).values = {'CW' 'CCW'};
             
-            forcenew = false;
-            
-            if ( isfield( this.ExperimentOptions, 'OKNStimulus') )
-                oknStim = this.ExperimentOptions.OKNStimulus;
+            i = i+1;
+            conditionVars(i).name   = 'Stimulus';
+            if ( this.ExperimentOptions.Do_Blank ) 
+                conditionVars(i).values = {'Blank' 'Dots'};
             else
-                oknStim = 'Wedges';
+                conditionVars(i).values = {'Dots'};
             end
-            switch(oknStim)
-                
-                case 'Wedges'
-                    
-                    imgFile = fullfile( this.Project.stimuliPath, 'radialCheckerBoardImage.mat');
-                    if ( exist( imgFile, 'file' ) && ~forcenew)
-                        dat = load(imgFile);
-                        this.checkerBoardImg = dat.radialCheckerBoardImage;
-                    else
-                        width = 1080;  % Height of the screen
-                        fringe = 12;  % Width of the ramped fringe
-                        width = width - fringe;
-                        
-                        radialCheckerBoardImage = double(RadialCheckerBoard([width/2 0], [-180 180], [0 20]));
-                        save( imgFile, 'radialCheckerBoardImage');
-                        this.checkerBoardImg = radialCheckerBoardImage;
-                    end
-                    
-                    this.checkerBoardTexture = Screen('MakeTexture', this.Graph.window, this.checkerBoardImg, 1);
-                    
-                case 'Dots'
-                    img = imread('C:\secure\Grants\2016\k99\matlab\Picture1.png');
-                    img = uint8((img>3)*255);
-%                     imgFile = fullfile( this.Project.stimuliPath, 'radialDotsImage.mat');
-%                     if ( exist( imgFile, 'file' ) && ~forcenew)
-%                         dat = load(imgFile);
-%                         this.checkerBoardImg = dat.radialCheckerBoardImage;
-%                     else
-%                         width = 1080;  % Height of the screen
-%                         fringe = 12;  % Width of the ramped fringe
-%                         width = width - fringe;
-%                         
-%                         radialCheckerBoardImage = double(RadialCheckerBoard([width/2 0], [-180 180], [0 20]));
-%                         save( imgFile, 'radialDotsImage');
-%                         this.checkerBoardImg = radialCheckerBoardImage;
-%                     end
-                    
-                    this.checkerBoardTexture = Screen('MakeTexture', this.Graph.window, img, 1);
-            end
-            
-            
-            if ( ~isempty(this.eyeTracker) )
-                if ( ~this.eyeTracker.IsRecording())
-                    this.eyeTracker.StartRecording();
-                    pause(1);
-                end
-                this.eyeTracker.RecordEvent(num2str(size(this.Session.CurrentRun.pastConditions,1)));
-            end
-            
-            
-            trialResult =  Enum.trialResult.CORRECT;
         end
         
-        function trialResult = runTrial( this, variables )
+        function [trialResult, thisTrialData] = runTrial( this, thisTrialData )
             
             try
                 
-            Enum = ArumeCore.ExperimentDesign.getEnum();
-            
-            
-            graph = this.Graph;
-            
-            trialResult = Enum.trialResult.CORRECT;
-            
-            
-            %-- add here the trial code
-            Screen('FillRect', graph.window, 128);
-            lastFlipTime        = Screen('Flip', graph.window);
-            secondsRemaining    = this.trialDuration;
-            
-            
-            
-            startLoopTime = lastFlipTime;
-            
-            while secondsRemaining > 0
+                Enum = ArumeCore.ExperimentDesign.getEnum();
+                graph = this.Graph;
+                trialResult = Enum.trialResult.CORRECT;
                 
-                secondsElapsed      = GetSecs - startLoopTime;
-                secondsRemaining    = this.trialDuration - secondsElapsed;
                 
-                % -----------------------------------------------------------------
-                % --- Drawing of stimulus -----------------------------------------
-                % -----------------------------------------------------------------
+                lastFlipTime        = GetSecs;
+                secondsRemaining    = this.trialDuration;
+                thisTrialData.TimeStartLoop = lastFlipTime;
                 
-                %-- Find the center of the screen
-                [mx, my] = RectCenter(graph.wRect);
+                % prepare dots
                 
-                %-- Draw image
+                mon_width   = this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth;   % horizontal dimension of viewable screen (cm)
+                v_dist      = this.ExperimentOptions.ScreenDistance ;   % viewing distance (cm)
                 
-                if ( secondsElapsed > 0 )
-                    switch(variables.Direction)
-                        case 'ClockWise'  
-                            turnangle = (secondsElapsed-0)*variables.Speed;
-                        case 'CounterClockWise'
-                            turnangle = (-secondsElapsed-0)*variables.Speed;
+                dot_speed   = thisTrialData.Speed;    % dot speed (deg/sec)
+                ndots       = this.ExperimentOptions.Number_of_Dots; % number of dots
+                
+                max_d       = this.ExperimentOptions.Max_Radius;   % maximum radius of  annulus (degrees)
+                min_d       = this.ExperimentOptions.Min_Radius;    % minumum
+                
+                differentsizes = this.ExperimentOptions.Number_of_Dot_Sizes; % Use different sizes for each point if >= 1. Use one common size if == 0.
+                dot_w       = this.ExperimentOptions.Min_Dot_Diam;  % width of dot (deg)
+                                
+                ppd = pi * (this.Graph.wRect(3)-this.Graph.wRect(1)) / atan(mon_width/v_dist/2) / 360;    % pixels per degree
+                s = dot_w * ppd;                                        % dot size (pixels)
+                
+                rmax = max_d * ppd;	% maximum radius of annulus (pixels from center)
+                rmin = min_d * ppd; % minimum
+                r = rmin + (rmax-rmin) * sqrt(rand(ndots,1));	% r
+                t = 2*pi*rand(ndots,1);                         % theta polar coordinate
+                
+                cs = [cos(t), sin(t)];
+                xy = [r r] .* cs;   % dot positions in Cartesian coordinates (pixels from center)
+                xymatrix = transpose(xy);
+                 
+                mdir = 1;    % motion direction (in or out) for each dot
+                if ( thisTrialData.Direction == 'CCW' )
+                    mdir = -1;
+                end
+                dt = 2*pi/360/this.Graph.frameRate * thisTrialData.Speed*mdir;                       % change in theta per frame (radians)
+                % Create a vector with different point sizes for each single dot, if
+                % requested:
+                if (differentsizes>0)
+                    s=(1+rand(1, ndots)*(differentsizes-1))*s;
+                end
+                [center(1), center(2)] = RectCenter(this.Graph.wRect);
+                
+                % end prepare dots
+                
+                if ( ~isempty(this.eyeTracker) )
+                    thisTrialData.EyeTrackerFrameStartLoop = this.eyeTracker.RecordEvent(sprintf('TRIAL_START_LOOP %d %d', thisTrialData.TrialNumber, thisTrialData.Condition) );
+                end
+                
+                while secondsRemaining > 0
+                    
+                    secondsElapsed      = GetSecs - thisTrialData.TimeStartLoop;
+                    secondsRemaining    = this.trialDuration - secondsElapsed;
+                    
+                    
+                    % -----------------------------------------------------------------
+                    % --- Drawing of stimulus -----------------------------------------
+                    % -----------------------------------------------------------------
+                    switch(thisTrialData.Stimulus)
+                        case 'Dots'
+                            Screen('DrawDots', graph.window, xymatrix, s, WhiteIndex(graph.window), center,1);  % change 1 to 0 to draw square dots
                     end
-                else
-                    turnangle = 0;
+                    
+                    t = t + dt;                         % update theta
+                    xy = [r r] .* [cos(t), sin(t)];     % compute new positions
+                    xymatrix = transpose(xy);
+                    
+                    
+                    
+                    %-- Draw fixation spot
+                    [mx, my] = RectCenter(this.Graph.wRect);
+                    
+                    targetPix = this.Graph.pxWidth/this.ExperimentOptions.ScreenWidth * this.ExperimentOptions.ScreenDistance * tan(this.ExperimentOptions.TargetSize/180*pi);
+                    fixRect = [0 0 targetPix targetPix];
+                    fixRect = CenterRectOnPointd( fixRect, mx, my );
+                    Screen('FillOval', graph.window, this.fixColor, fixRect);
+                    
+                    Screen('DrawingFinished', graph.window); % Tell PTB that no further drawing commands will follow before Screen('Flip')
+                    
+                    
+                    % -----------------------------------------------------------------
+                    % --- END Drawing of stimulus -------------------------------------
+                    % -----------------------------------------------------------------
+                    
+                    % -----------------------------------------------------------------
+                    % -- Flip buffers to refresh screen -------------------------------
+                    % -----------------------------------------------------------------
+                    this.Graph.Flip();
+                    % -----------------------------------------------------------------
+                    
+                    
+                    % -----------------------------------------------------------------
+                    % --- Collecting responses  ---------------------------------------
+                    % -----------------------------------------------------------------
+                    
+                    % -----------------------------------------------------------------
+                    % --- END Collecting responses  -----------------------------------
+                    % -----------------------------------------------------------------
+                    
                 end
-                imageRect = CenterRectOnPointd( [0 0 1200 1200], mx, my );
-                Screen('DrawTexture', graph.window, this.checkerBoardTexture, [], imageRect, turnangle);
-%                 Screen('DrawTexture', graph.window, this.checkerBoardTexture, [], imageRect2, turnangle);
-                
-                %-- Draw center black disk
-%                 fixRect = [0 0 200 200];
-%                 fixRect = CenterRectOnPointd( fixRect, mx-graph.wRect(3)/4, my );
-%                 Screen('FillOval', graph.window, [0 0 0], fixRect);
-                
-                %-- Draw fixation spot
-                fixRect = [0 0 5 5];
-                fixRect = CenterRectOnPointd( fixRect, mx, my );
-                Screen('FillOval', graph.window, this.fixColor, fixRect);
-                
-                
-                fixRect = [0 0 500 500];
-                fixRect = CenterRectOnPointd( fixRect, mx, my );
-                Screen('FrameOval',graph.window, [128], fixRect,100);
-                
-%                 targetAngle = turnangle;
-%                                 fromH = mx + 170*sin(targetAngle/180*pi);
-%                                 fromV = my - 170*cos(targetAngle/180*pi);
-%                                 toH = mx + 240*sin(targetAngle/180*pi);
-%                                 toV = my - 240*cos(targetAngle/180*pi);
-%                                 
-%                 Screen('DrawLine', graph.window, [255 0 0], fromH, fromV, toH, toV, 4);
-                
-                fixRect = [0 0 5 5];
-                targetAngle = turnangle;
-                                fromH = mx + 200*sin(targetAngle/180*pi);
-                                fromV = my - 200*cos(targetAngle/180*pi);
-                fixRect = CenterRectOnPointd( fixRect, fromH, fromV );
-                Screen('FrameOval',graph.window, [255 0 0], fixRect,100);
-                
-                % -----------------------------------------------------------------
-                % --- END Drawing of stimulus -------------------------------------
-                % -----------------------------------------------------------------
-                
-                
-                
-                % -----------------------------------------------------------------
-                % -- Flip buffers to refresh screen -------------------------------
-                % -----------------------------------------------------------------
-                this.Graph.Flip();
-                % -----------------------------------------------------------------
-                
-                % -----------------------------------------------------------------
-                % --- Collecting responses  ---------------------------------------
-                % -----------------------------------------------------------------
-                
-                % -----------------------------------------------------------------
-                % --- END Collecting responses  -----------------------------------
-                % -----------------------------------------------------------------
-                
-            end
             catch ex
-                if ( ~isempty( this.eyeTracker ) )
-                    this.eyeTracker.StopRecording();
-                end
-                
                 rethrow(ex)
             end
             
-            if ( ~isempty( this.eyeTracker ) )
-                this.eyeTracker.StopRecording();
-            end
-            
-        end
-        
-        function trialOutput = runPostTrial(this)
-            trialOutput = [];
-        end
-        
-        function runAfterSessionCompleted(this)
-        end
-        
-        function cleanAfterRunning(this)
-        end
-        
+        end        
     end
     
 end
-
-function img = RadialCheckerBoard(radius, sector, chsz, propel)
-%img = RadialCheckerBoard(radius, sector, chsz, propel)
-% Returns a bitmap image of a radial checkerboard pattern.
-% The image is a square of 2*OuterRadius pixels.
-%
-% Parameters of wedge:
-%   radius :    eccentricity of radii in pixels = [outer, inner]
-%   sector :    polar angles in degrees = [start, end] from -180 to 180
-%   chsz :      size of checks in log factors & degrees respectively = [eccentricity, angle]
-%   propel :    Optional, if defined there are two wedges, one in each hemifield
-%
-
-checkerboard = [0 255; 255 0];
-img = ones(2*radius(1), 2*radius(1)) * 127;
-
-for x = -radius : radius
-    for y = -radius : radius
-        [th r] = cart2pol(x,y);
-        th = th * 180/pi;
-        if th >= sector(1) && th < sector(2) && r < radius(1) && r > radius(2)
-            img(y+radius(1)+1,x+radius(1)+1) = checkerboard(mod(floor(log(r)*chsz(1)),2) + 1, mod(floor((th + sector(1))/chsz(2)),2) + 1);
-        end
-    end
-end
-
-img = flipud(img);
-
-if nargin > 3
-    rotimg = flipud(fliplr(img));
-    non_grey_pixels = find(rotimg ~= 127);
-    img(non_grey_pixels) = rotimg(non_grey_pixels);
-end
-
-img = uint8(img);
-end
-
-
-function test()
-%% plot torsion
-pathfiles = 'C:\secure\Data\Raw\Torsion\DataTest';
-oldpath = pwd;
-cd(pathfiles);
-files = uigetfile('*.txt', 'MultiSelect', 'on');
-
-colors = ['b' 'r' 'g' 'k'];
-
-figure
-hold
-for i=1:length(files)
-    d=load(files{i});
-    %d(d(:,2)<-15 | d(:,2) >15,2) = nan;
-    plot((1:length(d))/33,d(:,2),colors(i));
-end
-xlabel('Time (s)')
-ylabel('Torsion (deg)');
-legend({'30 deg/s' '20 deg/s' '10 deg/s' '0 deg/s'})
-cd(oldpath)
-
-set(gca,'xlim',[0 10])
-set(gca,'ylim',[-10 10])
-end
-

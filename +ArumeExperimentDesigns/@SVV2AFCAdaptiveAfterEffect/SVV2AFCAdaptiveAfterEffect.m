@@ -1,4 +1,4 @@
-classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
+classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptive
     %SVVLineAdaptiveLong Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -10,7 +10,7 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
     % ---------------------------------------------------------------------
     methods ( Access = protected )
         
-         function dlg = GetOptionsDialog( this )
+         function dlg = GetOptionsDialog( this, importing)
             dlg = GetOptionsDialog@ArumeExperimentDesigns.SVV2AFCAdaptiveLong(this);
             
             dlg.TiltHeadAtBegining = { {'{0}','1'} };
@@ -234,7 +234,7 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
                     if ( secondsElapsed > t1)
                         %-- Draw target
                         
-                        this.DrawLine(variables);
+                        this.DrawLine(this.currentAngle, variables.Position, this.ExperimentOptions.Type_of_line);
                     end
                     
 %                     if (secondsElapsed < t2)
@@ -322,11 +322,8 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
     % Data Analysis methods
     % ---------------------------------------------------------------------
     methods ( Access = public )
-        function trialDataSet = PrepareTrialDataSet( this, ds)
+        function trialDataSet = PrepareTrialDataTable( this, ds)
             data = ds;
-            if ( data.TimeStopTrial(end) == 0)
-                data(end,:) = [];
-            end
             
             binSize = 30;
             stepSize = 10;
@@ -417,7 +414,8 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
                 end
             end
             
-            
+            trialDataSet = [data struct2table(newData)];
+            return
             
             
             torsionFolder = 'N:\RAW_DATA\SVVTorsionAfterEffect\PostProcess';
@@ -459,10 +457,9 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
             trialDataSet = [data newDs];
         end
         
-        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)
-            dataRight = this.Session.trialDataSet;
-            
+        function sessionDataTable = PrepareSessionDataTable(this, sessionDataTable)            
             data = sessionDataTable;
+            dataRight  = this.Session.trialDataTable;
             if ( contains(this.Session.sessionCode,'LED') )
                 data.TiltSide = 'LeftTilt';
             elseif (contains(this.Session.sessionCode,'RED'))
@@ -483,7 +480,7 @@ classdef SVV2AFCAdaptiveAfterEffect < ArumeExperimentDesigns.SVV2AFCAdaptiveLong
                     data.SVV(1,j) = nanmean(dataRight.Bin100SVV(idx));
                     data.RT(1,j) = nanmean(dataRight.ReactionTime(idx));
                     data.TH(1,j) = nanmean(dataRight.Bin100SVVth(idx));
-                    data.Time(1,j) = nanmean(dataRight.TimeStopTrial(idx)-dataRight.TimeStopTrial(101));
+                    data.Time(1,j) = nanmean(dataRight.TimeTrialStop(idx)-dataRight.TimeTrialStart(101));
                 end
             end
             data.SVV(:,[2 12 15]) = nan;
